@@ -6,6 +6,13 @@
 フロント・バックエンド・インフラをすべて自前で設計・実装し、
 AWS 上で本番運用可能な構成を再現しています。
 
+## アーキテクチャ図
+![Architecture](./docs/architecture.png)
+
+## ER 図
+![ERD](./docs/erd.png)
+
+
 🟦 技術スタック（Tech Stack）
 
 フロントエンド
