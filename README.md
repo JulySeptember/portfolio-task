@@ -9,10 +9,10 @@ AWS 上で本番運用可能な構成を再現しています。
 ---
 
 ## アーキテクチャ図
-<img src="./docs/architecture.png" width="600">
+<img src="./docs/architecture.png" width="500">
 
 ## ER 図
-<img src="./docs/erd.png" width="600">
+<img src="./docs/erd.png" width="400">
 
 
 ---
