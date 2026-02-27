@@ -1,10 +1,12 @@
-📌 タスク管理アプリ（ポートフォリオ）
+## 📌 タスク管理アプリ（ポートフォリオ）
 
 このプロジェクトは Next.js × Go × AWS × Terraform × RDS(MySQL) を用いて構築した、
-フルスタック構成のタスク管理 Web アプリです。
+タスク管理 Web アプリです。
 
 フロント・バックエンド・インフラをすべて自前で設計・実装し、
 AWS 上で本番運用可能な構成を再現しています。
+
+---
 
 ## アーキテクチャ図
 ![Architecture](./docs/architecture.png)
@@ -12,6 +14,7 @@ AWS 上で本番運用可能な構成を再現しています。
 ## ER 図
 ![ERD](./docs/erd.png)
 
+---
 
 🟦 技術スタック（Tech Stack）
 
@@ -43,6 +46,8 @@ AWS 上で本番運用可能な構成を再現しています。
 - GitHub Actions（CI/CD）
 - Docker（Go Lambda ビルド用）
 
+---
+
 🟩 アプリ概要（What）
 
 機能一覧
@@ -56,6 +61,8 @@ AWS 上で本番運用可能な構成を再現しています。
 - タスク一覧
 - タスク作成
 - ステータス変更
+
+---
 
 🟧 AWS アーキテクチャ（Architecture）
 
@@ -73,6 +80,8 @@ RDS を安全に利用するための構成
 - プライベートサブネット × 2（RDS 用）
 - インターネットゲートウェイ
 - セキュリティグループ（Lambda → RDS のみ許可）
+
+---
 
 🟨 開発ワークフロー（How）
 
@@ -94,14 +103,14 @@ STEP 3：AWS 構成設計
 - Terraform による IaC
 
 STEP 4：リポジトリ構成
-
+```
 portfolio/
   frontend/
   backend/
   infra/
   docs/
   scripts/
-
+```
 STEP 5：インフラ構築（Terraform）
 - VPC
 - サブネット
@@ -137,16 +146,22 @@ STEP 9：README / ドキュメント整備
 - 工夫した点
 - 今後の改善点
 
+---
+
 📚 ドキュメント（docs/）
 - architecture.png（アーキテクチャ図）
 - erd.png（ER 図）
 - api-design.md（API 設計）
 - infra-design.md（インフラ設計）
 
+---
+
 🚀 CI/CD（GitHub Actions）
 - フロント：S3 + CloudFront に自動デプロイ
 - バックエンド：Lambda に自動デプロイ
 - Terraform：main ブランチで自動 apply
+
+---
 
 🧠 工夫した点
 - RDS を VPC 内に配置し、Lambda からのみアクセス可能にした安全設計
@@ -154,6 +169,8 @@ STEP 9：README / ドキュメント整備
 - Terraform による完全 IaC 化
 - GitHub Actions による自動デプロイ
 - Next.js App Router + Tailwind によるモダンな UI
+
+---
 
 🔧 今後の改善点
 - RDS Proxy の導入（コネクション最適化）
