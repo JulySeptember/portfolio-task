@@ -1,0 +1,7 @@
+aws_region          = "ap-northeast-1"
+project_name        = "your-project"
+env                 = "dev"
+db_username         = "admin"
+db_password         = "change_me"
+db_instance_class   = "db.t3.micro"
+lambda_payload_path = "../backend/main.zip"
