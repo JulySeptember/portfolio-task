@@ -33,6 +33,8 @@ module "lambda" {
   lambda_payload_path = var.lambda_payload_path
   db_username         = var.db_username
   db_password         = var.db_password
+
+  use_single_subnet_for_lambda = var.env == "dev"
 }
 
 module "cognito" {

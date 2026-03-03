@@ -55,10 +55,13 @@ resource "aws_lambda_function" "this" {
   runtime       = "provided.al2023"
   filename      = var.lambda_payload_path
 
+  memory_size = 128
+  timeout     = 5
+
   depends_on = [aws_cloudwatch_log_group.this, aws_iam_role_policy_attachment.vpc_access]
 
   vpc_config {
-    subnet_ids         = var.private_subnets
+    subnet_ids         = var.use_single_subnet_for_lambda ? [var.private_subnets[0]] : var.private_subnets
     security_group_ids = [var.lambda_sg_id]
   }
 
