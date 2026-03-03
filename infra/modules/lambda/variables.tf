@@ -16,6 +16,11 @@ variable "lambda_payload_path" {
 variable "private_subnets" {
   type        = list(string)
   description = "Private subnet IDs for Lambda VPC configuration"
+
+  validation {
+    condition     = length(var.private_subnets) > 0
+    error_message = "private_subnets must contain at least one subnet id"
+  }
 }
 
 variable "lambda_sg_id" {
@@ -48,4 +53,10 @@ variable "frontend_bucket_name" {
 variable "vpc_id" {
   type        = string
   description = "VPC ID for resources that need to be created inside the VPC"
+}
+
+variable "use_single_subnet_for_lambda" {
+  type        = bool
+  default     = false
+  description = "開発環境では単一サブネットを使うフラグ。prod では false にすること。"
 }
