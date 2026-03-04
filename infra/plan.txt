@@ -1,0 +1,897 @@
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # module.apigw.aws_apigatewayv2_api.this will be created
+  + resource "aws_apigatewayv2_api" "this" {
+      + api_endpoint                 = (known after apply)
+      + api_key_selection_expression = "$request.header.x-api-key"
+      + arn                          = (known after apply)
+      + execution_arn                = (known after apply)
+      + id                           = (known after apply)
+      + ip_address_type              = (known after apply)
+      + name                         = "your-project-gw-dev"
+      + protocol_type                = "HTTP"
+      + route_selection_expression   = "$request.method $request.path"
+      + tags_all                     = (known after apply)
+    }
+
+  # module.apigw.aws_apigatewayv2_authorizer.cognito will be created
+  + resource "aws_apigatewayv2_authorizer" "cognito" {
+      + api_id                           = (known after apply)
+      + authorizer_result_ttl_in_seconds = (known after apply)
+      + authorizer_type                  = "JWT"
+      + id                               = (known after apply)
+      + identity_sources                 = [
+          + "$request.header.Authorization",
+        ]
+      + name                             = "cognito-authorizer"
+
+      + jwt_configuration {
+          + audience = (known after apply)
+          + issuer   = (known after apply)
+        }
+    }
+
+  # module.apigw.aws_apigatewayv2_integration.this will be created
+  + resource "aws_apigatewayv2_integration" "this" {
+      + api_id                                    = (known after apply)
+      + connection_type                           = "INTERNET"
+      + id                                        = (known after apply)
+      + integration_response_selection_expression = (known after apply)
+      + integration_type                          = "AWS_PROXY"
+      + integration_uri                           = (known after apply)
+      + payload_format_version                    = "2.0"
+      + timeout_milliseconds                      = 30000
+    }
+
+  # module.apigw.aws_apigatewayv2_route.authenticated will be created
+  + resource "aws_apigatewayv2_route" "authenticated" {
+      + api_id             = (known after apply)
+      + api_key_required   = false
+      + authorization_type = "JWT"
+      + authorizer_id      = (known after apply)
+      + id                 = (known after apply)
+      + route_key          = "ANY /{proxy+}"
+      + target             = (known after apply)
+    }
+
+  # module.apigw.aws_lambda_permission.apigw will be created
+  + resource "aws_lambda_permission" "apigw" {
+      + action              = "lambda:InvokeFunction"
+      + function_name       = "your-project-api-dev"
+      + id                  = (known after apply)
+      + principal           = "apigateway.amazonaws.com"
+      + source_arn          = (known after apply)
+      + statement_id        = "AllowExecutionFromAPIGateway"
+      + statement_id_prefix = (known after apply)
+    }
+
+  # module.backend_s3.aws_s3_bucket.backend will be created
+  + resource "aws_s3_bucket" "backend" {
+      + acceleration_status         = (known after apply)
+      + acl                         = (known after apply)
+      + arn                         = (known after apply)
+      + bucket                      = "your-project-dev-backend-artifacts"
+      + bucket_domain_name          = (known after apply)
+      + bucket_prefix               = (known after apply)
+      + bucket_regional_domain_name = (known after apply)
+      + force_destroy               = false
+      + hosted_zone_id              = (known after apply)
+      + id                          = (known after apply)
+      + object_lock_enabled         = (known after apply)
+      + policy                      = (known after apply)
+      + region                      = (known after apply)
+      + request_payer               = (known after apply)
+      + tags                        = {
+          + "Environment" = "dev"
+          + "Name"        = "your-project-dev-backend-artifacts"
+        }
+      + tags_all                    = {
+          + "Environment" = "dev"
+          + "Name"        = "your-project-dev-backend-artifacts"
+        }
+      + website_domain              = (known after apply)
+      + website_endpoint            = (known after apply)
+    }
+
+  # module.backend_s3.aws_s3_bucket_lifecycle_configuration.backend will be created
+  + resource "aws_s3_bucket_lifecycle_configuration" "backend" {
+      + bucket                                 = (known after apply)
+      + expected_bucket_owner                  = (known after apply)
+      + id                                     = (known after apply)
+      + transition_default_minimum_object_size = "all_storage_classes_128K"
+
+      + rule {
+          + id     = "expire-old-versions"
+          + status = "Enabled"
+
+          + filter {
+            }
+
+          + noncurrent_version_expiration {
+              + noncurrent_days = 30
+            }
+        }
+    }
+
+  # module.backend_s3.aws_s3_bucket_public_access_block.backend will be created
+  + resource "aws_s3_bucket_public_access_block" "backend" {
+      + block_public_acls       = true
+      + block_public_policy     = true
+      + bucket                  = (known after apply)
+      + id                      = (known after apply)
+      + ignore_public_acls      = true
+      + restrict_public_buckets = true
+    }
+
+  # module.backend_s3.aws_s3_bucket_server_side_encryption_configuration.backend will be created
+  + resource "aws_s3_bucket_server_side_encryption_configuration" "backend" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+
+      + rule {
+          + apply_server_side_encryption_by_default {
+              + sse_algorithm = "AES256"
+            }
+        }
+    }
+
+  # module.backend_s3.aws_s3_bucket_versioning.backend will be created
+  + resource "aws_s3_bucket_versioning" "backend" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+
+      + versioning_configuration {
+          + mfa_delete = (known after apply)
+          + status     = "Enabled"
+        }
+    }
+
+  # module.cloudfront.aws_cloudfront_distribution.this will be created
+  + resource "aws_cloudfront_distribution" "this" {
+      + arn                             = (known after apply)
+      + caller_reference                = (known after apply)
+      + continuous_deployment_policy_id = (known after apply)
+      + default_root_object             = "index.html"
+      + domain_name                     = (known after apply)
+      + enabled                         = true
+      + etag                            = (known after apply)
+      + hosted_zone_id                  = (known after apply)
+      + http_version                    = "http2"
+      + id                              = (known after apply)
+      + in_progress_validation_batches  = (known after apply)
+      + is_ipv6_enabled                 = true
+      + last_modified_time              = (known after apply)
+      + price_class                     = "PriceClass_All"
+      + retain_on_delete                = false
+      + staging                         = false
+      + status                          = (known after apply)
+      + tags                            = {
+          + "Environment" = "dev"
+          + "Name"        = "your-project-dev-cf"
+        }
+      + tags_all                        = {
+          + "Environment" = "dev"
+          + "Name"        = "your-project-dev-cf"
+        }
+      + trusted_key_groups              = (known after apply)
+      + trusted_signers                 = (known after apply)
+      + wait_for_deployment             = true
+
+      + custom_error_response {
+          + error_caching_min_ttl = 0
+          + error_code            = 403
+          + response_code         = 200
+          + response_page_path    = "/index.html"
+        }
+      + custom_error_response {
+          + error_caching_min_ttl = 0
+          + error_code            = 404
+          + response_code         = 200
+          + response_page_path    = "/index.html"
+        }
+
+      + default_cache_behavior {
+          + allowed_methods        = [
+              + "GET",
+              + "HEAD",
+            ]
+          + cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+          + cached_methods         = [
+              + "GET",
+              + "HEAD",
+            ]
+          + compress               = false
+          + default_ttl            = (known after apply)
+          + max_ttl                = (known after apply)
+          + min_ttl                = 0
+          + target_origin_id       = "S3Origin"
+          + trusted_key_groups     = (known after apply)
+          + trusted_signers        = (known after apply)
+          + viewer_protocol_policy = "redirect-to-https"
+        }
+
+      + origin {
+          + connection_attempts      = 3
+          + connection_timeout       = 10
+          + domain_name              = (known after apply)
+          + origin_access_control_id = (known after apply)
+          + origin_id                = "S3Origin"
+        }
+
+      + restrictions {
+          + geo_restriction {
+              + locations        = (known after apply)
+              + restriction_type = "none"
+            }
+        }
+
+      + viewer_certificate {
+          + cloudfront_default_certificate = true
+          + minimum_protocol_version       = "TLSv1"
+        }
+    }
+
+  # module.cloudfront.aws_cloudfront_origin_access_control.this will be created
+  + resource "aws_cloudfront_origin_access_control" "this" {
+      + arn                               = (known after apply)
+      + description                       = "Managed by Terraform"
+      + etag                              = (known after apply)
+      + id                                = (known after apply)
+      + name                              = "s3-oac-your-project-dev"
+      + origin_access_control_origin_type = "s3"
+      + signing_behavior                  = "always"
+      + signing_protocol                  = "sigv4"
+    }
+
+  # module.cloudfront.aws_s3_bucket_policy.this will be created
+  + resource "aws_s3_bucket_policy" "this" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + policy = (known after apply)
+    }
+
+  # module.cognito.aws_cognito_user_pool.this will be created
+  + resource "aws_cognito_user_pool" "this" {
+      + arn                        = (known after apply)
+      + auto_verified_attributes   = [
+          + "email",
+        ]
+      + creation_date              = (known after apply)
+      + custom_domain              = (known after apply)
+      + deletion_protection        = "INACTIVE"
+      + domain                     = (known after apply)
+      + email_verification_message = (known after apply)
+      + email_verification_subject = (known after apply)
+      + endpoint                   = (known after apply)
+      + estimated_number_of_users  = (known after apply)
+      + id                         = (known after apply)
+      + last_modified_date         = (known after apply)
+      + mfa_configuration          = "OFF"
+      + name                       = "your-project-dev-user-pool"
+      + sms_verification_message   = (known after apply)
+      + tags_all                   = (known after apply)
+      + user_pool_tier             = (known after apply)
+      + username_attributes        = [
+          + "email",
+        ]
+
+      + password_policy {
+          + minimum_length                   = 8
+          + require_lowercase                = true
+          + require_numbers                  = true
+          + require_symbols                  = true
+          + require_uppercase                = true
+          + temporary_password_validity_days = (known after apply)
+        }
+
+      + schema {
+          + attribute_data_type = "String"
+          + mutable             = true
+          + name                = "email"
+          + required            = true
+        }
+
+      + verification_message_template {
+          + default_email_option  = "CONFIRM_WITH_CODE"
+          + email_message         = "Your verification code is {####}."
+          + email_message_by_link = (known after apply)
+          + email_subject         = "Verify your email"
+          + email_subject_by_link = (known after apply)
+          + sms_message           = (known after apply)
+        }
+    }
+
+  # module.cognito.aws_cognito_user_pool_client.this will be created
+  + resource "aws_cognito_user_pool_client" "this" {
+      + access_token_validity                         = (known after apply)
+      + allowed_oauth_flows                           = (known after apply)
+      + allowed_oauth_flows_user_pool_client          = (known after apply)
+      + allowed_oauth_scopes                          = (known after apply)
+      + auth_session_validity                         = (known after apply)
+      + callback_urls                                 = (known after apply)
+      + client_secret                                 = (sensitive value)
+      + default_redirect_uri                          = (known after apply)
+      + enable_propagate_additional_user_context_data = (known after apply)
+      + enable_token_revocation                       = (known after apply)
+      + explicit_auth_flows                           = [
+          + "ALLOW_REFRESH_TOKEN_AUTH",
+          + "ALLOW_USER_PASSWORD_AUTH",
+          + "ALLOW_USER_SRP_AUTH",
+        ]
+      + generate_secret                               = false
+      + id                                            = (known after apply)
+      + id_token_validity                             = (known after apply)
+      + logout_urls                                   = (known after apply)
+      + name                                          = "your-project-dev-client"
+      + prevent_user_existence_errors                 = (known after apply)
+      + read_attributes                               = (known after apply)
+      + refresh_token_validity                        = (known after apply)
+      + supported_identity_providers                  = (known after apply)
+      + user_pool_id                                  = (known after apply)
+      + write_attributes                              = (known after apply)
+    }
+
+  # module.cognito.aws_cognito_user_pool_domain.this will be created
+  + resource "aws_cognito_user_pool_domain" "this" {
+      + aws_account_id                  = (known after apply)
+      + cloudfront_distribution         = (known after apply)
+      + cloudfront_distribution_arn     = (known after apply)
+      + cloudfront_distribution_zone_id = (known after apply)
+      + domain                          = "your-project-dev-auth"
+      + id                              = (known after apply)
+      + managed_login_version           = (known after apply)
+      + s3_bucket                       = (known after apply)
+      + user_pool_id                    = (known after apply)
+      + version                         = (known after apply)
+    }
+
+  # module.lambda.aws_cloudwatch_log_group.this will be created
+  + resource "aws_cloudwatch_log_group" "this" {
+      + arn               = (known after apply)
+      + id                = (known after apply)
+      + log_group_class   = (known after apply)
+      + name              = "/aws/lambda/your-project-api-dev"
+      + name_prefix       = (known after apply)
+      + retention_in_days = 7
+      + skip_destroy      = false
+      + tags_all          = (known after apply)
+    }
+
+  # module.lambda.aws_iam_role.this will be created
+  + resource "aws_iam_role" "this" {
+      + arn                   = (known after apply)
+      + assume_role_policy    = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action    = "sts:AssumeRole"
+                      + Effect    = "Allow"
+                      + Principal = {
+                          + Service = "lambda.amazonaws.com"
+                        }
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + create_date           = (known after apply)
+      + force_detach_policies = false
+      + id                    = (known after apply)
+      + managed_policy_arns   = (known after apply)
+      + max_session_duration  = 3600
+      + name                  = "your-project-lambda-role-dev"
+      + name_prefix           = (known after apply)
+      + path                  = "/"
+      + tags_all              = (known after apply)
+      + unique_id             = (known after apply)
+    }
+
+  # module.lambda.aws_iam_role_policy.s3_access will be created
+  + resource "aws_iam_role_policy" "s3_access" {
+      + id          = (known after apply)
+      + name        = "your-project-lambda-s3-policy-dev"
+      + name_prefix = (known after apply)
+      + policy      = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action   = [
+                          + "s3:ListBucket",
+                        ]
+                      + Effect   = "Allow"
+                      + Resource = [
+                          + "*",
+                        ]
+                      + Sid      = "AllowListBucket"
+                    },
+                  + {
+                      + Action   = [
+                          + "s3:GetObject",
+                        ]
+                      + Effect   = "Allow"
+                      + Resource = [
+                          + "*",
+                        ]
+                      + Sid      = "AllowGetObjects"
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + role        = (known after apply)
+    }
+
+  # module.lambda.aws_iam_role_policy_attachment.vpc_access will be created
+  + resource "aws_iam_role_policy_attachment" "vpc_access" {
+      + id         = (known after apply)
+      + policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+      + role       = "your-project-lambda-role-dev"
+    }
+
+  # module.lambda.aws_lambda_function.this will be created
+  + resource "aws_lambda_function" "this" {
+      + architectures                  = (known after apply)
+      + arn                            = (known after apply)
+      + code_sha256                    = (known after apply)
+      + function_name                  = "your-project-api-dev"
+      + handler                        = "bootstrap"
+      + id                             = (known after apply)
+      + invoke_arn                     = (known after apply)
+      + last_modified                  = (known after apply)
+      + memory_size                    = 128
+      + package_type                   = "Zip"
+      + publish                        = false
+      + qualified_arn                  = (known after apply)
+      + qualified_invoke_arn           = (known after apply)
+      + reserved_concurrent_executions = -1
+      + role                           = (known after apply)
+      + runtime                        = "provided.al2023"
+      + s3_bucket                      = (known after apply)
+      + s3_key                         = "lambda/your-project-dev.zip"
+      + signing_job_arn                = (known after apply)
+      + signing_profile_version_arn    = (known after apply)
+      + skip_destroy                   = false
+      + source_code_hash               = (known after apply)
+      + source_code_size               = (known after apply)
+      + tags_all                       = (known after apply)
+      + timeout                        = 5
+      + version                        = (known after apply)
+
+      + environment {
+          + variables = (known after apply)
+        }
+
+      + vpc_config {
+          + ipv6_allowed_for_dual_stack = false
+          + security_group_ids          = (known after apply)
+          + subnet_ids                  = (known after apply)
+          + vpc_id                      = (known after apply)
+        }
+    }
+
+  # module.rds.aws_db_instance.this will be created
+  + resource "aws_db_instance" "this" {
+      + address                               = (known after apply)
+      + allocated_storage                     = 20
+      + apply_immediately                     = false
+      + arn                                   = (known after apply)
+      + auto_minor_version_upgrade            = true
+      + availability_zone                     = (known after apply)
+      + backup_retention_period               = 1
+      + backup_target                         = (known after apply)
+      + backup_window                         = (known after apply)
+      + ca_cert_identifier                    = (known after apply)
+      + character_set_name                    = (known after apply)
+      + copy_tags_to_snapshot                 = false
+      + database_insights_mode                = (known after apply)
+      + db_name                               = "taskdb"
+      + db_subnet_group_name                  = "your-project-dev-db-subnet-group"
+      + dedicated_log_volume                  = false
+      + delete_automated_backups              = true
+      + domain_fqdn                           = (known after apply)
+      + endpoint                              = (known after apply)
+      + engine                                = "mysql"
+      + engine_lifecycle_support              = (known after apply)
+      + engine_version                        = "8.0"
+      + engine_version_actual                 = (known after apply)
+      + hosted_zone_id                        = (known after apply)
+      + id                                    = (known after apply)
+      + identifier                            = "your-project-dev-db"
+      + identifier_prefix                     = (known after apply)
+      + instance_class                        = "db.t3.micro"
+      + iops                                  = (known after apply)
+      + kms_key_id                            = (known after apply)
+      + latest_restorable_time                = (known after apply)
+      + license_model                         = (known after apply)
+      + listener_endpoint                     = (known after apply)
+      + maintenance_window                    = (known after apply)
+      + master_user_secret                    = (known after apply)
+      + master_user_secret_kms_key_id         = (known after apply)
+      + max_allocated_storage                 = 20
+      + monitoring_interval                   = 0
+      + monitoring_role_arn                   = (known after apply)
+      + multi_az                              = (known after apply)
+      + nchar_character_set_name              = (known after apply)
+      + network_type                          = (known after apply)
+      + option_group_name                     = (known after apply)
+      + parameter_group_name                  = (known after apply)
+      + password                              = (sensitive value)
+      + performance_insights_enabled          = false
+      + performance_insights_kms_key_id       = (known after apply)
+      + performance_insights_retention_period = (known after apply)
+      + port                                  = (known after apply)
+      + publicly_accessible                   = false
+      + replica_mode                          = (known after apply)
+      + replicas                              = (known after apply)
+      + resource_id                           = (known after apply)
+      + skip_final_snapshot                   = true
+      + snapshot_identifier                   = (known after apply)
+      + status                                = (known after apply)
+      + storage_throughput                    = (known after apply)
+      + storage_type                          = (known after apply)
+      + tags_all                              = (known after apply)
+      + timezone                              = (known after apply)
+      + username                              = "admin"
+      + vpc_security_group_ids                = (known after apply)
+    }
+
+  # module.rds.aws_db_subnet_group.this will be created
+  + resource "aws_db_subnet_group" "this" {
+      + arn                     = (known after apply)
+      + description             = "Managed by Terraform"
+      + id                      = (known after apply)
+      + name                    = "your-project-dev-db-subnet-group"
+      + name_prefix             = (known after apply)
+      + subnet_ids              = (known after apply)
+      + supported_network_types = (known after apply)
+      + tags                    = {
+          + "Environment" = "dev"
+          + "Name"        = "your-project-dev-db-subnet-group"
+        }
+      + tags_all                = {
+          + "Environment" = "dev"
+          + "Name"        = "your-project-dev-db-subnet-group"
+        }
+      + vpc_id                  = (known after apply)
+    }
+
+  # module.s3.aws_s3_bucket.this will be created
+  + resource "aws_s3_bucket" "this" {
+      + acceleration_status         = (known after apply)
+      + acl                         = (known after apply)
+      + arn                         = (known after apply)
+      + bucket                      = "your-project-dev-frontend-assets"
+      + bucket_domain_name          = (known after apply)
+      + bucket_prefix               = (known after apply)
+      + bucket_regional_domain_name = (known after apply)
+      + force_destroy               = false
+      + hosted_zone_id              = (known after apply)
+      + id                          = (known after apply)
+      + object_lock_enabled         = (known after apply)
+      + policy                      = (known after apply)
+      + region                      = (known after apply)
+      + request_payer               = (known after apply)
+      + tags_all                    = (known after apply)
+      + website_domain              = (known after apply)
+      + website_endpoint            = (known after apply)
+    }
+
+  # module.s3.aws_s3_bucket_public_access_block.this will be created
+  + resource "aws_s3_bucket_public_access_block" "this" {
+      + block_public_acls       = true
+      + block_public_policy     = true
+      + bucket                  = (known after apply)
+      + id                      = (known after apply)
+      + ignore_public_acls      = true
+      + restrict_public_buckets = true
+    }
+
+  # module.sg.aws_security_group.lambda_sg will be created
+  + resource "aws_security_group" "lambda_sg" {
+      + arn                    = (known after apply)
+      + description            = "Managed by Terraform"
+      + egress                 = [
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + description      = ""
+              + from_port        = 0
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "-1"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 0
+            },
+        ]
+      + id                     = (known after apply)
+      + ingress                = (known after apply)
+      + name                   = "your-project-lambda-sg-dev"
+      + name_prefix            = (known after apply)
+      + owner_id               = (known after apply)
+      + revoke_rules_on_delete = false
+      + tags_all               = (known after apply)
+      + vpc_id                 = (known after apply)
+    }
+
+  # module.sg.aws_security_group.rds_sg will be created
+  + resource "aws_security_group" "rds_sg" {
+      + arn                    = (known after apply)
+      + description            = "Managed by Terraform"
+      + egress                 = (known after apply)
+      + id                     = (known after apply)
+      + ingress                = [
+          + {
+              + cidr_blocks      = []
+              + description      = ""
+              + from_port        = 3306
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "tcp"
+              + security_groups  = (known after apply)
+              + self             = false
+              + to_port          = 3306
+            },
+        ]
+      + name                   = "your-project-rds-sg-dev"
+      + name_prefix            = (known after apply)
+      + owner_id               = (known after apply)
+      + revoke_rules_on_delete = false
+      + tags_all               = (known after apply)
+      + vpc_id                 = (known after apply)
+    }
+
+  # module.vpc.aws_internet_gateway.this will be created
+  + resource "aws_internet_gateway" "this" {
+      + arn      = (known after apply)
+      + id       = (known after apply)
+      + owner_id = (known after apply)
+      + tags_all = (known after apply)
+      + vpc_id   = (known after apply)
+    }
+
+  # module.vpc.aws_route_table.private will be created
+  + resource "aws_route_table" "private" {
+      + arn              = (known after apply)
+      + id               = (known after apply)
+      + owner_id         = (known after apply)
+      + propagating_vgws = (known after apply)
+      + route            = (known after apply)
+      + tags             = {
+          + "Name" = "your-project-dev-private-rt"
+        }
+      + tags_all         = {
+          + "Name" = "your-project-dev-private-rt"
+        }
+      + vpc_id           = (known after apply)
+    }
+
+  # module.vpc.aws_route_table.public will be created
+  + resource "aws_route_table" "public" {
+      + arn              = (known after apply)
+      + id               = (known after apply)
+      + owner_id         = (known after apply)
+      + propagating_vgws = (known after apply)
+      + route            = [
+          + {
+              + carrier_gateway_id         = ""
+              + cidr_block                 = "0.0.0.0/0"
+              + core_network_arn           = ""
+              + destination_prefix_list_id = ""
+              + egress_only_gateway_id     = ""
+              + gateway_id                 = (known after apply)
+              + ipv6_cidr_block            = ""
+              + local_gateway_id           = ""
+              + nat_gateway_id             = ""
+              + network_interface_id       = ""
+              + transit_gateway_id         = ""
+              + vpc_endpoint_id            = ""
+              + vpc_peering_connection_id  = ""
+            },
+        ]
+      + tags             = {
+          + "Name" = "your-project-dev-public-rt"
+        }
+      + tags_all         = {
+          + "Name" = "your-project-dev-public-rt"
+        }
+      + vpc_id           = (known after apply)
+    }
+
+  # module.vpc.aws_route_table_association.private[0] will be created
+  + resource "aws_route_table_association" "private" {
+      + id             = (known after apply)
+      + route_table_id = (known after apply)
+      + subnet_id      = (known after apply)
+    }
+
+  # module.vpc.aws_route_table_association.private[1] will be created
+  + resource "aws_route_table_association" "private" {
+      + id             = (known after apply)
+      + route_table_id = (known after apply)
+      + subnet_id      = (known after apply)
+    }
+
+  # module.vpc.aws_route_table_association.public[0] will be created
+  + resource "aws_route_table_association" "public" {
+      + id             = (known after apply)
+      + route_table_id = (known after apply)
+      + subnet_id      = (known after apply)
+    }
+
+  # module.vpc.aws_route_table_association.public[1] will be created
+  + resource "aws_route_table_association" "public" {
+      + id             = (known after apply)
+      + route_table_id = (known after apply)
+      + subnet_id      = (known after apply)
+    }
+
+  # module.vpc.aws_subnet.private[0] will be created
+  + resource "aws_subnet" "private" {
+      + arn                                            = (known after apply)
+      + assign_ipv6_address_on_creation                = false
+      + availability_zone                              = "ap-northeast-1a"
+      + availability_zone_id                           = (known after apply)
+      + cidr_block                                     = "10.0.10.0/24"
+      + enable_dns64                                   = false
+      + enable_resource_name_dns_a_record_on_launch    = false
+      + enable_resource_name_dns_aaaa_record_on_launch = false
+      + id                                             = (known after apply)
+      + ipv6_cidr_block_association_id                 = (known after apply)
+      + ipv6_native                                    = false
+      + map_public_ip_on_launch                        = false
+      + owner_id                                       = (known after apply)
+      + private_dns_hostname_type_on_launch            = (known after apply)
+      + tags                                           = {
+          + "Name" = "your-project-dev-private-0"
+        }
+      + tags_all                                       = {
+          + "Name" = "your-project-dev-private-0"
+        }
+      + vpc_id                                         = (known after apply)
+    }
+
+  # module.vpc.aws_subnet.private[1] will be created
+  + resource "aws_subnet" "private" {
+      + arn                                            = (known after apply)
+      + assign_ipv6_address_on_creation                = false
+      + availability_zone                              = "ap-northeast-1c"
+      + availability_zone_id                           = (known after apply)
+      + cidr_block                                     = "10.0.11.0/24"
+      + enable_dns64                                   = false
+      + enable_resource_name_dns_a_record_on_launch    = false
+      + enable_resource_name_dns_aaaa_record_on_launch = false
+      + id                                             = (known after apply)
+      + ipv6_cidr_block_association_id                 = (known after apply)
+      + ipv6_native                                    = false
+      + map_public_ip_on_launch                        = false
+      + owner_id                                       = (known after apply)
+      + private_dns_hostname_type_on_launch            = (known after apply)
+      + tags                                           = {
+          + "Name" = "your-project-dev-private-1"
+        }
+      + tags_all                                       = {
+          + "Name" = "your-project-dev-private-1"
+        }
+      + vpc_id                                         = (known after apply)
+    }
+
+  # module.vpc.aws_subnet.public[0] will be created
+  + resource "aws_subnet" "public" {
+      + arn                                            = (known after apply)
+      + assign_ipv6_address_on_creation                = false
+      + availability_zone                              = "ap-northeast-1a"
+      + availability_zone_id                           = (known after apply)
+      + cidr_block                                     = "10.0.0.0/24"
+      + enable_dns64                                   = false
+      + enable_resource_name_dns_a_record_on_launch    = false
+      + enable_resource_name_dns_aaaa_record_on_launch = false
+      + id                                             = (known after apply)
+      + ipv6_cidr_block_association_id                 = (known after apply)
+      + ipv6_native                                    = false
+      + map_public_ip_on_launch                        = true
+      + owner_id                                       = (known after apply)
+      + private_dns_hostname_type_on_launch            = (known after apply)
+      + tags                                           = {
+          + "Name" = "your-project-dev-public-0"
+        }
+      + tags_all                                       = {
+          + "Name" = "your-project-dev-public-0"
+        }
+      + vpc_id                                         = (known after apply)
+    }
+
+  # module.vpc.aws_subnet.public[1] will be created
+  + resource "aws_subnet" "public" {
+      + arn                                            = (known after apply)
+      + assign_ipv6_address_on_creation                = false
+      + availability_zone                              = "ap-northeast-1c"
+      + availability_zone_id                           = (known after apply)
+      + cidr_block                                     = "10.0.1.0/24"
+      + enable_dns64                                   = false
+      + enable_resource_name_dns_a_record_on_launch    = false
+      + enable_resource_name_dns_aaaa_record_on_launch = false
+      + id                                             = (known after apply)
+      + ipv6_cidr_block_association_id                 = (known after apply)
+      + ipv6_native                                    = false
+      + map_public_ip_on_launch                        = true
+      + owner_id                                       = (known after apply)
+      + private_dns_hostname_type_on_launch            = (known after apply)
+      + tags                                           = {
+          + "Name" = "your-project-dev-public-1"
+        }
+      + tags_all                                       = {
+          + "Name" = "your-project-dev-public-1"
+        }
+      + vpc_id                                         = (known after apply)
+    }
+
+  # module.vpc.aws_vpc.this will be created
+  + resource "aws_vpc" "this" {
+      + arn                                  = (known after apply)
+      + cidr_block                           = "10.0.0.0/16"
+      + default_network_acl_id               = (known after apply)
+      + default_route_table_id               = (known after apply)
+      + default_security_group_id            = (known after apply)
+      + dhcp_options_id                      = (known after apply)
+      + enable_dns_hostnames                 = true
+      + enable_dns_support                   = true
+      + enable_network_address_usage_metrics = (known after apply)
+      + id                                   = (known after apply)
+      + instance_tenancy                     = "default"
+      + ipv6_association_id                  = (known after apply)
+      + ipv6_cidr_block                      = (known after apply)
+      + ipv6_cidr_block_network_border_group = (known after apply)
+      + main_route_table_id                  = (known after apply)
+      + owner_id                             = (known after apply)
+      + tags                                 = {
+          + "Name" = "your-project-dev-vpc"
+        }
+      + tags_all                             = {
+          + "Name" = "your-project-dev-vpc"
+        }
+    }
+
+  # module.vpc.aws_vpc_endpoint.s3 will be created
+  + resource "aws_vpc_endpoint" "s3" {
+      + arn                   = (known after apply)
+      + cidr_blocks           = (known after apply)
+      + dns_entry             = (known after apply)
+      + id                    = (known after apply)
+      + ip_address_type       = (known after apply)
+      + network_interface_ids = (known after apply)
+      + owner_id              = (known after apply)
+      + policy                = (known after apply)
+      + prefix_list_id        = (known after apply)
+      + private_dns_enabled   = (known after apply)
+      + requester_managed     = (known after apply)
+      + route_table_ids       = (known after apply)
+      + security_group_ids    = (known after apply)
+      + service_name          = "com.amazonaws.ap-northeast-1.s3"
+      + service_region        = (known after apply)
+      + state                 = (known after apply)
+      + subnet_ids            = (known after apply)
+      + tags                  = {
+          + "Name" = "your-project-dev-s3-endpoint"
+        }
+      + tags_all              = {
+          + "Name" = "your-project-dev-s3-endpoint"
+        }
+      + vpc_endpoint_type     = "Gateway"
+      + vpc_id                = (known after apply)
+    }
+
+Plan: 40 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + backend_api_url            = (known after apply)
+  + cloudfront_distribution_id = (known after apply)
+  + cognito_client_id          = (known after apply)
+  + cognito_user_pool_id       = (known after apply)
+  + frontend_url               = (known after apply)

@@ -37,6 +37,12 @@ infra/.terraform/
 infra/.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
+envs/*.tfvars
+# Terraform plan artifacts
+infra/plan.tfplan
+infra/plan.json
+infra/plan.txt
+*.tfplan
 
 # ============================
 # Logs

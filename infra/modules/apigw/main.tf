@@ -16,25 +16,28 @@ resource "aws_apigatewayv2_authorizer" "cognito" {
   }
 }
 
-# 認証が必要なルート
+# Lambda 統合（HTTP API 用の正しい integration_uri 形式）
+resource "aws_apigatewayv2_integration" "this" {
+  api_id                 = aws_apigatewayv2_api.this.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${var.lambda_arn}/invocations"
+  payload_format_version = "2.0"
+  timeout_milliseconds   = 30000
+}
+
+# 認証が必要なルート（任意のパスを Lambda にプロキシ）
 resource "aws_apigatewayv2_route" "authenticated" {
   api_id    = aws_apigatewayv2_api.this.id
   route_key = "ANY /{proxy+}"
   target    = "integrations/${aws_apigatewayv2_integration.this.id}"
 
-  # ここで作成したAuthorizerを紐付ける
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
-resource "aws_apigatewayv2_integration" "this" {
-  api_id           = aws_apigatewayv2_api.this.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = var.lambda_arn
-}
-
-# Lambdaへの実行許可（これがないと403になる）
+# Lambdaへの実行許可（API Gateway からの呼び出しを許可）
 resource "aws_lambda_permission" "apigw" {
+  statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_function_name
   principal     = "apigateway.amazonaws.com"
