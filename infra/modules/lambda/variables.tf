@@ -8,11 +8,6 @@ variable "env" {
   description = "Environment name (dev/staging/prod)"
 }
 
-variable "lambda_payload_path" {
-  type        = string
-  description = "Path to the Lambda deployment package (zip)"
-}
-
 variable "private_subnets" {
   type        = list(string)
   description = "Private subnet IDs for Lambda VPC configuration"
@@ -59,4 +54,16 @@ variable "use_single_subnet_for_lambda" {
   type        = bool
   default     = false
   description = "開発環境では単一サブネットを使うフラグ。prod では false にすること。"
+}
+
+variable "backend_bucket_name" {
+  type        = string
+  description = "S3 bucket name for lambda deployment package (backend artifacts)"
+  default     = ""
+}
+
+variable "lambda_s3_key" {
+  type        = string
+  description = "S3 key for lambda deployment package"
+  default     = ""
 }

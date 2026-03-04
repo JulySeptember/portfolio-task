@@ -53,7 +53,10 @@ resource "aws_lambda_function" "this" {
   role          = aws_iam_role.this.arn
   handler       = "bootstrap"
   runtime       = "provided.al2023"
-  filename      = var.lambda_payload_path
+
+  # ここを filename -> s3_bucket / s3_key に変更
+  s3_bucket = var.backend_bucket_name
+  s3_key    = var.lambda_s3_key != "" ? var.lambda_s3_key : "lambda/${var.project_name}-${var.env}.zip"
 
   memory_size = 128
   timeout     = 5
