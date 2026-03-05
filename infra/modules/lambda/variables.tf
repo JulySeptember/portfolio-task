@@ -1,17 +1,13 @@
 variable "project_name" {
-  type        = string
-  description = "Project name prefix"
+  type = string
 }
 
 variable "env" {
-  type        = string
-  description = "Environment name (dev/staging/prod)"
+  type = string
 }
 
 variable "private_subnets" {
-  type        = list(string)
-  description = "Private subnet IDs for Lambda VPC configuration"
-
+  type = list(string)
   validation {
     condition     = length(var.private_subnets) > 0
     error_message = "private_subnets must contain at least one subnet id"
@@ -19,35 +15,39 @@ variable "private_subnets" {
 }
 
 variable "lambda_sg_id" {
-  type        = string
-  description = "Security Group ID to attach to Lambda"
+  type = string
 }
 
 variable "rds_endpoint" {
-  type        = string
-  description = "RDS endpoint (host[:port])"
+  type = string
 }
 
 variable "db_username" {
-  type        = string
-  description = "Database username"
+  type = string
 }
 
 variable "db_password" {
-  type        = string
-  description = "Database password"
-  sensitive   = true
+  type      = string
+  sensitive = true
+}
+
+variable "db_name" {
+  type    = string
+  default = "taskdb"
 }
 
 variable "frontend_bucket_name" {
-  type        = string
-  description = "S3 bucket name used by frontend; used to scope S3 permissions"
-  default     = ""
+  type    = string
+  default = ""
+}
+
+variable "frontend_bucket_arn" {
+  type    = string
+  default = ""
 }
 
 variable "vpc_id" {
-  type        = string
-  description = "VPC ID for resources that need to be created inside the VPC"
+  type = string
 }
 
 variable "use_single_subnet_for_lambda" {
@@ -57,13 +57,41 @@ variable "use_single_subnet_for_lambda" {
 }
 
 variable "backend_bucket_name" {
-  type        = string
-  description = "S3 bucket name for lambda deployment package (backend artifacts)"
-  default     = ""
+  type    = string
+  default = ""
 }
 
 variable "lambda_s3_key" {
-  type        = string
-  description = "S3 key for lambda deployment package"
-  default     = ""
+  type    = string
+  default = ""
+}
+
+variable "lambda_handler" {
+  type    = string
+  default = "bootstrap"
+}
+
+variable "lambda_runtime" {
+  type    = string
+  default = "provided.al2023"
+}
+
+variable "memory_size" {
+  type    = number
+  default = 128
+}
+
+variable "timeout_seconds" {
+  type    = number
+  default = 10
+}
+
+variable "log_retention_days" {
+  type    = number
+  default = 7
+}
+
+variable "extra_environment" {
+  type    = map(string)
+  default = {}
 }
