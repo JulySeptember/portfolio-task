@@ -59,13 +59,6 @@ variable "db_instance_class" {
   default     = "db.t3.micro"
 }
 
-# Lambda
-variable "lambda_payload_path" {
-  type        = string
-  description = "Lambda デプロイ用 ZIP のパス（ローカルパスまたは S3 キー）"
-  default     = "../backend/main.zip"
-}
-
 # その他（必要に応じて上書き）
 variable "tags" {
   type        = map(string)

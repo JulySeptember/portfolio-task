@@ -50,11 +50,11 @@
 
 terraform {
   backend "s3" {
-    bucket         = "your-tfstate-bucket"
-    key            = "dev/terraform.tfstate"
-    region         = "ap-northeast-1"
-    dynamodb_table = "terraform-lock-table"
-    encrypt        = true
+  bucket         = "portfolio-task-july-tfstate-dev"
+  key            = "dev/terraform.tfstate"
+  region         = "ap-northeast-1"
+  dynamodb_table = "portfolio-task-july-tf-lock-dev"
+  encrypt        = true
   }
 }
 

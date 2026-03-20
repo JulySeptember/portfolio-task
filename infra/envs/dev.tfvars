@@ -1,9 +1,8 @@
 aws_region           = "ap-northeast-1"
-project_name         = "your-project"
+project_name         = "portfolio-task-july"
 env                  = "dev"
 db_username          = "admin"
 db_password          = "change_me"          # ← 本番ではシークレット管理へ
 db_instance_class    = "db.t3.micro"
-lambda_payload_path  = "../backend/main.zip"
-frontend_bucket_name = "your-project-dev-frontend-assets"
-backend_bucket_name  = "your-project-dev-backend-artifacts"
+frontend_bucket_name = "portfolio-task-july-dev-frontend-assets"
+backend_bucket_name  = "portfolio-task-july-dev-backend-artifacts"
