@@ -254,8 +254,11 @@ components:
 
     TaskBody:
       type: object
-      required: [title]
+      required: [user_id, title]
       properties:
+        user_id:
+          type: integer
+          format: int64
         title:
           type: string
         description:
