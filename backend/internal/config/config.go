@@ -10,8 +10,6 @@ import (
     _ "github.com/go-sql-driver/mysql"
 )
 
-// ConnectDBFromEnv reads DB_DSN from environment
-// DSN format: user:pass@tcp(host:3306)/dbname?parseTime=true
 func ConnectDBFromEnv() (*sql.DB, error) {
     dsn := os.Getenv("DB_DSN")
     if dsn == "" {
