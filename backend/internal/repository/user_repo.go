@@ -3,13 +3,10 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"time"
 
 	"portfolio/backend/internal/models"
 )
-
-var ErrUserNotFound = errors.New("user not found")
 
 type UserRepository interface {
 	Repository[models.User]
@@ -76,7 +73,7 @@ func (r *userRepo) Create(ctx context.Context, u *models.User) error {
 	}
 	id, _ := res.LastInsertId()
 	u.ID = id
-	now := time.Now()
+	now := time.Now().UTC()
 	u.CreatedAt = now
 	u.UpdatedAt = now
 	return nil
@@ -88,4 +85,17 @@ func (r *userRepo) Update(ctx context.Context, u *models.User) error {
 		u.Email, u.DisplayName, u.ID,
 	)
 	return err
+}
+
+// Delegate to embedded BaseRepository to satisfy Repository[models.User]
+func (r *userRepo) Get(ctx context.Context, id int64) (*models.User, error) {
+	return r.BaseRepository.Get(ctx, id)
+}
+
+func (r *userRepo) List(ctx context.Context, limit, offset int) ([]*models.User, error) {
+	return r.BaseRepository.List(ctx, limit, offset)
+}
+
+func (r *userRepo) Delete(ctx context.Context, id int64) error {
+	return r.BaseRepository.Delete(ctx, id)
 }

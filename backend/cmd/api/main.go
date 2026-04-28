@@ -1,183 +1,163 @@
 package main
 
 import (
-	"context"
-	"html/template"
-	"log"
-	"net/http"
-	"os"
-	"strings"
-	"time"
+    "database/sql"
+    "html/template"
+    "log"
+    "net/http"
+    "os"
+    "strings"
+    "time"
 
-	"portfolio/backend/internal/config"
-	"portfolio/backend/internal/repository"
-	"portfolio/backend/internal/router"
-	"portfolio/backend/internal/service"
+    "portfolio/backend/internal/config"
+    "portfolio/backend/internal/repository"
+    "portfolio/backend/internal/router"
+    "portfolio/backend/internal/service"
 
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
-	_ "github.com/go-sql-driver/mysql"
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
+    _ "github.com/go-sql-driver/mysql"
 )
 
+var (
+    // globalDB is initialized once on cold start (Lambda) or in runLocal (dev).
+    globalDB *sql.DB
+
+    // mux is the http.Handler used by Lambda proxy and local server.
+    mux http.Handler
+)
+
+func init() {
+    if os.Getenv("RUN_MODE") == "local" {
+        return
+    }
+    if err := initDB(); err != nil {
+        log.Fatalf("failed to init db: %v", err)
+    }
+    mux = loggingMiddleware(buildMux())
+}
+
 func main() {
-	if os.Getenv("RUN_MODE") == "local" {
-		runLocal()
-		return
-	}
+    if os.Getenv("RUN_MODE") == "local" {
+        runLocal()
+        return
+    }
+    adapter := httpadapter.New(mux)
+    lambda.Start(adapter.ProxyWithContext)
+}
 
-	mux := buildMux()
+func initDB() error {
+    if globalDB != nil {
+        return nil
+    }
+    db, err := config.ConnectDBFromEnv()
+    if err != nil {
+        return err
+    }
+    globalDB = db
+    return nil
+}
 
-	lambda.Start(func(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
-		return proxyToHTTP(ctx, mux, req)
-	})
+func CloseDB() error {
+    if globalDB == nil {
+        return nil
+    }
+    err := globalDB.Close()
+    globalDB = nil
+    return err
 }
 
 func runLocal() {
-	db, err := config.ConnectDBFromEnv()
-	if err != nil {
-		log.Fatalf("failed to connect db: %v", err)
-	}
-	defer db.Close()
+    db, err := config.ConnectDBFromEnv()
+    if err != nil {
+        log.Fatalf("failed to connect db: %v", err)
+    }
+    defer func() { _ = db.Close() }()
 
-	userRepo := repository.NewUserRepository(db)
-	userSvc := service.NewUserService(userRepo)
+    globalDB = db
 
-	taskRepo := repository.NewTaskRepository(db)
-	taskSvc := service.NewTaskService(taskRepo)
+    userRepo := repository.NewUserRepository(db)
+    userSvc := service.NewUserService(userRepo)
 
-	mux := http.NewServeMux()
+    taskRepo := repository.NewTaskRepo(db)
+    taskSvc := service.NewTaskService(taskRepo)
 
-	// Router 層を使用
-	router.RegisterUserRoutes(mux, userSvc)
-	router.RegisterTaskRoutes(mux, taskSvc)
+    localMux := http.NewServeMux()
+    router.RegisterUserRoutes(localMux, userSvc)
+    router.RegisterTaskRoutes(localMux, taskSvc)
 
-	// Swagger
-	mux.Handle("/api/v1/spec/", http.StripPrefix("/api/v1/spec/", http.FileServer(http.Dir("./swagger"))))
-	mux.HandleFunc("/api/v1/docs", serveDocs)
+    localMux.Handle("/api/v1/spec/", http.StripPrefix("/api/v1/spec/", http.FileServer(http.Dir("./swagger"))))
+    localMux.HandleFunc("/api/v1/docs", serveDocs)
 
-	addr := ":" + getEnv("PORT", "8080")
-	srv := &http.Server{
-		Addr:         addr,
-		Handler:      loggingMiddleware(mux),
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
+    addr := ":" + getEnv("PORT", "8080")
+    srv := &http.Server{
+        Addr:         addr,
+        Handler:      loggingMiddleware(localMux),
+        ReadTimeout:  10 * time.Second,
+        WriteTimeout: 15 * time.Second,
+        IdleTimeout:  60 * time.Second,
+    }
 
-	log.Printf("local server listening on %s", addr)
-	log.Fatal(srv.ListenAndServe())
+    log.Printf("local server listening on %s (RUN_MODE=%s)", addr, os.Getenv("RUN_MODE"))
+    log.Fatal(srv.ListenAndServe())
 }
 
 func buildMux() http.Handler {
-	mux := http.NewServeMux()
+    mux := http.NewServeMux()
 
-	// Swagger
-	mux.Handle("/api/v1/spec/", http.StripPrefix("/api/v1/spec/", http.FileServer(http.Dir("./swagger"))))
-	mux.HandleFunc("/api/v1/docs", serveDocs)
+    mux.Handle("/api/v1/spec/", http.StripPrefix("/api/v1/spec/", http.FileServer(http.Dir("./swagger"))))
+    mux.HandleFunc("/api/v1/docs", serveDocs)
 
-	initHandler(mux)
-	return mux
-}
+    userRepo := repository.NewUserRepository(globalDB)
+    userSvc := service.NewUserService(userRepo)
 
-func initHandler(mux *http.ServeMux) {
-	db, err := config.ConnectDBFromEnv()
-	if err != nil {
-		log.Fatalf("failed to connect DB in initHandler: %v", err)
-	}
+    taskRepo := repository.NewTaskRepo(globalDB)
+    taskSvc := service.NewTaskService(taskRepo)
 
-	userRepo := repository.NewUserRepository(db)
-	userSvc := service.NewUserService(userRepo)
+    router.RegisterUserRoutes(mux, userSvc)
+    router.RegisterTaskRoutes(mux, taskSvc)
 
-	taskRepo := repository.NewTaskRepository(db)
-	taskSvc := service.NewTaskService(taskRepo)
-
-	// Router 層を使用
-	router.RegisterUserRoutes(mux, userSvc)
-	router.RegisterTaskRoutes(mux, taskSvc)
+    return mux
 }
 
 func serveDocs(w http.ResponseWriter, r *http.Request) {
-	tmpl := template.Must(template.ParseFiles("./swagger/template/index.html.tmpl"))
-	data := map[string]string{
-		"SchemaURL": "/api/v1/spec/swagger.yml",
-		"DomID":     "#root",
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_ = tmpl.Execute(w, data)
-}
-
-func proxyToHTTP(ctx context.Context, mux http.Handler, req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
-	r, err := http.NewRequest(req.RequestContext.HTTP.Method, req.RawPath, strings.NewReader(req.Body))
-	if err != nil {
-		return events.APIGatewayV2HTTPResponse{StatusCode: 500}, err
-	}
-
-	// ヘッダーをコピー
-	for k, v := range req.Headers {
-		r.Header.Set(k, v)
-	}
-
-	// クエリパラメータをコピー
-	q := r.URL.Query()
-	for k, v := range req.QueryStringParameters {
-		q.Set(k, v)
-	}
-	r.URL.RawQuery = q.Encode()
-
-	// レスポンスをキャプチャ
-	w := &responseCapture{header: http.Header{}}
-	mux.ServeHTTP(w, r)
-
-	return events.APIGatewayV2HTTPResponse{
-		StatusCode: w.status,
-		Headers:    convertHeaders(w.header),
-		Body:       w.body.String(),
-	}, nil
-}
-
-type responseCapture struct {
-	header http.Header
-	body   strings.Builder
-	status int
-}
-
-func (r *responseCapture) Header() http.Header {
-	return r.header
-}
-
-func (r *responseCapture) Write(b []byte) (int, error) {
-	return r.body.Write(b)
-}
-
-func (r *responseCapture) WriteHeader(statusCode int) {
-	r.status = statusCode
-}
-
-func convertHeaders(h http.Header) map[string]string {
-	out := make(map[string]string)
-	for k, v := range h {
-		if len(v) > 0 {
-			out[k] = v[0]
-		}
-	}
-	return out
+    tmpl, err := template.ParseFiles("./swagger/template/index.html.tmpl")
+    if err != nil {
+        http.Error(w, "docs not available", http.StatusInternalServerError)
+        return
+    }
+    data := map[string]string{
+        "SchemaURL": "/api/v1/spec/swagger.yml",
+        "DomID":     "#root",
+    }
+    w.Header().Set("Content-Type", "text/html; charset=utf-8")
+    _ = tmpl.Execute(w, data)
 }
 
 func getEnv(key, def string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return def
+    if v := os.Getenv(key); v != "" {
+        return v
+    }
+    return def
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        start := time.Now()
 
-		log.Printf("%s %s %s", r.Method, r.URL.Path, r.RemoteAddr)
+        remote := r.RemoteAddr
+        if remote == "" {
+            remote = "-"
+        }
+        if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+            parts := strings.Split(xff, ",")
+            remote = strings.TrimSpace(parts[0])
+        }
 
-		next.ServeHTTP(w, r)
+        log.Printf("started %s %s from %s", r.Method, r.URL.Path, remote)
 
-		log.Printf("completed in %v", time.Since(start))
-	})
+        next.ServeHTTP(w, r)
+
+        log.Printf("completed %s %s in %v", r.Method, r.URL.Path, time.Since(start))
+    })
 }
