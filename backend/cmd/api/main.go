@@ -25,6 +25,9 @@ var (
 
 	// mux は Lambda 用のアダプタやローカルサーバで使う http.Handler
 	mux http.Handler
+
+	// docsTmpl は Swagger UI 用テンプレートをキャッシュするための変数
+	docsTmpl *template.Template
 )
 
 // init はパッケージ初期化時に呼ばれる（Lambda のコールドスタートで実行される想定）
@@ -41,9 +44,17 @@ func init() {
 		log.Fatalf("failed to init db: %v", err)
 	}
 
-	// ルーターを構築してロギングミドルウェアでラップする
+	// Swagger テンプレートをコールドスタート時に一度だけパースしてキャッシュする
+	if t, err := template.ParseFiles("./swagger/template/index.html.tmpl"); err != nil {
+		// テンプレートが無ければログに出すが起動は続行（serveDocs はエラーを返す）
+		log.Printf("warning: failed to parse docs template: %v", err)
+	} else {
+		docsTmpl = t
+	}
+
+	// ルーターを構築して正規化ミドルウェア＋ロギングミドルウェアでラップする
 	// Lambda ではこの mux を httpadapter に渡してハンドリングする
-	mux = loggingMiddleware(buildMux())
+	mux = loggingMiddleware(router.NormalizePathMiddleware(buildMux()))
 }
 
 func main() {
@@ -116,11 +127,20 @@ func runLocal() {
 	localMux.Handle("/api/v1/spec/", http.StripPrefix("/api/v1/spec/", http.FileServer(http.Dir("./swagger"))))
 	localMux.HandleFunc("/api/v1/docs", serveDocs)
 
+	// ローカルでもテンプレートを一度だけパースしてキャッシュする（起動時）
+	if docsTmpl == nil {
+		if t, err := template.ParseFiles("./swagger/template/index.html.tmpl"); err != nil {
+			log.Printf("warning: failed to parse docs template: %v", err)
+		} else {
+			docsTmpl = t
+		}
+	}
+
 	// サーバ設定（タイムアウト等）
 	addr := ":" + getEnv("PORT", "8080")
 	srv := &http.Server{
 		Addr:         addr,
-		Handler:      loggingMiddleware(localMux), // ログを出すミドルウェアでラップ
+		Handler:      loggingMiddleware(router.NormalizePathMiddleware(localMux)), // 正規化→ログの順でラップ
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -156,6 +176,19 @@ func buildMux() *http.ServeMux {
 // serveDocs は Swagger UI のテンプレートを読み込み、HTML を返すハンドラ。
 // テンプレート内で SchemaURL を参照して Swagger UI を表示する。
 func serveDocs(w http.ResponseWriter, r *http.Request) {
+	// 既にキャッシュされたテンプレートがあればそれを使う
+	if docsTmpl != nil {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := docsTmpl.Execute(w, map[string]string{
+			"SchemaURL": "/api/v1/spec/swagger.yml",
+			"DomID":     "#root",
+		}); err != nil {
+			http.Error(w, "docs not available", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// キャッシュが無ければフォールバックで都度パース（起動時に一度だけパースすることを推奨）
 	tmpl, err := template.ParseFiles("./swagger/template/index.html.tmpl")
 	if err != nil {
 		http.Error(w, "docs not available", http.StatusInternalServerError)
