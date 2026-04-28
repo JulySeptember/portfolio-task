@@ -1,38 +1,45 @@
 package service
 
 import (
-        "context"
+	"context"
 
-        "portfolio/backend/internal/models"
-        "portfolio/backend/internal/repository"
+	"portfolio/backend/internal/models"
+	"portfolio/backend/internal/repository"
 )
 
+// UserService is a thin wrapper around BaseService[models.User].
+// It exposes the unified CRUD API: Create, Get, List, Update, Delete.
 type UserService struct {
-        *BaseService[models.User]
+	*BaseService[models.User]
 }
 
+// NewUserService constructs a UserService. The provided repository must
+// implement repository.Repository[models.User] (repository.UserRepository typically does).
 func NewUserService(repo repository.UserRepository) *UserService {
-        return &UserService{
-                BaseService: NewBaseService(repo),
-        }
+	return &UserService{
+		BaseService: NewBaseService(repo),
+	}
 }
 
-func (s *UserService) CreateUser(ctx context.Context, u *models.User) (*models.User, error) {
-        return s.Create(ctx, u)
+// The following methods are provided to make the public API explicit.
+// They simply delegate to the embedded BaseService methods.
+
+func (s *UserService) Create(ctx context.Context, u *models.User) (*models.User, error) {
+	return s.BaseService.Create(ctx, u)
 }
 
-func (s *UserService) GetUser(ctx context.Context, id int64) (*models.User, error) {
-        return s.Get(ctx, id)
+func (s *UserService) Get(ctx context.Context, id int64) (*models.User, error) {
+	return s.BaseService.Get(ctx, id)
 }
 
-func (s *UserService) ListUsers(ctx context.Context, limit, offset int) ([]*models.User, error) {
-        return s.List(ctx, limit, offset)
+func (s *UserService) List(ctx context.Context, limit, offset int) ([]*models.User, error) {
+	return s.BaseService.List(ctx, limit, offset)
 }
 
-func (s *UserService) UpdateUser(ctx context.Context, u *models.User) (*models.User, error) {
-        return s.Update(ctx, u)
+func (s *UserService) Update(ctx context.Context, u *models.User) (*models.User, error) {
+	return s.BaseService.Update(ctx, u)
 }
 
-func (s *UserService) DeleteUser(ctx context.Context, id int64) error {
-        return s.Delete(ctx, id)
+func (s *UserService) Delete(ctx context.Context, id int64) error {
+	return s.BaseService.Delete(ctx, id)
 }
