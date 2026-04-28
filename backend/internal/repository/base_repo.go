@@ -93,7 +93,7 @@ func (r *BaseRepository[T]) Delete(ctx context.Context, id int64) error {
 	}
 	n, _ := res.RowsAffected()
 	if n == 0 {
-		return fmt.Errorf("not found")
+		return ErrNotFound
 	}
 	return nil
 }

@@ -52,9 +52,11 @@ func ExtractIDFromPath(path, prefix string) (int64, error) {
 // Returns a descriptive error for client responses.
 func DecodeJSON(r *http.Request, v interface{}) error {
 	// Limit request body size to prevent DoS via large payloads.
-	r.Body = http.MaxBytesReader(nil, r.Body, 1<<20) // 1MB
+	// Use io.LimitReader so we don't need an http.ResponseWriter here.
+	const maxBodySize = 1 << 20 // 1MB
+	limitedReader := io.LimitReader(r.Body, maxBodySize)
 
-	dec := json.NewDecoder(r.Body)
+	dec := json.NewDecoder(limitedReader)
 	dec.DisallowUnknownFields()
 
 	if err := dec.Decode(v); err != nil {
@@ -68,22 +70,39 @@ func DecodeJSON(r *http.Request, v interface{}) error {
 		case errors.Is(err, http.ErrBodyReadAfterClose):
 			return errors.New("request body closed")
 		case errors.As(err, &unmarshalTypeErr):
-			return errors.New("invalid value for field " + unmarshalTypeErr.Field)
+			// Field may be empty for some errors; guard against empty field name.
+			field := unmarshalTypeErr.Field
+			if field == "" {
+				return errors.New("invalid value in JSON")
+			}
+			return errors.New("invalid value for field " + field)
 		case strings.HasPrefix(err.Error(), "json: unknown field"):
 			// err.Error() looks like: "json: unknown field \"foo\""
 			return errors.New("unknown field in JSON")
 		case errors.Is(err, io.ErrUnexpectedEOF):
 			return errors.New("malformed JSON")
-		case err.Error() == "http: request body too large":
-			return errors.New("request body too large")
 		default:
+			// io.LimitReader does not return the same "http: request body too large" error,
+			// so detect size exceed by attempting to read one more byte from the underlying body.
+			// If the underlying body still has data beyond the limit, treat it as too large.
+			// Note: we only reach here for errors not matched above.
 			return err
 		}
 	}
 
 	// Ensure there is no extra data after the JSON object.
+	// json.Decoder.More checks whether there is another token in the stream.
 	if dec.More() {
 		return errors.New("multiple JSON objects in body")
+	}
+
+	// Additionally, detect if the request body exceeded the limit by trying to read one byte
+	// from the underlying r.Body. If there is data left, it means the original body was larger
+	// than maxBodySize.
+	buf := make([]byte, 1)
+	n, _ := r.Body.Read(buf)
+	if n > 0 {
+		return errors.New("request body too large")
 	}
 
 	return nil
