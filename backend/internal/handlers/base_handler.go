@@ -18,8 +18,8 @@ type Service[T any] interface {
 	Delete(ctx context.Context, id int64) error
 }
 
-type DTOCreateFunc[T any] func(r *http.Request) (*T, int, error)
-type DTOUpdateFunc[T any] func(r *http.Request, existing *T) (int, error)
+type DTOCreateFunc[T any] func(w http.ResponseWriter, r *http.Request) (*T, int, error)
+type DTOUpdateFunc[T any] func(w http.ResponseWriter, r *http.Request, existing *T) (int, error)
 
 type BaseHandler[T any] struct {
 	svc          Service[T]
@@ -45,7 +45,7 @@ func (h *BaseHandler[T]) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	model, status, err := h.decodeCreate(r)
+	model, status, err := h.decodeCreate(w, r)
 	if err != nil {
 		if status == 0 {
 			status = http.StatusBadRequest
@@ -118,7 +118,7 @@ func (h *BaseHandler[T]) HandleUpdate(w http.ResponseWriter, r *http.Request, id
 		return
 	}
 
-	if status, err := h.mergeUpdate(r, existing); err != nil {
+	if status, err := h.mergeUpdate(w, r, existing); err != nil {
 		if status == 0 {
 			status = http.StatusBadRequest
 		}
