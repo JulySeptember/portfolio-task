@@ -2,21 +2,14 @@ package service
 
 import (
 	"context"
+	"portfolio/backend/internal/repository"
 )
 
-type Repository[T any] interface {
-	Create(ctx context.Context, t *T) error
-	Get(ctx context.Context, id int64) (*T, error)
-	List(ctx context.Context, limit, offset int) ([]*T, error)
-	Update(ctx context.Context, t *T) error
-	Delete(ctx context.Context, id int64) error
-}
-
 type BaseService[T any] struct {
-	Repo Repository[T]
+	Repo repository.Repository[T]
 }
 
-func NewBaseService[T any](repo Repository[T]) *BaseService[T] {
+func NewBaseService[T any](repo repository.Repository[T]) *BaseService[T] {
 	return &BaseService[T]{Repo: repo}
 }
 
