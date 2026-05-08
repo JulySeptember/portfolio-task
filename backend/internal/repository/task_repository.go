@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/models"
 
 	mysqlDriver "github.com/go-sql-driver/mysql"
@@ -24,7 +25,7 @@ type TaskRepositoryInterface interface {
 		ctx context.Context,
 		limit int,
 		offset int,
-	) ([]models.TaskWithUser, error)
+	) ([]dto.TaskWithUserResponse, error)
 }
 
 // =========================
@@ -238,7 +239,7 @@ func (r *TaskRepository) ListWithUser(
 	ctx context.Context,
 	limit int,
 	offset int,
-) ([]models.TaskWithUser, error) {
+) ([]dto.TaskWithUserResponse, error) {
 
 	q := `
 		SELECT
@@ -267,11 +268,11 @@ func (r *TaskRepository) ListWithUser(
 
 	defer rows.Close()
 
-	var tasks []models.TaskWithUser
+	var tasks []dto.TaskWithUserResponse
 
 	for rows.Next() {
 
-		var t models.TaskWithUser
+		var t dto.TaskWithUserResponse
 
 		err := rows.Scan(
 			&t.TaskID,

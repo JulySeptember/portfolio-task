@@ -22,12 +22,3 @@ type Task struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
-
-// TaskWithUser はJOIN結果専用DTO（表示用）
-type TaskWithUser struct {
-	TaskID    int64  `json:"task_id"`
-	Title     string `json:"title"`
-	Status    string `json:"status"`
-	UserID    int64  `json:"user_id"`
-	UserEmail string `json:"user_email"`
-}

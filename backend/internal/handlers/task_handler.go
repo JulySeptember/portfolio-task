@@ -115,10 +115,21 @@ func (h *TaskHandler) Create(
 		}
 	}
 
+	response := dto.TaskResponse{
+		ID:          res.ID,
+		UserID:      res.UserID,
+		Title:       res.Title,
+		Description: res.Description,
+		Status:      res.Status,
+		DueDate:     res.DueDate,
+		CreatedAt:   res.CreatedAt,
+		UpdatedAt:   res.UpdatedAt,
+	}
+
 	WriteJSON(
 		w,
 		http.StatusCreated,
-		res,
+		response,
 	)
 }
 
@@ -176,10 +187,21 @@ func (h *TaskHandler) Get(
 		}
 	}
 
+	response := dto.TaskResponse{
+		ID:          res.ID,
+		UserID:      res.UserID,
+		Title:       res.Title,
+		Description: res.Description,
+		Status:      res.Status,
+		DueDate:     res.DueDate,
+		CreatedAt:   res.CreatedAt,
+		UpdatedAt:   res.UpdatedAt,
+	}
+
 	WriteJSON(
 		w,
 		http.StatusOK,
-		res,
+		response,
 	)
 }
 
@@ -195,7 +217,6 @@ func (h *TaskHandler) Update(
 
 	var req dto.UpdateTaskRequest
 
-	// JSON decode
 	if err := DecodeJSON(w, r, &req); err != nil {
 
 		WriteError(
@@ -208,7 +229,6 @@ func (h *TaskHandler) Update(
 		return
 	}
 
-	// validation
 	if errs := ValidateStruct(req); errs != nil {
 
 		WriteValidationErrors(w, errs)
@@ -281,10 +301,21 @@ func (h *TaskHandler) Update(
 		}
 	}
 
+	response := dto.TaskResponse{
+		ID:          res.ID,
+		UserID:      res.UserID,
+		Title:       res.Title,
+		Description: res.Description,
+		Status:      res.Status,
+		DueDate:     res.DueDate,
+		CreatedAt:   res.CreatedAt,
+		UpdatedAt:   res.UpdatedAt,
+	}
+
 	WriteJSON(
 		w,
 		http.StatusOK,
-		res,
+		response,
 	)
 }
 
@@ -397,11 +428,11 @@ func (h *TaskHandler) ListWithUser(
 	WriteJSON(
 		w,
 		http.StatusOK,
-		map[string]interface{}{
-			"limit":  limit,
-			"offset": offset,
-			"count":  len(res),
-			"items":  res,
+		dto.TaskListResponse{
+			Count:  len(res),
+			Items:  res,
+			Limit:  limit,
+			Offset: offset,
 		},
 	)
 }
