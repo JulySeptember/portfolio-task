@@ -29,7 +29,6 @@ func (h *UserHandler) Create(
 
 	var req dto.CreateUserRequest
 
-	// JSON decode
 	if err := DecodeJSON(w, r, &req); err != nil {
 
 		WriteError(
@@ -42,7 +41,6 @@ func (h *UserHandler) Create(
 		return
 	}
 
-	// validation
 	if errs := ValidateStruct(req); errs != nil {
 
 		WriteValidationErrors(w, errs)
@@ -87,18 +85,10 @@ func (h *UserHandler) Create(
 		}
 	}
 
-	response := dto.UserResponse{
-		ID:          res.ID,
-		Email:       res.Email,
-		DisplayName: res.DisplayName,
-		CreatedAt:   res.CreatedAt,
-		UpdatedAt:   res.UpdatedAt,
-	}
-
 	WriteJSON(
 		w,
 		http.StatusCreated,
-		response,
+		dto.ToUserResponse(res),
 	)
 }
 
@@ -156,18 +146,10 @@ func (h *UserHandler) Get(
 		}
 	}
 
-	response := dto.UserResponse{
-		ID:          res.ID,
-		Email:       res.Email,
-		DisplayName: res.DisplayName,
-		CreatedAt:   res.CreatedAt,
-		UpdatedAt:   res.UpdatedAt,
-	}
-
 	WriteJSON(
 		w,
 		http.StatusOK,
-		response,
+		dto.ToUserResponse(res),
 	)
 }
 
@@ -183,7 +165,6 @@ func (h *UserHandler) Update(
 
 	var req dto.UpdateUserRequest
 
-	// JSON decode
 	if err := DecodeJSON(w, r, &req); err != nil {
 
 		WriteError(
@@ -196,7 +177,6 @@ func (h *UserHandler) Update(
 		return
 	}
 
-	// validation
 	if errs := ValidateStruct(req); errs != nil {
 
 		WriteValidationErrors(w, errs)
@@ -264,18 +244,10 @@ func (h *UserHandler) Update(
 		}
 	}
 
-	response := dto.UserResponse{
-		ID:          res.ID,
-		Email:       res.Email,
-		DisplayName: res.DisplayName,
-		CreatedAt:   res.CreatedAt,
-		UpdatedAt:   res.UpdatedAt,
-	}
-
 	WriteJSON(
 		w,
 		http.StatusOK,
-		response,
+		dto.ToUserResponse(res),
 	)
 }
 
