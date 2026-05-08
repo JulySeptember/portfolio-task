@@ -87,10 +87,18 @@ func (h *UserHandler) Create(
 		}
 	}
 
+	response := dto.UserResponse{
+		ID:          res.ID,
+		Email:       res.Email,
+		DisplayName: res.DisplayName,
+		CreatedAt:   res.CreatedAt,
+		UpdatedAt:   res.UpdatedAt,
+	}
+
 	WriteJSON(
 		w,
 		http.StatusCreated,
-		res,
+		response,
 	)
 }
 
@@ -148,10 +156,18 @@ func (h *UserHandler) Get(
 		}
 	}
 
+	response := dto.UserResponse{
+		ID:          res.ID,
+		Email:       res.Email,
+		DisplayName: res.DisplayName,
+		CreatedAt:   res.CreatedAt,
+		UpdatedAt:   res.UpdatedAt,
+	}
+
 	WriteJSON(
 		w,
 		http.StatusOK,
-		res,
+		response,
 	)
 }
 
@@ -248,10 +264,18 @@ func (h *UserHandler) Update(
 		}
 	}
 
+	response := dto.UserResponse{
+		ID:          res.ID,
+		Email:       res.Email,
+		DisplayName: res.DisplayName,
+		CreatedAt:   res.CreatedAt,
+		UpdatedAt:   res.UpdatedAt,
+	}
+
 	WriteJSON(
 		w,
 		http.StatusOK,
-		res,
+		response,
 	)
 }
 

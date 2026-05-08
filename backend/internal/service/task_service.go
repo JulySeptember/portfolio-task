@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/models"
 	"portfolio/backend/internal/repository"
 )
@@ -100,7 +101,7 @@ func (s *TaskService) ListWithUser(
 	ctx context.Context,
 	limit int,
 	offset int,
-) ([]models.TaskWithUser, error) {
+) ([]dto.TaskWithUserResponse, error) {
 
 	return s.repo.ListWithUser(
 		ctx,

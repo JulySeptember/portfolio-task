@@ -2,26 +2,16 @@ package repository
 
 import "errors"
 
-// =========================
-// not found
-// =========================
+var ErrNotFound = errors.New("not found")
 
 var (
-	ErrUserNotFound = errors.New("user not found")
-	ErrTaskNotFound = errors.New("task not found")
+	ErrUserNotFound = ErrNotFound
+	ErrTaskNotFound = ErrNotFound
 )
-
-// =========================
-// duplicate
-// =========================
 
 var (
 	ErrDuplicateEmail = errors.New("duplicate email")
 )
-
-// =========================
-// foreign key
-// =========================
 
 var (
 	ErrForeignKeyViolation = errors.New("foreign key violation")
