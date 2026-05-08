@@ -24,8 +24,9 @@ import (
 )
 
 // ----------------------------
-// グローバル変数（Lambda冷スタート用）
+// globals (lambda warm start)
 // ----------------------------
+
 var (
 	globalDB      *sql.DB
 	globalApp     *App
@@ -33,47 +34,89 @@ var (
 )
 
 // ----------------------------
-// App構造体
+// App
 // ----------------------------
+
 type App struct {
 	DB   *sql.DB
 	HTTP http.Handler
 }
 
 // ----------------------------
-// App初期化
+// NewApp
 // ----------------------------
+
 func NewApp(db *sql.DB) *App {
+
+	// =========================
 	// Repository
+	// =========================
+
 	userRepo := repository.NewUserRepository(db)
 	taskRepo := repository.NewTaskRepository(db)
 
+	// =========================
 	// Service
+	// =========================
+
 	userSvc := service.NewUserService(userRepo)
 	taskSvc := service.NewTaskService(taskRepo)
 
+	// =========================
 	// Handler
+	// =========================
+
 	userHandler := handlers.NewUserHandler(userSvc)
 	taskHandler := handlers.NewTaskHandler(taskSvc)
 
-	// Router
-	apiRouter := router.NewRouter(userHandler, taskHandler)
+	// =========================
+	// API Router
+	// =========================
 
+	apiRouter := router.NewRouter(
+		userHandler,
+		taskHandler,
+	)
+
+	// JWT only for API
+	apiHandler := middleware.Chain(
+		apiRouter,
+		middleware.JWT,
+	)
+
+	// =========================
 	// Swagger
+	// =========================
+
 	swaggerHandler := swagger.Handler()
 
-	// ServeMux
-	mux := http.NewServeMux()
-	mux.Handle("/api/v1/", apiRouter)
-	mux.Handle("/api/v1/docs/", swaggerHandler)
-	mux.Handle("/api/v1/spec/", swaggerHandler)
+	// =========================
+	// Root mux
+	// =========================
 
-	// Middlewareチェーン
+	mux := http.NewServeMux()
+
+	mux.Handle("/api/v1/", apiHandler)
+
+	mux.Handle(
+		"/api/v1/docs/",
+		swaggerHandler,
+	)
+
+	mux.Handle(
+		"/api/v1/spec/",
+		swaggerHandler,
+	)
+
+	// =========================
+	// Global middleware
+	// =========================
+
 	handler := middleware.Chain(
 		mux,
+		middleware.Recovery,
 		middleware.Logging,
 		middleware.CORS,
-		middleware.JWT,
 	)
 
 	return &App{
@@ -83,55 +126,86 @@ func NewApp(db *sql.DB) *App {
 }
 
 // ----------------------------
-// Lambdaハンドラー（グローバル保持）
+// lambda handler
 // ----------------------------
+
 func lambdaHandler() *httpadapter.HandlerAdapter {
+
 	if globalHandler != nil {
 		return globalHandler
 	}
 
-	// DB初期化
+	// DB init
 	if globalDB == nil {
+
 		db, err := config.ConnectDBFromEnv()
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		globalDB = db
 	}
 
-	// App初期化
+	// App init
 	globalApp = NewApp(globalDB)
 
-	// Lambda HTTP Adapter
-	globalHandler = httpadapter.New(globalApp.HTTP)
+	// Lambda adapter
+	globalHandler = httpadapter.New(
+		globalApp.HTTP,
+	)
+
 	return globalHandler
 }
 
 // ----------------------------
 // main
 // ----------------------------
+
 func main() {
+
+	// =========================
+	// local mode
+	// =========================
+
 	if os.Getenv("RUN_MODE") == "local" {
+
 		db, err := config.ConnectDBFromEnv()
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		defer db.Close()
 
 		app := NewApp(db)
+
 		runLocal(app)
+
 		return
 	}
 
-	// Lambda Start
-	lambda.Start(func(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-		return lambdaHandler().ProxyWithContext(ctx, req)
-	})
+	// =========================
+	// lambda mode
+	// =========================
+
+	lambda.Start(
+		func(
+			ctx context.Context,
+			req events.APIGatewayProxyRequest,
+		) (
+			events.APIGatewayProxyResponse,
+			error,
+		) {
+
+			return lambdaHandler().
+				ProxyWithContext(ctx, req)
+		},
+	)
 }
 
 // ----------------------------
-// ローカルサーバ
+// local server
 // ----------------------------
+
 func runLocal(app *App) {
 
 	port := os.Getenv("PORT")
@@ -146,19 +220,37 @@ func runLocal(app *App) {
 		WriteTimeout: 15 * time.Second,
 	}
 
-	// Graceful shutdown
+	// graceful shutdown
+
 	idleConnsClosed := make(chan struct{})
+
 	go func() {
+
 		c := make(chan os.Signal, 1)
-		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+
+		signal.Notify(
+			c,
+			syscall.SIGINT,
+			syscall.SIGTERM,
+		)
+
 		<-c
+
 		log.Println("shutting down server...")
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(
+			context.Background(),
+			5*time.Second,
+		)
+
 		defer cancel()
 
 		if err := srv.Shutdown(ctx); err != nil {
-			log.Printf("server shutdown error: %v", err)
+
+			log.Printf(
+				"server shutdown error: %v",
+				err,
+			)
 		}
 
 		if globalDB != nil {
@@ -168,10 +260,17 @@ func runLocal(app *App) {
 		close(idleConnsClosed)
 	}()
 
-	log.Printf("server started :%s", port)
+	log.Printf(
+		"server started :%s",
+		port,
+	)
 
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-		log.Fatalf("server failed: %v", err)
+
+		log.Fatalf(
+			"server failed: %v",
+			err,
+		)
 	}
 
 	<-idleConnsClosed
