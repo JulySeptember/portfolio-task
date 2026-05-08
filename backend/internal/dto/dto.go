@@ -1,33 +1,26 @@
 package dto
 
-// User DTOs
-
-// CreateUserRequest is used when creating a new user.
 type CreateUserRequest struct {
-	Email       string `json:"email"`
-	DisplayName string `json:"display_name"`
+	Email       string `json:"email" validate:"required,email,max=255"`
+	DisplayName string `json:"display_name" validate:"required,min=1,max=255"`
 }
 
-// UpdateUserRequest is used when updating an existing user.
 type UpdateUserRequest struct {
-	DisplayName string `json:"display_name"`
+	Email       string `json:"email" validate:"required,email,max=255"`
+	DisplayName string `json:"display_name" validate:"required,min=1,max=255"`
 }
 
-// Task DTOs
-
-// CreateTaskRequest is used when creating a new task.
 type CreateTaskRequest struct {
-	UserID      int64  `json:"user_id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Status      string `json:"status"`
-	DueDate     string `json:"due_date,omitempty"`
+	UserID      int64  `json:"user_id" validate:"required"`
+	Title       string `json:"title" validate:"required,min=1,max=255"`
+	Description string `json:"description" validate:"max=1000"`
+	Status      string `json:"status" validate:"required,oneof=TODO DOING DONE"`
+	DueDate     string `json:"due_date"`
 }
 
-// UpdateTaskRequest is used when updating an existing task.
 type UpdateTaskRequest struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Status      string `json:"status"`
-	DueDate     string `json:"due_date,omitempty"`
+	Title       string `json:"title" validate:"required,min=1,max=255"`
+	Description string `json:"description" validate:"max=1000"`
+	Status      string `json:"status" validate:"required,oneof=TODO DOING DONE"`
+	DueDate     string `json:"due_date"`
 }

@@ -1,10 +1,7 @@
 package handlers
 
 import (
-	"context"
-	"errors"
 	"net/http"
-	"strings"
 	"time"
 
 	"portfolio/backend/internal/dto"
@@ -13,167 +10,225 @@ import (
 	"portfolio/backend/internal/service"
 )
 
-type TaskHandlerWrapper struct {
+type TaskHandler struct {
 	svc *service.TaskService
 }
 
-func NewTaskHandlerWrapper(svc *service.TaskService) *TaskHandlerWrapper {
-	return &TaskHandlerWrapper{
-		svc: svc,
-	}
+func NewTaskHandler(s *service.TaskService) *TaskHandler {
+	return &TaskHandler{svc: s}
 }
 
-func (h *TaskHandlerWrapper) List(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	status := strings.ToUpper(strings.TrimSpace(q.Get("status")))
-	limit := ParseIntOrDefault(q.Get("limit"), 20)
-	offset := ParseIntOrDefault(q.Get("offset"), 0)
+// =========================
+// Create
+// =========================
 
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-	defer cancel()
+func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 
-	// TaskService.List signature in your repo expects (ctx, status, limit, offset)
-	items, err := h.svc.List(ctx, status, limit, offset)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			WriteError(w, http.StatusNotFound, "not found")
-			return
-		}
-		WriteError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	WriteJSON(w, http.StatusOK, items)
-}
-
-func (h *TaskHandlerWrapper) Create(w http.ResponseWriter, r *http.Request) {
-	model, status, err := decodeCreateTaskLocal(w, r)
-	if err != nil {
-		WriteError(w, status, err.Error())
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-	defer cancel()
-
-	created, err := h.svc.Create(ctx, model)
-	if err != nil {
-		WriteError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	WriteJSON(w, http.StatusCreated, created)
-}
-
-func (h *TaskHandlerWrapper) Get(w http.ResponseWriter, r *http.Request, id int64) {
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-	defer cancel()
-
-	item, err := h.svc.Get(ctx, id)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			WriteError(w, http.StatusNotFound, "task not found")
-			return
-		}
-		WriteError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	WriteJSON(w, http.StatusOK, item)
-}
-
-func (h *TaskHandlerWrapper) HandleUpdate(w http.ResponseWriter, r *http.Request, id int64) {
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-	defer cancel()
-
-	existing, err := h.svc.Get(ctx, id)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			WriteError(w, http.StatusNotFound, "task not found")
-			return
-		}
-		WriteError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	if status, err := mergeUpdateTaskLocal(w, r, existing); err != nil {
-		WriteError(w, status, err.Error())
-		return
-	}
-
-	updated, err := h.svc.Update(ctx, existing)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			WriteError(w, http.StatusNotFound, "task not found")
-			return
-		}
-		WriteError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	WriteJSON(w, http.StatusOK, updated)
-}
-
-func (h *TaskHandlerWrapper) Delete(w http.ResponseWriter, r *http.Request, id int64) {
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-	defer cancel()
-
-	if err := h.svc.Delete(ctx, id); err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			WriteError(w, http.StatusNotFound, "task not found")
-			return
-		}
-		WriteError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func decodeCreateTaskLocal(w http.ResponseWriter, r *http.Request) (*models.Task, int, error) {
 	var req dto.CreateTaskRequest
+
+	// JSON decode
 	if err := DecodeJSON(w, r, &req); err != nil {
-		return nil, http.StatusBadRequest, errors.New("invalid body")
-	}
-	if req.UserID == 0 {
-		return nil, http.StatusBadRequest, errors.New("user_id is required")
-	}
-	if req.Title == "" {
-		return nil, http.StatusBadRequest, errors.New("title is required")
+		WriteError(w, 400, err.Error())
+		return
 	}
 
-	t := &models.Task{
+	// validation
+	if errs := ValidateStruct(req); errs != nil {
+		WriteJSON(w, 400, map[string]interface{}{
+			"errors": errs,
+		})
+		return
+	}
+
+	var dueDate *time.Time
+
+	if req.DueDate != "" {
+
+		t, err := time.Parse(time.RFC3339, req.DueDate)
+		if err != nil {
+			WriteError(w, 400, "invalid due_date format")
+			return
+		}
+
+		dueDate = &t
+	}
+
+	task := &models.Task{
 		UserID:      req.UserID,
 		Title:       req.Title,
 		Description: req.Description,
 		Status:      req.Status,
+		DueDate:     dueDate,
 	}
 
-	if req.DueDate != "" {
-		tt, err := time.Parse(time.RFC3339, req.DueDate)
-		if err != nil {
-			return nil, http.StatusBadRequest, errors.New("invalid due_date format; use RFC3339")
+	res, err := h.svc.Create(r.Context(), task)
+	if err != nil {
+
+		switch err {
+
+		case repository.ErrForeignKeyViolation:
+			WriteError(w, 400, "invalid user_id")
+			return
+
+		default:
+			WriteError(w, 500, "internal server error")
+			return
 		}
-		t.DueDate = &tt
 	}
-	return t, 0, nil
+
+	WriteJSON(w, 201, res)
 }
 
-func mergeUpdateTaskLocal(w http.ResponseWriter, r *http.Request, existing *models.Task) (int, error) {
-	var req dto.UpdateTaskRequest
-	if err := DecodeJSON(w, r, &req); err != nil {
-		return http.StatusBadRequest, errors.New("invalid body")
-	}
-	if req.Title != "" {
-		existing.Title = req.Title
-	}
-	if req.Description != "" {
-		existing.Description = req.Description
-	}
-	if req.Status != "" {
-		existing.Status = req.Status
-	}
-	if req.DueDate != "" {
-		tt, err := time.Parse(time.RFC3339, req.DueDate)
-		if err != nil {
-			return http.StatusBadRequest, errors.New("invalid due_date format; use RFC3339")
+// =========================
+// Get
+// =========================
+
+func (h *TaskHandler) Get(w http.ResponseWriter, r *http.Request, id int64) {
+
+	res, err := h.svc.Get(r.Context(), id)
+	if err != nil {
+
+		switch err {
+
+		case repository.ErrTaskNotFound:
+			WriteError(w, 404, "task not found")
+			return
+
+		default:
+			WriteError(w, 500, "internal server error")
+			return
 		}
-		existing.DueDate = &tt
 	}
-	return 0, nil
+
+	WriteJSON(w, 200, res)
+}
+
+// =========================
+// Update
+// =========================
+
+func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request, id int64) {
+
+	var req dto.UpdateTaskRequest
+
+	// JSON decode
+	if err := DecodeJSON(w, r, &req); err != nil {
+		WriteError(w, 400, err.Error())
+		return
+	}
+
+	// validation
+	if errs := ValidateStruct(req); errs != nil {
+		WriteJSON(w, 400, map[string]interface{}{
+			"errors": errs,
+		})
+		return
+	}
+
+	var dueDate *time.Time
+
+	if req.DueDate != "" {
+
+		t, err := time.Parse(time.RFC3339, req.DueDate)
+		if err != nil {
+			WriteError(w, 400, "invalid due_date format")
+			return
+		}
+
+		dueDate = &t
+	}
+
+	task := &models.Task{
+		ID:          id,
+		Title:       req.Title,
+		Description: req.Description,
+		Status:      req.Status,
+		DueDate:     dueDate,
+	}
+
+	res, err := h.svc.Update(r.Context(), task)
+	if err != nil {
+
+		switch err {
+
+		case repository.ErrTaskNotFound:
+			WriteError(w, 404, "task not found")
+			return
+
+		default:
+			WriteError(w, 500, "internal server error")
+			return
+		}
+	}
+
+	WriteJSON(w, 200, res)
+}
+
+// =========================
+// Delete
+// =========================
+
+func (h *TaskHandler) Delete(w http.ResponseWriter, r *http.Request, id int64) {
+
+	err := h.svc.Delete(r.Context(), id)
+	if err != nil {
+
+		switch err {
+
+		case repository.ErrTaskNotFound:
+			WriteError(w, 404, "task not found")
+			return
+
+		default:
+			WriteError(w, 500, "internal server error")
+			return
+		}
+	}
+
+	w.WriteHeader(204)
+}
+
+// =========================
+// ListWithUser
+// =========================
+
+func (h *TaskHandler) ListWithUser(w http.ResponseWriter, r *http.Request) {
+
+	limit := ParseIntOrDefault(
+		r.URL.Query().Get("limit"),
+		20,
+	)
+
+	offset := ParseIntOrDefault(
+		r.URL.Query().Get("offset"),
+		0,
+	)
+
+	// limit 上限
+	if limit > 100 {
+		limit = 100
+	}
+
+	// 不正値対策
+	if limit < 1 {
+		limit = 20
+	}
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	res, err := h.svc.ListWithUser(r.Context(), limit, offset)
+
+	if err != nil {
+		WriteError(w, 500, "internal server error")
+		return
+	}
+
+	WriteJSON(w, 200, map[string]interface{}{
+		"limit":  limit,
+		"offset": offset,
+		"count":  len(res),
+		"items":  res,
+	})
 }

@@ -1,47 +1,129 @@
 package service
 
 import (
-        "context"
-        "time"
+	"context"
+	"errors"
+	"strings"
 
-        "portfolio/backend/internal/models"
-        "portfolio/backend/internal/repository"
+	"portfolio/backend/internal/models"
+	"portfolio/backend/internal/repository"
 )
 
 type TaskService struct {
-        repo repository.TaskRepository
+	repo repository.TaskRepositoryInterface
 }
 
-func NewTaskService(repo repository.TaskRepository) *TaskService {
-        return &TaskService{repo: repo}
+func NewTaskService(
+	r repository.TaskRepositoryInterface,
+) *TaskService {
+	return &TaskService{
+		repo: r,
+	}
 }
+
+// =========================
+// Create
+// =========================
 
 func (s *TaskService) Create(ctx context.Context, t *models.Task) (*models.Task, error) {
-        now := time.Now().UTC()
-        t.CreatedAt = now
-        t.UpdatedAt = now
-        if err := s.repo.Create(ctx, t); err != nil {
-                return nil, err
-        }
-        return t, nil
+
+	if t.UserID <= 0 {
+		return nil, errors.New("invalid user_id")
+	}
+
+	if strings.TrimSpace(t.Title) == "" {
+		return nil, errors.New("title is required")
+	}
+
+	if !isValidStatus(t.Status) {
+		return nil, errors.New("invalid status")
+	}
+
+	if err := s.repo.Create(ctx, t); err != nil {
+		return nil, err
+	}
+
+	return s.repo.Get(ctx, t.ID)
 }
+
+// =========================
+// Get
+// =========================
 
 func (s *TaskService) Get(ctx context.Context, id int64) (*models.Task, error) {
-        return s.repo.Get(ctx, id)
+
+	if id <= 0 {
+		return nil, errors.New("invalid id")
+	}
+
+	return s.repo.Get(ctx, id)
 }
 
-func (s *TaskService) List(ctx context.Context, status string, limit, offset int) ([]*models.Task, error) {
-        return s.repo.List(ctx, status, limit, offset)
-}
+// =========================
+// Update
+// =========================
 
 func (s *TaskService) Update(ctx context.Context, t *models.Task) (*models.Task, error) {
-        t.UpdatedAt = time.Now().UTC()
-        if err := s.repo.Update(ctx, t); err != nil {
-                return nil, err
-        }
-        return t, nil
+
+	if t.ID <= 0 {
+		return nil, errors.New("invalid id")
+	}
+
+	if strings.TrimSpace(t.Title) == "" {
+		return nil, errors.New("title is required")
+	}
+
+	if !isValidStatus(t.Status) {
+		return nil, errors.New("invalid status")
+	}
+
+	if err := s.repo.Update(ctx, t); err != nil {
+		return nil, err
+	}
+
+	return s.repo.Get(ctx, t.ID)
 }
 
+// =========================
+// Delete
+// =========================
+
 func (s *TaskService) Delete(ctx context.Context, id int64) error {
-        return s.repo.Delete(ctx, id)
+
+	if id <= 0 {
+		return errors.New("invalid id")
+	}
+
+	return s.repo.Delete(ctx, id)
+}
+
+// =========================
+// ListWithUser
+// =========================
+
+func (s *TaskService) ListWithUser(
+	ctx context.Context,
+	limit int,
+	offset int,
+) ([]models.TaskWithUser, error) {
+
+	return s.repo.ListWithUser(
+		ctx,
+		limit,
+		offset,
+	)
+}
+
+// =========================
+// status validation
+// =========================
+
+func isValidStatus(status string) bool {
+
+	switch status {
+	case "TODO", "DOING", "DONE":
+		return true
+	default:
+		return false
+	}
 }

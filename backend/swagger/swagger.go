@@ -5,36 +5,43 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
+	"net/http"
+	"strings"
 )
 
-// config はテンプレートに渡すパラメータを定義します。
+// ----------------------------
+// Embedされた静的ファイル
+// ----------------------------
+
+// StaticAssets は swagger.yml とテンプレートを含む
+//
+//go:embed all:*
+var StaticAssets embed.FS
+
+// ----------------------------
+// テンプレート用構造体
+// ----------------------------
 type config struct {
 	SchemaURL string
 	DomID     string
 }
 
-// StaticAssets はディレクトリ全体を保持します（http.FileServer 用）。
-// ディレクティブの前にスペースを入れず、説明コメントは上の行に配置します。
-//
-//go:embed all:*
-var StaticAssets embed.FS
-
-// SwaggerYAML は埋め込まれた swagger.yml の生データを返します。
+// ----------------------------
+// SwaggerYAML は生の swagger.yml を返す
+// ----------------------------
 func SwaggerYAML() []byte {
-	// ファイル名は embed したルートからの相対パスです
 	data, err := StaticAssets.ReadFile("swagger.yml")
 	if err != nil {
-		// 初期化時にファイルがない場合は致命的なため panic させています
 		panic(fmt.Errorf("failed to read swagger.yml: %w", err))
 	}
 	return data
 }
 
-// IndexHTML はテンプレートをパースし、指定されたホスト情報を埋め込んだ HTML を返します。
-// host が空の場合は相対パスを使用します。
+// ----------------------------
+// IndexHTML は Swagger UI 用 HTML を返す
+// host が空なら相対パス、指定されていれば絶対URLで埋め込む
+// ----------------------------
 func IndexHTML(host string) []byte {
-	// StaticAssets からテンプレートファイルを読み込みます
-	// 第2引数は embed されたルートからの相対パスを指定します
 	t, err := template.ParseFS(StaticAssets, "template/index.html.tmpl")
 	if err != nil {
 		panic(fmt.Errorf("failed to parse swagger template: %w", err))
@@ -42,7 +49,7 @@ func IndexHTML(host string) []byte {
 
 	schemaURL := "/api/v1/spec/swagger.yml"
 	if host != "" {
-		schemaURL = fmt.Sprintf("%s%s", host, schemaURL)
+		schemaURL = strings.TrimRight(host, "/") + schemaURL
 	}
 
 	c := config{
@@ -50,11 +57,34 @@ func IndexHTML(host string) []byte {
 		DomID:     "#root",
 	}
 
-	var buffer bytes.Buffer
-	// テンプレート実行時はファイル名（ベース名）を指定します
-	if err := t.ExecuteTemplate(&buffer, "index.html.tmpl", c); err != nil {
+	var buf bytes.Buffer
+	if err := t.ExecuteTemplate(&buf, "index.html.tmpl", c); err != nil {
 		panic(fmt.Errorf("failed to execute swagger template: %w", err))
 	}
 
-	return buffer.Bytes()
+	return buf.Bytes()
+}
+
+// ----------------------------
+// Handler は http.Handler を返す
+// ----------------------------
+// - /api/v1/spec/swagger.yml  → Swagger定義
+// - /api/v1/docs/            → Swagger UI
+// ----------------------------
+func Handler() http.Handler {
+	mux := http.NewServeMux()
+
+	// Swagger YAML 配信
+	mux.HandleFunc("/api/v1/spec/swagger.yml", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/yaml")
+		w.Write(SwaggerYAML())
+	})
+
+	// Swagger UI 配信
+	mux.HandleFunc("/api/v1/docs/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(IndexHTML(""))
+	})
+
+	return mux
 }
