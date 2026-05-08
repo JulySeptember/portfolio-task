@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+
+	"portfolio/backend/internal/apierrors"
 )
 
 // =========================
@@ -14,6 +17,7 @@ func WriteJSON(
 	status int,
 	v any,
 ) {
+
 	w.Header().Set(
 		"Content-Type",
 		"application/json",
@@ -21,7 +25,13 @@ func WriteJSON(
 
 	w.WriteHeader(status)
 
-	_ = json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+
+		log.Printf(
+			"[ERROR] response encode failed: %v",
+			err,
+		)
+	}
 }
 
 // =========================
@@ -31,11 +41,18 @@ func WriteJSON(
 func WriteError(
 	w http.ResponseWriter,
 	status int,
+	code string,
 	msg string,
 ) {
-	WriteJSON(w, status, map[string]string{
-		"error": msg,
-	})
+
+	WriteJSON(
+		w,
+		status,
+		apierrors.ErrorResponse{
+			Code:    code,
+			Message: msg,
+		},
+	)
 }
 
 // =========================
@@ -46,7 +63,14 @@ func WriteValidationErrors(
 	w http.ResponseWriter,
 	errs map[string]string,
 ) {
-	WriteJSON(w, http.StatusBadRequest, map[string]interface{}{
-		"errors": errs,
-	})
+
+	WriteJSON(
+		w,
+		http.StatusBadRequest,
+		apierrors.ValidationErrorResponse{
+			Code:    apierrors.CodeValidationError,
+			Message: "validation failed",
+			Errors:  errs,
+		},
+	)
 }

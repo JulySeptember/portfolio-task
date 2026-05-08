@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"portfolio/backend/internal/apierrors"
 	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/models"
 	"portfolio/backend/internal/repository"
@@ -21,25 +22,44 @@ func NewTaskHandler(s *service.TaskService) *TaskHandler {
 // Create
 // =========================
 
-func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
+func (h *TaskHandler) Create(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 
 	var req dto.CreateTaskRequest
 
 	// JSON decode
 	if err := DecodeJSON(w, r, &req); err != nil {
-		WriteError(w, 400, err.Error())
+
+		WriteError(
+			w,
+			http.StatusBadRequest,
+			apierrors.CodeInvalidJSON,
+			err.Error(),
+		)
+
 		return
 	}
 
 	// validation
 	if errs := ValidateStruct(req); errs != nil {
+
 		WriteValidationErrors(w, errs)
 		return
 	}
 
 	dueDate, err := ParseOptionalTime(req.DueDate)
+
 	if err != nil {
-		WriteError(w, 400, "invalid due_date format")
+
+		WriteError(
+			w,
+			http.StatusBadRequest,
+			apierrors.CodeInvalidDueDate,
+			"invalid due_date format",
+		)
+
 		return
 	}
 
@@ -51,70 +71,161 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		DueDate:     dueDate,
 	}
 
-	res, err := h.svc.Create(r.Context(), task)
+	res, err := h.svc.Create(
+		r.Context(),
+		task,
+	)
+
 	if err != nil {
 
 		switch err {
 
+		case service.ErrInvalidUserID:
+
+			WriteError(
+				w,
+				http.StatusBadRequest,
+				apierrors.CodeInvalidUserID,
+				"invalid user_id",
+			)
+
+			return
+
 		case repository.ErrForeignKeyViolation:
-			WriteError(w, 400, "invalid user_id")
+
+			WriteError(
+				w,
+				http.StatusBadRequest,
+				apierrors.CodeInvalidUserID,
+				"invalid user_id",
+			)
+
 			return
 
 		default:
-			WriteError(w, 500, "internal server error")
+
+			WriteError(
+				w,
+				http.StatusInternalServerError,
+				apierrors.CodeInternalServerError,
+				"internal server error",
+			)
+
 			return
 		}
 	}
 
-	WriteJSON(w, 201, res)
+	WriteJSON(
+		w,
+		http.StatusCreated,
+		res,
+	)
 }
 
 // =========================
 // Get
 // =========================
 
-func (h *TaskHandler) Get(w http.ResponseWriter, r *http.Request, id int64) {
+func (h *TaskHandler) Get(
+	w http.ResponseWriter,
+	r *http.Request,
+	id int64,
+) {
 
-	res, err := h.svc.Get(r.Context(), id)
+	res, err := h.svc.Get(
+		r.Context(),
+		id,
+	)
+
 	if err != nil {
 
 		switch err {
 
+		case service.ErrInvalidID:
+
+			WriteError(
+				w,
+				http.StatusBadRequest,
+				apierrors.CodeInvalidID,
+				"invalid id",
+			)
+
+			return
+
 		case repository.ErrTaskNotFound:
-			WriteError(w, 404, "task not found")
+
+			WriteError(
+				w,
+				http.StatusNotFound,
+				apierrors.CodeTaskNotFound,
+				"task not found",
+			)
+
 			return
 
 		default:
-			WriteError(w, 500, "internal server error")
+
+			WriteError(
+				w,
+				http.StatusInternalServerError,
+				apierrors.CodeInternalServerError,
+				"internal server error",
+			)
+
 			return
 		}
 	}
 
-	WriteJSON(w, 200, res)
+	WriteJSON(
+		w,
+		http.StatusOK,
+		res,
+	)
 }
 
 // =========================
 // Update
 // =========================
 
-func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request, id int64) {
+func (h *TaskHandler) Update(
+	w http.ResponseWriter,
+	r *http.Request,
+	id int64,
+) {
 
 	var req dto.UpdateTaskRequest
 
 	// JSON decode
 	if err := DecodeJSON(w, r, &req); err != nil {
-		WriteError(w, 400, err.Error())
+
+		WriteError(
+			w,
+			http.StatusBadRequest,
+			apierrors.CodeInvalidJSON,
+			err.Error(),
+		)
+
 		return
 	}
 
 	// validation
 	if errs := ValidateStruct(req); errs != nil {
+
 		WriteValidationErrors(w, errs)
 		return
 	}
+
 	dueDate, err := ParseOptionalTime(req.DueDate)
+
 	if err != nil {
-		WriteError(w, 400, "invalid due_date format")
+
+		WriteError(
+			w,
+			http.StatusBadRequest,
+			apierrors.CodeInvalidDueDate,
+			"invalid due_date format",
+		)
+
 		return
 	}
 
@@ -126,53 +237,122 @@ func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request, id int64) {
 		DueDate:     dueDate,
 	}
 
-	res, err := h.svc.Update(r.Context(), task)
+	res, err := h.svc.Update(
+		r.Context(),
+		task,
+	)
+
 	if err != nil {
 
 		switch err {
 
+		case service.ErrInvalidID:
+
+			WriteError(
+				w,
+				http.StatusBadRequest,
+				apierrors.CodeInvalidID,
+				"invalid id",
+			)
+
+			return
+
 		case repository.ErrTaskNotFound:
-			WriteError(w, 404, "task not found")
+
+			WriteError(
+				w,
+				http.StatusNotFound,
+				apierrors.CodeTaskNotFound,
+				"task not found",
+			)
+
 			return
 
 		default:
-			WriteError(w, 500, "internal server error")
+
+			WriteError(
+				w,
+				http.StatusInternalServerError,
+				apierrors.CodeInternalServerError,
+				"internal server error",
+			)
+
 			return
 		}
 	}
 
-	WriteJSON(w, 200, res)
+	WriteJSON(
+		w,
+		http.StatusOK,
+		res,
+	)
 }
 
 // =========================
 // Delete
 // =========================
 
-func (h *TaskHandler) Delete(w http.ResponseWriter, r *http.Request, id int64) {
+func (h *TaskHandler) Delete(
+	w http.ResponseWriter,
+	r *http.Request,
+	id int64,
+) {
 
-	err := h.svc.Delete(r.Context(), id)
+	err := h.svc.Delete(
+		r.Context(),
+		id,
+	)
+
 	if err != nil {
 
 		switch err {
 
+		case service.ErrInvalidID:
+
+			WriteError(
+				w,
+				http.StatusBadRequest,
+				apierrors.CodeInvalidID,
+				"invalid id",
+			)
+
+			return
+
 		case repository.ErrTaskNotFound:
-			WriteError(w, 404, "task not found")
+
+			WriteError(
+				w,
+				http.StatusNotFound,
+				apierrors.CodeTaskNotFound,
+				"task not found",
+			)
+
 			return
 
 		default:
-			WriteError(w, 500, "internal server error")
+
+			WriteError(
+				w,
+				http.StatusInternalServerError,
+				apierrors.CodeInternalServerError,
+				"internal server error",
+			)
+
 			return
 		}
 	}
 
-	w.WriteHeader(204)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // =========================
 // ListWithUser
 // =========================
 
-func (h *TaskHandler) ListWithUser(w http.ResponseWriter, r *http.Request) {
+func (h *TaskHandler) ListWithUser(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 
 	limit := ParseIntOrDefault(
 		r.URL.Query().Get("limit"),
@@ -184,12 +364,10 @@ func (h *TaskHandler) ListWithUser(w http.ResponseWriter, r *http.Request) {
 		0,
 	)
 
-	// limit 上限
 	if limit > 100 {
 		limit = 100
 	}
 
-	// 不正値対策
 	if limit < 1 {
 		limit = 20
 	}
@@ -198,17 +376,32 @@ func (h *TaskHandler) ListWithUser(w http.ResponseWriter, r *http.Request) {
 		offset = 0
 	}
 
-	res, err := h.svc.ListWithUser(r.Context(), limit, offset)
+	res, err := h.svc.ListWithUser(
+		r.Context(),
+		limit,
+		offset,
+	)
 
 	if err != nil {
-		WriteError(w, 500, "internal server error")
+
+		WriteError(
+			w,
+			http.StatusInternalServerError,
+			apierrors.CodeInternalServerError,
+			"internal server error",
+		)
+
 		return
 	}
 
-	WriteJSON(w, 200, map[string]interface{}{
-		"limit":  limit,
-		"offset": offset,
-		"count":  len(res),
-		"items":  res,
-	})
+	WriteJSON(
+		w,
+		http.StatusOK,
+		map[string]interface{}{
+			"limit":  limit,
+			"offset": offset,
+			"count":  len(res),
+			"items":  res,
+		},
+	)
 }

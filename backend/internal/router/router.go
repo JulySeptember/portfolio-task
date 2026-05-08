@@ -3,11 +3,10 @@ package router
 import (
 	"net/http"
 
+	"portfolio/backend/internal/apierrors"
 	"portfolio/backend/internal/handlers"
 )
 
-// NewRouter
-// API routing only
 func NewRouter(
 	userHandler *handlers.UserHandler,
 	taskHandler *handlers.TaskHandler,
@@ -15,15 +14,12 @@ func NewRouter(
 
 	mux := http.NewServeMux()
 
-	// =========================
-	// helper
-	// =========================
-
 	methodNotAllowed := func(w http.ResponseWriter) {
 
 		handlers.WriteError(
 			w,
 			http.StatusMethodNotAllowed,
+			apierrors.CodeMethodNotAllowed,
 			"method not allowed",
 		)
 	}
@@ -35,6 +31,7 @@ func NewRouter(
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 
 		if r.Method != http.MethodGet {
+
 			methodNotAllowed(w)
 			return
 		}
@@ -48,7 +45,6 @@ func NewRouter(
 	// users
 	// =========================
 
-	// POST /api/v1/users
 	mux.HandleFunc("/api/v1/users", func(w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {
@@ -61,15 +57,16 @@ func NewRouter(
 		}
 	})
 
-	// GET/PUT/DELETE /api/v1/users/{id}
 	mux.HandleFunc("/api/v1/users/", func(w http.ResponseWriter, r *http.Request) {
 
 		id, ok := handlers.ParseID(r)
+
 		if !ok {
 
 			handlers.WriteError(
 				w,
 				http.StatusBadRequest,
+				apierrors.CodeInvalidID,
 				"invalid id",
 			)
 
@@ -96,8 +93,6 @@ func NewRouter(
 	// tasks
 	// =========================
 
-	// GET /api/v1/tasks
-	// POST /api/v1/tasks
 	mux.HandleFunc("/api/v1/tasks", func(w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {
@@ -113,17 +108,19 @@ func NewRouter(
 		}
 	})
 
-	// GET/PUT/DELETE /api/v1/tasks/{id}
 	mux.HandleFunc("/api/v1/tasks/", func(w http.ResponseWriter, r *http.Request) {
 
 		id, ok := handlers.ParseID(r)
+
 		if !ok {
 
 			handlers.WriteError(
 				w,
 				http.StatusBadRequest,
+				apierrors.CodeInvalidID,
 				"invalid id",
 			)
+
 			return
 		}
 
@@ -142,10 +139,6 @@ func NewRouter(
 			methodNotAllowed(w)
 		}
 	})
-
-	// =========================
-	// middleware chain
-	// =========================
 
 	return mux
 }

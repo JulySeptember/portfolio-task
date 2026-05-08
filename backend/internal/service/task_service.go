@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 
 	"portfolio/backend/internal/models"
 	"portfolio/backend/internal/repository"
@@ -15,6 +14,7 @@ type TaskService struct {
 func NewTaskService(
 	r repository.TaskRepositoryInterface,
 ) *TaskService {
+
 	return &TaskService{
 		repo: r,
 	}
@@ -30,7 +30,7 @@ func (s *TaskService) Create(
 ) (*models.Task, error) {
 
 	if t.UserID <= 0 {
-		return nil, errors.New("invalid user_id")
+		return nil, ErrInvalidUserID
 	}
 
 	if err := s.repo.Create(ctx, t); err != nil {
@@ -50,7 +50,7 @@ func (s *TaskService) Get(
 ) (*models.Task, error) {
 
 	if id <= 0 {
-		return nil, errors.New("invalid id")
+		return nil, ErrInvalidID
 	}
 
 	return s.repo.Get(ctx, id)
@@ -66,7 +66,7 @@ func (s *TaskService) Update(
 ) (*models.Task, error) {
 
 	if t.ID <= 0 {
-		return nil, errors.New("invalid id")
+		return nil, ErrInvalidID
 	}
 
 	if err := s.repo.Update(ctx, t); err != nil {
@@ -86,7 +86,7 @@ func (s *TaskService) Delete(
 ) error {
 
 	if id <= 0 {
-		return errors.New("invalid id")
+		return ErrInvalidID
 	}
 
 	return s.repo.Delete(ctx, id)

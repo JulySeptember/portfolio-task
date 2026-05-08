@@ -140,7 +140,7 @@ func (r *TaskRepository) Get(
 	if err != nil {
 
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, ErrTaskNotFound
 		}
 
 		return nil, err
@@ -188,7 +188,7 @@ func (r *TaskRepository) Update(
 	}
 
 	if affected == 0 {
-		return ErrNotFound
+		return ErrTaskNotFound
 	}
 
 	return nil
@@ -224,7 +224,7 @@ func (r *TaskRepository) Delete(
 	}
 
 	if affected == 0 {
-		return ErrNotFound
+		return ErrTaskNotFound
 	}
 
 	return nil

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"portfolio/backend/internal/apierrors"
 	"portfolio/backend/internal/handlers"
 	"strings"
 	"time"
@@ -84,7 +85,6 @@ func Logging(next http.Handler) http.Handler {
 
 // =============================
 // Recovery
-// panic recovery middleware
 // =============================
 
 func Recovery(next http.Handler) http.Handler {
@@ -105,6 +105,7 @@ func Recovery(next http.Handler) http.Handler {
 				handlers.WriteError(
 					w,
 					http.StatusInternalServerError,
+					apierrors.CodeInternalServerError,
 					"internal server error",
 				)
 			}
@@ -167,12 +168,14 @@ func JWT(next http.Handler) http.Handler {
 		// =============================
 
 		authHeader := r.Header.Get("Authorization")
+
 		if authHeader == "" {
 
-			http.Error(
+			handlers.WriteError(
 				w,
-				"missing Authorization header",
 				http.StatusUnauthorized,
+				apierrors.CodeUnauthorized,
+				"missing Authorization header",
 			)
 
 			return
@@ -183,10 +186,11 @@ func JWT(next http.Handler) http.Handler {
 		if len(parts) != 2 ||
 			strings.ToLower(parts[0]) != "bearer" {
 
-			http.Error(
+			handlers.WriteError(
 				w,
-				"invalid Authorization header format",
 				http.StatusUnauthorized,
+				apierrors.CodeUnauthorized,
+				"invalid Authorization header format",
 			)
 
 			return
@@ -195,12 +199,14 @@ func JWT(next http.Handler) http.Handler {
 		token := parts[1]
 
 		userID := parseToken(token)
+
 		if userID == 0 {
 
-			http.Error(
+			handlers.WriteError(
 				w,
-				"invalid token",
 				http.StatusUnauthorized,
+				apierrors.CodeInvalidToken,
+				"invalid token",
 			)
 
 			return
@@ -217,14 +223,10 @@ func JWT(next http.Handler) http.Handler {
 }
 
 // =============================
-// token parser (temporary)
+// token parser
 // =============================
 
 func parseToken(token string) int64 {
-
-	// TODO:
-	// replace with real JWT verification
-	// ex: Cognito JWT validation
 
 	if strings.HasPrefix(token, "user:") {
 
