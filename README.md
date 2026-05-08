@@ -1,181 +1,306 @@
-## 📌 タスク管理アプリ（ポートフォリオ）
+# 📌 タスク管理アプリ（ポートフォリオ）
 
 このプロジェクトは Next.js × Go × AWS × Terraform × RDS(MySQL) を用いて構築した、
-タスク管理 Web アプリです。
+フルスタック構成のタスク管理 Web アプリです。
 
-フロント・バックエンド・インフラをすべて自前で設計・実装し、
-AWS 上で本番運用可能な構成を再現しています。
+フロントエンド・バックエンド・インフラをすべて自前で設計・実装し、
+AWS 上で本番運用可能な構成を Terraform により IaC 化しています。
 
----
+また、Go バックエンドでは layered architecture を採用し、
 
-## アーキテクチャ図
-<img src="./docs/architecture.png" width="500">
+* Handler
+* Service
+* Repository
 
-## ER 図
-<img src="./docs/erd.png" width="400">
-
-
----
-
-🟦 技術スタック（Tech Stack）
-
-フロントエンド
-- Next.js（App Router）
-- TypeScript
-- React
-- Tailwind CSS
-
-バックエンド
-- Go（標準ライブラリ）
-- AWS Lambda（Go Runtime）
-- API Gateway（HTTP API）
-- Swagger（OpenAPI 自動生成）
-
-インフラ（AWS）
-- VPC（RDS 用プライベートサブネット）
-- RDS for MySQL（無料利用枠）
-- Lambda（VPC 内接続）
-- API Gateway
-- Cognito（ユーザー認証）
-- S3（フロントホスティング）
-- CloudFront（CDN）
-- IAM（権限管理）
-- Terraform（IaC）
-
-その他
-- Git / GitHub
-- GitHub Actions（CI/CD）
-- Docker（Go Lambda ビルド用）
+を分離することで責務分離・保守性・テスタビリティを意識した設計を行っています。
 
 ---
 
-🟩 アプリ概要（What）
+# 🏗 アーキテクチャ図
 
-機能一覧
-- ユーザー認証（Cognito）
-- タスク CRUD（作成 / 取得 / 更新 / 削除）
-- ステータス管理（TODO / DOING / DONE）
-- レスポンシブ対応（スマホ / PC）
-
-画面
-- ログイン / サインアップ
-- タスク一覧
-- タスク作成
-- ステータス変更
+<img src="./docs/architecture.png" width="600">
 
 ---
 
-🟧 AWS アーキテクチャ（Architecture）
+# 🗄 ER 図
 
+<img src="./docs/erd.png" width="450">
+
+---
+
+# 🟦 技術スタック（Tech Stack）
+
+## フロントエンド
+
+* Next.js（App Router）
+* TypeScript
+* React
+* Tailwind CSS
+
+## バックエンド
+
+* Go（標準ライブラリ中心）
+* AWS Lambda（Go Runtime）
+* API Gateway（HTTP API）
+* Swagger（OpenAPI）
+
+## インフラ（AWS）
+
+* VPC
+* RDS for MySQL
+* Lambda（VPC 内接続）
+* API Gateway
+* Cognito
+* S3
+* CloudFront
+* IAM
+* Terraform（IaC）
+
+## その他
+
+* Docker
+* Git / GitHub
+* GitHub Actions（CI/CD）
+
+---
+
+# 🟩 アプリ概要
+
+## 機能一覧
+
+### 認証
+
+* Cognito 認証
+* JWT 認証 Middleware
+
+### タスク管理
+
+* タスク CRUD
+* ステータス管理（TODO / DOING / DONE）
+* ユーザーごとのタスク管理
+* ページネーション対応
+
+### API
+
+* REST API
+* OpenAPI / Swagger ドキュメント
+* DTO ベースの Request 管理
+* strict JSON decode
+* validation 対応
+
+---
+
+# 🟧 AWS アーキテクチャ
+
+```text
 Next.js (S3 + CloudFront)
         ↓
-API Gateway（JWT 検証）
+API Gateway（JWT 認証）
         ↓
 Lambda（Go）
         ↓
-RDS for MySQL（VPC 内）
-
-RDS を安全に利用するための構成
-- VPC（/16）
-- パブリックサブネット × 2（ALB / Lambda / IGW 接続用）
-- プライベートサブネット × 2（RDS 用）
-- インターネットゲートウェイ
-- セキュリティグループ（Lambda → RDS のみ許可）
+RDS MySQL（Private Subnet）
+```
 
 ---
 
-🟨 開発ワークフロー（How）
+# 🔐 セキュアな構成
 
-STEP 1：企画・要件定義
-- アプリの目的を明確化
-- 必要機能の洗い出し
-- 画面一覧（Figma）
+RDS を安全に利用するため、以下の構成を採用しています。
 
-STEP 2：API 設計
-- エンドポイント一覧
-- リクエスト / レスポンス定義
-- 認証方式（Cognito JWT）
-- RDS MySQL の ER 図作成
+* VPC（/16）
+* パブリックサブネット × 2
+* プライベートサブネット × 2（RDS 用）
+* Internet Gateway
+* Security Group
+* Lambda → RDS のみ接続許可
+* RDS は Private Subnet に配置
 
-STEP 3：AWS 構成設計
-- API Gateway → Lambda → RDS
-- Cognito 認証
-- S3 + CloudFront
-- Terraform による IaC
+---
 
-STEP 4：リポジトリ構成
+# 🟨 バックエンド設計
+
+バックエンドは layered architecture を採用しています。
+
+```text
+Handler
+  ↓
+Service
+  ↓
+Repository
+  ↓
+MySQL
 ```
+
+## 設計で意識した点
+
+* 責務分離
+* DTO による API 入出力分離
+* Repository Interface による DI 対応
+* strict JSON decode
+* Middleware Chain
+* Graceful Shutdown
+* DB Connection Pool 最適化
+
+---
+
+# 📂 リポジトリ構成
+
+```text
 portfolio/
-  frontend/
-  backend/
-  infra/
-  docs/
-  scripts/
+├── frontend/
+├── backend/
+├── infra/
+├── docs/
+└── scripts/
 ```
-STEP 5：インフラ構築（Terraform）
-- VPC
-- サブネット
-- セキュリティグループ
-- RDS（MySQL）
-- Lambda（VPC 内）
-- API Gateway
-- Cognito
-- S3
-- CloudFront
-
-STEP 6：バックエンド（Go × Lambda）
-- タスク CRUD
-- MySQL 接続（RDS）
-- API Gateway 連携
-- Swagger（OpenAPI）自動生成
-
-STEP 7：フロント（Next.js）
-- 認証（Cognito Hosted UI / Amplify）
-- タスク一覧 / 作成 / 更新
-- API と接続
-
-STEP 8：デプロイ
-- フロント → S3 + CloudFront
-- API → Lambda
-- IaC → Terraform apply
-
-STEP 9：README / ドキュメント整備
-- 技術構成
-- アーキテクチャ図
-- ER 図
-- API 一覧
-- 工夫した点
-- 今後の改善点
 
 ---
 
-📚 ドキュメント（docs/）
-- architecture.png（アーキテクチャ図）
-- erd.png（ER 図）
-- api-design.md（API 設計）
-- infra-design.md（インフラ設計）
+# 🗄 DB 設計（Database Design）
+
+RDS MySQL を利用し、
+データ整合性・検索性能を意識したテーブル設計を行っています。
+
+## 設計で意識した点
+
+* users.email に UNIQUE 制約を設定
+* tasks.user_id に外部キー制約を設定
+* ON DELETE CASCADE による整合性維持
+* tasks.status に INDEX を付与
+* tasks.user_id に INDEX を付与
+* ENUM による status 制御
+* created_at / updated_at の DB 自動管理
 
 ---
 
-🚀 CI/CD（GitHub Actions）
-- フロント：S3 + CloudFront に自動デプロイ
-- バックエンド：Lambda に自動デプロイ
-- Terraform：main ブランチで自動 apply
+# 🧩 Migration 管理
+
+DB schema は migration SQL により管理しています。
+
+```text
+backend/
+└── migrations/
+    ├── 001_create_users.up.sql
+    ├── 001_create_users.down.sql
+    ├── 002_create_tasks.up.sql
+    └── 002_create_tasks.down.sql
+```
 
 ---
 
-🧠 工夫した点
-- RDS を VPC 内に配置し、Lambda からのみアクセス可能にした安全設計
-- Cognito を使った JWT 認証
-- Terraform による完全 IaC 化
-- GitHub Actions による自動デプロイ
-- Next.js App Router + Tailwind によるモダンな UI
+# 📚 Swagger / OpenAPI
+
+Swagger UI:
+
+```text
+http://localhost:8080/api/v1/docs/
+```
+
+OpenAPI schema:
+
+```text
+backend/swagger/swagger.yml
+```
 
 ---
 
-🔧 今後の改善点
-- RDS Proxy の導入（コネクション最適化）
-- OpenAPI（Swagger）自動生成の CI 化
-- E2E テスト（Playwright）
-- ダークモード対応
-- タスク期限の通知
+# 🚀 ローカル開発
+
+## 起動
+
+```bash
+make run
+```
+
+## Migration 実行
+
+```bash
+make migrate-up
+```
+
+---
+
+# 🧪 API 機能
+
+## ページネーション
+
+```http
+GET /api/v1/tasks?limit=20&offset=0
+```
+
+## Validation
+
+* strict JSON decode
+* unknown field rejection
+* request size 制限
+* DTO ベース validation
+
+---
+
+# 🔄 Middleware
+
+Middleware Chain により以下を実装しています。
+
+* Logging
+* CORS
+* JWT Authentication
+* Request Logging
+
+---
+
+# ⚡ パフォーマンス・運用面
+
+* Lambda cold start を考慮した DB 初期化
+* Connection Pool 最適化
+* Graceful Shutdown
+* Context timeout 対応
+* Pagination による負荷軽減
+
+---
+
+# 🚀 CI/CD
+
+GitHub Actions による自動デプロイ。
+
+## Frontend
+
+* S3 + CloudFront へ deploy
+
+## Backend
+
+* Lambda へ deploy
+
+## Infrastructure
+
+* Terraform apply
+
+---
+
+# 🧠 工夫した点
+
+* Terraform による AWS IaC 化
+* Cognito JWT 認証構成
+* OpenAPI ベース API 設計
+* Layered Architecture 採用
+* Repository Interface による DI 対応
+* Middleware Chain 導入
+* Docker ベース開発環境
+* Migration による DB schema 管理
+* Graceful Shutdown 実装
+* strict JSON decode による API 安全性向上
+
+---
+
+# 🔧 今後の改善点
+
+* JWT 検証本実装（JWKS / RS256）
+* Unit Test / Mock Repository
+* E2E テスト（Playwright）
+* OpenAPI 自動生成
+* タスク検索・フィルタリング
+* Redis cache
+* 非同期 Job Queue
+* ダークモード
+* 通知機能
+* Monitoring / Observability

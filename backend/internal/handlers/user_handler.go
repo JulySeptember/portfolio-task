@@ -1,65 +1,161 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
 
 	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/models"
+	"portfolio/backend/internal/repository"
 	"portfolio/backend/internal/service"
 )
 
-func DecodeCreateUser(w http.ResponseWriter, r *http.Request) (*models.User, int, error) {
+type UserHandler struct {
+	svc *service.UserService
+}
+
+func NewUserHandler(s *service.UserService) *UserHandler {
+	return &UserHandler{svc: s}
+}
+
+// =========================
+// Create
+// =========================
+
+func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
+
 	var req dto.CreateUserRequest
+
+	// JSON decode
 	if err := DecodeJSON(w, r, &req); err != nil {
-		return nil, http.StatusBadRequest, errors.New("invalid body")
-	}
-	if req.Email == "" {
-		return nil, http.StatusBadRequest, errors.New("email is required")
+		WriteError(w, 400, err.Error())
+		return
 	}
 
-	u := &models.User{
+	// validation
+	if errs := ValidateStruct(req); errs != nil {
+		WriteJSON(w, 400, map[string]interface{}{
+			"errors": errs,
+		})
+		return
+	}
+
+	user := &models.User{
 		Email:       req.Email,
 		DisplayName: req.DisplayName,
 	}
-	return u, 0, nil
+
+	res, err := h.svc.Create(r.Context(), user)
+	if err != nil {
+
+		switch err {
+
+		case repository.ErrDuplicateEmail:
+			WriteError(w, 409, "email already exists")
+			return
+
+		default:
+			WriteError(w, 500, "internal server error")
+			return
+		}
+	}
+
+	WriteJSON(w, 201, res)
 }
 
-func MergeUpdateUser(w http.ResponseWriter, r *http.Request, existing *models.User) (int, error) {
+// =========================
+// Get
+// =========================
+
+func (h *UserHandler) Get(w http.ResponseWriter, r *http.Request, id int64) {
+
+	res, err := h.svc.Get(r.Context(), id)
+	if err != nil {
+
+		switch err {
+
+		case repository.ErrUserNotFound:
+			WriteError(w, 404, "user not found")
+			return
+
+		default:
+			WriteError(w, 500, "internal server error")
+			return
+		}
+	}
+
+	WriteJSON(w, 200, res)
+}
+
+// =========================
+// Update
+// =========================
+
+func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request, id int64) {
+
 	var req dto.UpdateUserRequest
+
+	// JSON decode
 	if err := DecodeJSON(w, r, &req); err != nil {
-		return http.StatusBadRequest, errors.New("invalid body")
+		WriteError(w, 400, err.Error())
+		return
 	}
-	if req.DisplayName != "" {
-		existing.DisplayName = req.DisplayName
+
+	// validation
+	if errs := ValidateStruct(req); errs != nil {
+		WriteJSON(w, 400, map[string]interface{}{
+			"errors": errs,
+		})
+		return
 	}
-	return 0, nil
+
+	user := &models.User{
+		ID:          id,
+		Email:       req.Email,
+		DisplayName: req.DisplayName,
+	}
+
+	res, err := h.svc.Update(r.Context(), user)
+	if err != nil {
+
+		switch err {
+
+		case repository.ErrDuplicateEmail:
+			WriteError(w, 409, "email already exists")
+			return
+
+		case repository.ErrUserNotFound:
+			WriteError(w, 404, "user not found")
+			return
+
+		default:
+			WriteError(w, 500, "internal server error")
+			return
+		}
+	}
+
+	WriteJSON(w, 200, res)
 }
 
-func NewUserHandler(svc *service.UserService) *BaseHandler[models.User] {
-	return NewBaseHandlerWithDTO(svc, DecodeCreateUser, MergeUpdateUser)
-}
+// =========================
+// Delete
+// =========================
 
-type UserHandlerWrapper struct {
-	base *BaseHandler[models.User]
-}
+func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request, id int64) {
 
-func NewUserHandlerWrapper(svc *service.UserService) *UserHandlerWrapper {
-	return &UserHandlerWrapper{base: NewUserHandler(svc)}
-}
+	err := h.svc.Delete(r.Context(), id)
+	if err != nil {
 
-func (w *UserHandlerWrapper) Create(rw http.ResponseWriter, r *http.Request) {
-	w.base.Create(rw, r)
-}
-func (w *UserHandlerWrapper) List(rw http.ResponseWriter, r *http.Request) {
-	w.base.List(rw, r)
-}
-func (w *UserHandlerWrapper) Get(rw http.ResponseWriter, r *http.Request, id int64) {
-	w.base.Get(rw, r, id)
-}
-func (w *UserHandlerWrapper) HandleUpdate(rw http.ResponseWriter, r *http.Request, id int64) {
-	w.base.HandleUpdate(rw, r, id)
-}
-func (w *UserHandlerWrapper) Delete(rw http.ResponseWriter, r *http.Request, id int64) {
-	w.base.Delete(rw, r, id)
+		switch err {
+
+		case repository.ErrUserNotFound:
+			WriteError(w, 404, "user not found")
+			return
+
+		default:
+			WriteError(w, 500, "internal server error")
+			return
+		}
+	}
+
+	w.WriteHeader(204)
 }
