@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 
-	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/models"
 	"portfolio/backend/internal/repository"
 )
@@ -22,6 +21,25 @@ func NewTaskService(
 }
 
 // =========================
+// status validation
+// =========================
+
+func isValidTaskStatus(status string) bool {
+
+	switch status {
+
+	case models.TaskStatusTODO,
+		models.TaskStatusDOING,
+		models.TaskStatusDONE:
+
+		return true
+
+	default:
+		return false
+	}
+}
+
+// =========================
 // Create
 // =========================
 
@@ -32,6 +50,10 @@ func (s *TaskService) Create(
 
 	if t.UserID <= 0 {
 		return nil, ErrInvalidUserID
+	}
+
+	if !isValidTaskStatus(t.Status) {
+		return nil, ErrInvalidStatus
 	}
 
 	if err := s.repo.Create(ctx, t); err != nil {
@@ -70,6 +92,10 @@ func (s *TaskService) Update(
 		return nil, ErrInvalidID
 	}
 
+	if !isValidTaskStatus(t.Status) {
+		return nil, ErrInvalidStatus
+	}
+
 	if err := s.repo.Update(ctx, t); err != nil {
 		return nil, err
 	}
@@ -101,7 +127,7 @@ func (s *TaskService) ListWithUser(
 	ctx context.Context,
 	limit int,
 	offset int,
-) ([]dto.TaskWithUserResponse, error) {
+) ([]models.TaskWithUser, error) {
 
 	return s.repo.ListWithUser(
 		ctx,

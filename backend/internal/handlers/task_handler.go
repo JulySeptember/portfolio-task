@@ -29,7 +29,6 @@ func (h *TaskHandler) Create(
 
 	var req dto.CreateTaskRequest
 
-	// JSON decode
 	if err := DecodeJSON(w, r, &req); err != nil {
 
 		WriteError(
@@ -42,7 +41,6 @@ func (h *TaskHandler) Create(
 		return
 	}
 
-	// validation
 	if errs := ValidateStruct(req); errs != nil {
 
 		WriteValidationErrors(w, errs)
@@ -91,6 +89,17 @@ func (h *TaskHandler) Create(
 
 			return
 
+		case service.ErrInvalidStatus:
+
+			WriteError(
+				w,
+				http.StatusBadRequest,
+				apierrors.CodeValidationError,
+				"invalid status",
+			)
+
+			return
+
 		case repository.ErrForeignKeyViolation:
 
 			WriteError(
@@ -115,21 +124,10 @@ func (h *TaskHandler) Create(
 		}
 	}
 
-	response := dto.TaskResponse{
-		ID:          res.ID,
-		UserID:      res.UserID,
-		Title:       res.Title,
-		Description: res.Description,
-		Status:      res.Status,
-		DueDate:     res.DueDate,
-		CreatedAt:   res.CreatedAt,
-		UpdatedAt:   res.UpdatedAt,
-	}
-
 	WriteJSON(
 		w,
 		http.StatusCreated,
-		response,
+		dto.ToTaskResponse(res),
 	)
 }
 
@@ -187,21 +185,10 @@ func (h *TaskHandler) Get(
 		}
 	}
 
-	response := dto.TaskResponse{
-		ID:          res.ID,
-		UserID:      res.UserID,
-		Title:       res.Title,
-		Description: res.Description,
-		Status:      res.Status,
-		DueDate:     res.DueDate,
-		CreatedAt:   res.CreatedAt,
-		UpdatedAt:   res.UpdatedAt,
-	}
-
 	WriteJSON(
 		w,
 		http.StatusOK,
-		response,
+		dto.ToTaskResponse(res),
 	)
 }
 
@@ -277,6 +264,17 @@ func (h *TaskHandler) Update(
 
 			return
 
+		case service.ErrInvalidStatus:
+
+			WriteError(
+				w,
+				http.StatusBadRequest,
+				apierrors.CodeValidationError,
+				"invalid status",
+			)
+
+			return
+
 		case repository.ErrTaskNotFound:
 
 			WriteError(
@@ -301,21 +299,10 @@ func (h *TaskHandler) Update(
 		}
 	}
 
-	response := dto.TaskResponse{
-		ID:          res.ID,
-		UserID:      res.UserID,
-		Title:       res.Title,
-		Description: res.Description,
-		Status:      res.Status,
-		DueDate:     res.DueDate,
-		CreatedAt:   res.CreatedAt,
-		UpdatedAt:   res.UpdatedAt,
-	}
-
 	WriteJSON(
 		w,
 		http.StatusOK,
-		response,
+		dto.ToTaskResponse(res),
 	)
 }
 
@@ -425,12 +412,25 @@ func (h *TaskHandler) ListWithUser(
 		return
 	}
 
+	items := make(
+		[]dto.TaskWithUserResponse,
+		0,
+		len(res),
+	)
+
+	for _, t := range res {
+		items = append(
+			items,
+			dto.ToTaskWithUserResponse(t),
+		)
+	}
+
 	WriteJSON(
 		w,
 		http.StatusOK,
 		dto.TaskListResponse{
-			Count:  len(res),
-			Items:  res,
+			Count:  len(items),
+			Items:  items,
 			Limit:  limit,
 			Offset: offset,
 		},

@@ -57,37 +57,16 @@ func NewRouter(
 		}
 	})
 
-	mux.HandleFunc("/api/v1/users/", func(w http.ResponseWriter, r *http.Request) {
-
-		id, ok := handlers.ParseID(r)
-
-		if !ok {
-
-			handlers.WriteError(
-				w,
-				http.StatusBadRequest,
-				apierrors.CodeInvalidID,
-				"invalid id",
-			)
-
-			return
-		}
-
-		switch r.Method {
-
-		case http.MethodGet:
-			userHandler.Get(w, r, id)
-
-		case http.MethodPut:
-			userHandler.Update(w, r, id)
-
-		case http.MethodDelete:
-			userHandler.Delete(w, r, id)
-
-		default:
-			methodNotAllowed(w)
-		}
-	})
+	RegisterIDRoutes(
+		mux,
+		"/api/v1/users/",
+		"users",
+		IDHandler{
+			Get:    userHandler.Get,
+			Update: userHandler.Update,
+			Delete: userHandler.Delete,
+		},
+	)
 
 	// =========================
 	// tasks
@@ -108,37 +87,16 @@ func NewRouter(
 		}
 	})
 
-	mux.HandleFunc("/api/v1/tasks/", func(w http.ResponseWriter, r *http.Request) {
-
-		id, ok := handlers.ParseID(r)
-
-		if !ok {
-
-			handlers.WriteError(
-				w,
-				http.StatusBadRequest,
-				apierrors.CodeInvalidID,
-				"invalid id",
-			)
-
-			return
-		}
-
-		switch r.Method {
-
-		case http.MethodGet:
-			taskHandler.Get(w, r, id)
-
-		case http.MethodPut:
-			taskHandler.Update(w, r, id)
-
-		case http.MethodDelete:
-			taskHandler.Delete(w, r, id)
-
-		default:
-			methodNotAllowed(w)
-		}
-	})
+	RegisterIDRoutes(
+		mux,
+		"/api/v1/tasks/",
+		"tasks",
+		IDHandler{
+			Get:    taskHandler.Get,
+			Update: taskHandler.Update,
+			Delete: taskHandler.Delete,
+		},
+	)
 
 	return mux
 }

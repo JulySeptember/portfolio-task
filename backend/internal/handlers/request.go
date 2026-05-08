@@ -35,19 +35,31 @@ func ParseIntOrDefault(
 // ParseID extracts ID from URL path.
 // example:
 // /users/123
-func ParseID(r *http.Request) (int64, bool) {
+func ParseID(
+	r *http.Request,
+	resource string,
+) (int64, bool) {
 
 	parts := strings.Split(
 		strings.Trim(r.URL.Path, "/"),
 		"/",
 	)
 
-	if len(parts) == 0 {
+	// expected:
+	// api/v1/users/123
+	if len(parts) != 4 {
+		return 0, false
+	}
+
+	if parts[0] != "api" ||
+		parts[1] != "v1" ||
+		parts[2] != resource {
+
 		return 0, false
 	}
 
 	id, err := strconv.ParseInt(
-		parts[len(parts)-1],
+		parts[3],
 		10,
 		64,
 	)

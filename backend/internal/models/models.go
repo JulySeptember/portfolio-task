@@ -2,7 +2,20 @@ package models
 
 import "time"
 
-// User は usersテーブルの構造体
+// =========================
+// task status
+// =========================
+
+const (
+	TaskStatusTODO  = "TODO"
+	TaskStatusDOING = "DOING"
+	TaskStatusDONE  = "DONE"
+)
+
+// =========================
+// User
+// =========================
+
 type User struct {
 	ID          int64     `json:"id"`
 	Email       string    `json:"email"`
@@ -11,7 +24,10 @@ type User struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-// Task は tasksテーブルの構造体
+// =========================
+// Task
+// =========================
+
 type Task struct {
 	ID          int64      `json:"id"`
 	UserID      int64      `json:"user_id"`
@@ -21,4 +37,16 @@ type Task struct {
 	DueDate     *time.Time `json:"due_date"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+// =========================
+// TaskWithUser
+// =========================
+
+type TaskWithUser struct {
+	TaskID    int64
+	Title     string
+	Status    string
+	UserID    int64
+	UserEmail string
 }
