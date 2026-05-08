@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"time"
 
 	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/models"
@@ -34,23 +33,14 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	// validation
 	if errs := ValidateStruct(req); errs != nil {
-		WriteJSON(w, 400, map[string]interface{}{
-			"errors": errs,
-		})
+		WriteValidationErrors(w, errs)
 		return
 	}
 
-	var dueDate *time.Time
-
-	if req.DueDate != "" {
-
-		t, err := time.Parse(time.RFC3339, req.DueDate)
-		if err != nil {
-			WriteError(w, 400, "invalid due_date format")
-			return
-		}
-
-		dueDate = &t
+	dueDate, err := ParseOptionalTime(req.DueDate)
+	if err != nil {
+		WriteError(w, 400, "invalid due_date format")
+		return
 	}
 
 	task := &models.Task{
@@ -119,23 +109,13 @@ func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request, id int64) {
 
 	// validation
 	if errs := ValidateStruct(req); errs != nil {
-		WriteJSON(w, 400, map[string]interface{}{
-			"errors": errs,
-		})
+		WriteValidationErrors(w, errs)
 		return
 	}
-
-	var dueDate *time.Time
-
-	if req.DueDate != "" {
-
-		t, err := time.Parse(time.RFC3339, req.DueDate)
-		if err != nil {
-			WriteError(w, 400, "invalid due_date format")
-			return
-		}
-
-		dueDate = &t
+	dueDate, err := ParseOptionalTime(req.DueDate)
+	if err != nil {
+		WriteError(w, 400, "invalid due_date format")
+		return
 	}
 
 	task := &models.Task{

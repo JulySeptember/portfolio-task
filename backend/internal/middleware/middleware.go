@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"portfolio/backend/internal/handlers"
 	"strings"
 	"time"
 )
@@ -101,10 +102,10 @@ func Recovery(next http.Handler) http.Handler {
 					err,
 				)
 
-				http.Error(
+				handlers.WriteError(
 					w,
-					"internal server error",
 					http.StatusInternalServerError,
+					"internal server error",
 				)
 			}
 		}()

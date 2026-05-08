@@ -21,10 +21,10 @@ func NewRouter(
 
 	methodNotAllowed := func(w http.ResponseWriter) {
 
-		http.Error(
+		handlers.WriteError(
 			w,
-			"method not allowed",
 			http.StatusMethodNotAllowed,
+			"method not allowed",
 		)
 	}
 
@@ -61,16 +61,16 @@ func NewRouter(
 		}
 	})
 
-	// GET/PATCH/DELETE /api/v1/users/{id}
+	// GET/PUT/DELETE /api/v1/users/{id}
 	mux.HandleFunc("/api/v1/users/", func(w http.ResponseWriter, r *http.Request) {
 
 		id, ok := handlers.ParseID(r)
 		if !ok {
 
-			http.Error(
+			handlers.WriteError(
 				w,
-				"invalid id",
 				http.StatusBadRequest,
+				"invalid id",
 			)
 
 			return
@@ -113,18 +113,17 @@ func NewRouter(
 		}
 	})
 
-	// GET/PATCH/DELETE /api/v1/tasks/{id}
+	// GET/PUT/DELETE /api/v1/tasks/{id}
 	mux.HandleFunc("/api/v1/tasks/", func(w http.ResponseWriter, r *http.Request) {
 
 		id, ok := handlers.ParseID(r)
 		if !ok {
 
-			http.Error(
+			handlers.WriteError(
 				w,
-				"invalid id",
 				http.StatusBadRequest,
+				"invalid id",
 			)
-
 			return
 		}
 

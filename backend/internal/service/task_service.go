@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"portfolio/backend/internal/models"
 	"portfolio/backend/internal/repository"
@@ -25,18 +24,13 @@ func NewTaskService(
 // Create
 // =========================
 
-func (s *TaskService) Create(ctx context.Context, t *models.Task) (*models.Task, error) {
+func (s *TaskService) Create(
+	ctx context.Context,
+	t *models.Task,
+) (*models.Task, error) {
 
 	if t.UserID <= 0 {
 		return nil, errors.New("invalid user_id")
-	}
-
-	if strings.TrimSpace(t.Title) == "" {
-		return nil, errors.New("title is required")
-	}
-
-	if !isValidStatus(t.Status) {
-		return nil, errors.New("invalid status")
 	}
 
 	if err := s.repo.Create(ctx, t); err != nil {
@@ -50,7 +44,10 @@ func (s *TaskService) Create(ctx context.Context, t *models.Task) (*models.Task,
 // Get
 // =========================
 
-func (s *TaskService) Get(ctx context.Context, id int64) (*models.Task, error) {
+func (s *TaskService) Get(
+	ctx context.Context,
+	id int64,
+) (*models.Task, error) {
 
 	if id <= 0 {
 		return nil, errors.New("invalid id")
@@ -63,18 +60,13 @@ func (s *TaskService) Get(ctx context.Context, id int64) (*models.Task, error) {
 // Update
 // =========================
 
-func (s *TaskService) Update(ctx context.Context, t *models.Task) (*models.Task, error) {
+func (s *TaskService) Update(
+	ctx context.Context,
+	t *models.Task,
+) (*models.Task, error) {
 
 	if t.ID <= 0 {
 		return nil, errors.New("invalid id")
-	}
-
-	if strings.TrimSpace(t.Title) == "" {
-		return nil, errors.New("title is required")
-	}
-
-	if !isValidStatus(t.Status) {
-		return nil, errors.New("invalid status")
 	}
 
 	if err := s.repo.Update(ctx, t); err != nil {
@@ -88,7 +80,10 @@ func (s *TaskService) Update(ctx context.Context, t *models.Task) (*models.Task,
 // Delete
 // =========================
 
-func (s *TaskService) Delete(ctx context.Context, id int64) error {
+func (s *TaskService) Delete(
+	ctx context.Context,
+	id int64,
+) error {
 
 	if id <= 0 {
 		return errors.New("invalid id")
@@ -112,18 +107,4 @@ func (s *TaskService) ListWithUser(
 		limit,
 		offset,
 	)
-}
-
-// =========================
-// status validation
-// =========================
-
-func isValidStatus(status string) bool {
-
-	switch status {
-	case "TODO", "DOING", "DONE":
-		return true
-	default:
-		return false
-	}
 }

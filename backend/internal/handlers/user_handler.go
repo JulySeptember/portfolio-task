@@ -33,12 +33,9 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	// validation
 	if errs := ValidateStruct(req); errs != nil {
-		WriteJSON(w, 400, map[string]interface{}{
-			"errors": errs,
-		})
+		WriteValidationErrors(w, errs)
 		return
 	}
-
 	user := &models.User{
 		Email:       req.Email,
 		DisplayName: req.DisplayName,
@@ -102,9 +99,7 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request, id int64) {
 
 	// validation
 	if errs := ValidateStruct(req); errs != nil {
-		WriteJSON(w, 400, map[string]interface{}{
-			"errors": errs,
-		})
+		WriteValidationErrors(w, errs)
 		return
 	}
 

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"portfolio/backend/internal/models"
 	"portfolio/backend/internal/repository"
@@ -25,27 +24,15 @@ func NewUserService(
 // Create
 // =========================
 
-func (s *UserService) Create(ctx context.Context, u *models.User) (*models.User, error) {
+func (s *UserService) Create(
+	ctx context.Context,
+	u *models.User,
+) (*models.User, error) {
 
-	// validation
-	if strings.TrimSpace(u.Email) == "" {
-		return nil, errors.New("email is required")
-	}
-
-	if !strings.Contains(u.Email, "@") {
-		return nil, errors.New("invalid email")
-	}
-
-	if strings.TrimSpace(u.DisplayName) == "" {
-		return nil, errors.New("display_name is required")
-	}
-
-	// create
 	if err := s.repo.Create(ctx, u); err != nil {
 		return nil, err
 	}
 
-	// DBから完全データ取得
 	return s.repo.Get(ctx, u.ID)
 }
 
@@ -53,7 +40,10 @@ func (s *UserService) Create(ctx context.Context, u *models.User) (*models.User,
 // Get
 // =========================
 
-func (s *UserService) Get(ctx context.Context, id int64) (*models.User, error) {
+func (s *UserService) Get(
+	ctx context.Context,
+	id int64,
+) (*models.User, error) {
 
 	if id <= 0 {
 		return nil, errors.New("invalid id")
@@ -66,22 +56,13 @@ func (s *UserService) Get(ctx context.Context, id int64) (*models.User, error) {
 // Update
 // =========================
 
-func (s *UserService) Update(ctx context.Context, u *models.User) (*models.User, error) {
+func (s *UserService) Update(
+	ctx context.Context,
+	u *models.User,
+) (*models.User, error) {
 
 	if u.ID <= 0 {
 		return nil, errors.New("invalid id")
-	}
-
-	if strings.TrimSpace(u.Email) == "" {
-		return nil, errors.New("email is required")
-	}
-
-	if !strings.Contains(u.Email, "@") {
-		return nil, errors.New("invalid email")
-	}
-
-	if strings.TrimSpace(u.DisplayName) == "" {
-		return nil, errors.New("display_name is required")
 	}
 
 	if err := s.repo.Update(ctx, u); err != nil {
@@ -95,7 +76,10 @@ func (s *UserService) Update(ctx context.Context, u *models.User) (*models.User,
 // Delete
 // =========================
 
-func (s *UserService) Delete(ctx context.Context, id int64) error {
+func (s *UserService) Delete(
+	ctx context.Context,
+	id int64,
+) error {
 
 	if id <= 0 {
 		return errors.New("invalid id")
