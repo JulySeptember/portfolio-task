@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 
 	"portfolio/backend/internal/models"
 	"portfolio/backend/internal/repository"
@@ -15,6 +14,7 @@ type UserService struct {
 func NewUserService(
 	r repository.UserRepositoryInterface,
 ) *UserService {
+
 	return &UserService{
 		repo: r,
 	}
@@ -46,7 +46,7 @@ func (s *UserService) Get(
 ) (*models.User, error) {
 
 	if id <= 0 {
-		return nil, errors.New("invalid id")
+		return nil, ErrInvalidID
 	}
 
 	return s.repo.Get(ctx, id)
@@ -62,7 +62,7 @@ func (s *UserService) Update(
 ) (*models.User, error) {
 
 	if u.ID <= 0 {
-		return nil, errors.New("invalid id")
+		return nil, ErrInvalidID
 	}
 
 	if err := s.repo.Update(ctx, u); err != nil {
@@ -82,7 +82,7 @@ func (s *UserService) Delete(
 ) error {
 
 	if id <= 0 {
-		return errors.New("invalid id")
+		return ErrInvalidID
 	}
 
 	return s.repo.Delete(ctx, id)

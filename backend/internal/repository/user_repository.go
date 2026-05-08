@@ -122,7 +122,7 @@ func (r *UserRepository) Get(
 	if err != nil {
 
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, ErrUserNotFound
 		}
 
 		return nil, err
@@ -178,7 +178,7 @@ func (r *UserRepository) Update(
 	}
 
 	if affected == 0 {
-		return ErrNotFound
+		return ErrUserNotFound
 	}
 
 	return nil
@@ -214,7 +214,7 @@ func (r *UserRepository) Delete(
 	}
 
 	if affected == 0 {
-		return ErrNotFound
+		return ErrUserNotFound
 	}
 
 	return nil
