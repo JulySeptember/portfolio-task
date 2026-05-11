@@ -175,9 +175,10 @@ func DecodeJSON(
 	}
 
 	// prevent multiple JSON objects
-	if dec.More() {
+	if err := dec.Decode(&struct{}{}); err != io.EOF {
+
 		return fmt.Errorf(
-			"multiple JSON objects in body",
+			"body must contain only one JSON object",
 		)
 	}
 

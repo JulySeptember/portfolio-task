@@ -23,94 +23,85 @@ import (
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
 )
 
-// ----------------------------
-// globals (lambda warm start)
-// ----------------------------
-
 var (
 	globalDB      *sql.DB
 	globalApp     *App
 	globalHandler *httpadapter.HandlerAdapter
 )
 
-// ----------------------------
-// App
-// ----------------------------
-
 type App struct {
 	DB   *sql.DB
 	HTTP http.Handler
 }
 
-// ----------------------------
-// NewApp
-// ----------------------------
-
 func NewApp(db *sql.DB) *App {
 
-	// =========================
-	// Repository
-	// =========================
+	// repository
 
 	userRepo := repository.NewUserRepository(db)
 	taskRepo := repository.NewTaskRepository(db)
 
-	// =========================
-	// Service
-	// =========================
+	// service
 
 	userSvc := service.NewUserService(userRepo)
 	taskSvc := service.NewTaskService(taskRepo)
 
-	// =========================
-	// Handler
-	// =========================
+	// handler
 
 	userHandler := handlers.NewUserHandler(userSvc)
 	taskHandler := handlers.NewTaskHandler(taskSvc)
 
-	// =========================
-	// API Router
-	// =========================
+	// api router
 
 	apiRouter := router.NewRouter(
 		userHandler,
 		taskHandler,
 	)
 
-	// JWT only for API
+	// protected api
+
 	apiHandler := middleware.Chain(
 		apiRouter,
 		middleware.JWT,
 	)
 
-	// =========================
-	// Swagger
-	// =========================
-
-	swaggerHandler := swagger.Handler()
-
-	// =========================
-	// Root mux
-	// =========================
+	// root mux
 
 	mux := http.NewServeMux()
 
-	mux.Handle("/api/v1/", apiHandler)
+	// health
 
-	mux.Handle(
+	mux.HandleFunc(
+		"/health",
+		func(
+			w http.ResponseWriter,
+			r *http.Request,
+		) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("ok"))
+		},
+	)
+
+	// swagger
+
+	mux.HandleFunc(
 		"/api/v1/docs/",
-		swaggerHandler,
+		swagger.DocsHandler,
 	)
+
+	mux.HandleFunc(
+		"/api/v1/spec/swagger.yml",
+		swagger.SpecHandler,
+	)
+
+	// api
 
 	mux.Handle(
-		"/api/v1/spec/",
-		swaggerHandler,
+		"/api/v1/",
+		apiHandler,
 	)
 
-	// =========================
-	// Global middleware
-	// =========================
+	// middleware
 
 	handler := middleware.Chain(
 		mux,
@@ -125,17 +116,12 @@ func NewApp(db *sql.DB) *App {
 	}
 }
 
-// ----------------------------
-// lambda handler
-// ----------------------------
-
 func lambdaHandler() *httpadapter.HandlerAdapter {
 
 	if globalHandler != nil {
 		return globalHandler
 	}
 
-	// DB init
 	if globalDB == nil {
 
 		db, err := config.ConnectDBFromEnv()
@@ -146,10 +132,8 @@ func lambdaHandler() *httpadapter.HandlerAdapter {
 		globalDB = db
 	}
 
-	// App init
 	globalApp = NewApp(globalDB)
 
-	// Lambda adapter
 	globalHandler = httpadapter.New(
 		globalApp.HTTP,
 	)
@@ -157,15 +141,9 @@ func lambdaHandler() *httpadapter.HandlerAdapter {
 	return globalHandler
 }
 
-// ----------------------------
-// main
-// ----------------------------
-
 func main() {
 
-	// =========================
-	// local mode
-	// =========================
+	// local
 
 	if os.Getenv("RUN_MODE") == "local" {
 
@@ -183,9 +161,7 @@ func main() {
 		return
 	}
 
-	// =========================
-	// lambda mode
-	// =========================
+	// lambda
 
 	lambda.Start(
 		func(
@@ -202,10 +178,6 @@ func main() {
 	)
 }
 
-// ----------------------------
-// local server
-// ----------------------------
-
 func runLocal(app *App) {
 
 	port := os.Getenv("PORT")
@@ -219,8 +191,6 @@ func runLocal(app *App) {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 15 * time.Second,
 	}
-
-	// graceful shutdown
 
 	idleConnsClosed := make(chan struct{})
 
@@ -253,15 +223,15 @@ func runLocal(app *App) {
 			)
 		}
 
-		if globalDB != nil {
-			globalDB.Close()
+		if app.DB != nil {
+			app.DB.Close()
 		}
 
 		close(idleConnsClosed)
 	}()
 
 	log.Printf(
-		"server started :%s",
+		"server started on :%s",
 		port,
 	)
 
