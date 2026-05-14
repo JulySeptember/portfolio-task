@@ -11,8 +11,22 @@ import (
 
 func isLocalDevAuthEnabled() bool {
 
-	return os.Getenv("RUN_MODE") == "local" &&
-		os.Getenv("AUTH_MODE") == "dev"
+	// local only
+	if os.Getenv("RUN_MODE") != "local" {
+		return false
+	}
+
+	// explicit opt-in
+	if os.Getenv("ENABLE_DEV_AUTH_BYPASS") != "true" {
+		return false
+	}
+
+	// safety: never allow in production env
+	if os.Getenv("APP_ENV") == "production" {
+		return false
+	}
+
+	return true
 }
 
 func handleLocalDevAuth(
