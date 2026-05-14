@@ -8,6 +8,17 @@ import (
 	"net/http"
 )
 
+// =========================
+// Embed static assets
+// =========================
+//
+// swagger.yml
+// template/index.html.tmpl
+//
+// をバイナリへ埋め込む
+// Lambda deploy 時も単一バイナリで完結
+// =========================
+
 //go:embed swagger.yml template/*
 var StaticAssets embed.FS
 
@@ -16,12 +27,18 @@ type config struct {
 	DomID     string
 }
 
+// =========================
+// Load swagger.yml
+// =========================
+
 func SwaggerYAML() []byte {
 
 	data, err := StaticAssets.ReadFile(
 		"swagger.yml",
 	)
+
 	if err != nil {
+
 		panic(
 			fmt.Errorf(
 				"failed to read swagger.yml: %w",
@@ -33,16 +50,22 @@ func SwaggerYAML() []byte {
 	return data
 }
 
+// =========================
+// Render Swagger UI HTML
+// =========================
+
 func IndexHTML() []byte {
 
 	t, err := template.ParseFS(
 		StaticAssets,
 		"template/index.html.tmpl",
 	)
+
 	if err != nil {
+
 		panic(
 			fmt.Errorf(
-				"failed to parse template: %w",
+				"failed to parse swagger template: %w",
 				err,
 			),
 		)
@@ -62,7 +85,7 @@ func IndexHTML() []byte {
 
 		panic(
 			fmt.Errorf(
-				"failed to execute template: %w",
+				"failed to execute swagger template: %w",
 				err,
 			),
 		)
@@ -70,6 +93,10 @@ func IndexHTML() []byte {
 
 	return buf.Bytes()
 }
+
+// =========================
+// Swagger UI Handler
+// =========================
 
 func DocsHandler(
 	w http.ResponseWriter,
@@ -81,8 +108,16 @@ func DocsHandler(
 		"text/html; charset=utf-8",
 	)
 
-	w.Write(IndexHTML())
+	w.WriteHeader(http.StatusOK)
+
+	_, _ = w.Write(
+		IndexHTML(),
+	)
 }
+
+// =========================
+// OpenAPI YAML Handler
+// =========================
 
 func SpecHandler(
 	w http.ResponseWriter,
@@ -94,5 +129,9 @@ func SpecHandler(
 		"application/yaml",
 	)
 
-	w.Write(SwaggerYAML())
+	w.WriteHeader(http.StatusOK)
+
+	_, _ = w.Write(
+		SwaggerYAML(),
+	)
 }

@@ -3,7 +3,6 @@ package router
 import (
 	"net/http"
 
-	"portfolio/backend/internal/apierrors"
 	"portfolio/backend/internal/handlers"
 )
 
@@ -14,88 +13,52 @@ func NewRouter(
 
 	mux := http.NewServeMux()
 
-	methodNotAllowed := func(w http.ResponseWriter) {
-
-		handlers.WriteError(
-			w,
-			http.StatusMethodNotAllowed,
-			apierrors.CodeMethodNotAllowed,
-			"method not allowed",
-		)
-	}
-
 	// =========================
-	// health check
+	// USER
 	// =========================
 
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(
+		"GET /api/v1/users/me",
+		userHandler.Me,
+	)
 
-		if r.Method != http.MethodGet {
-
-			methodNotAllowed(w)
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-
-		_, _ = w.Write([]byte("ok"))
-	})
-
-	// =========================
-	// users
-	// =========================
-
-	mux.HandleFunc("/api/v1/users", func(w http.ResponseWriter, r *http.Request) {
-
-		switch r.Method {
-
-		case http.MethodPost:
-			userHandler.Create(w, r)
-
-		default:
-			methodNotAllowed(w)
-		}
-	})
-
-	RegisterIDRoutes(
-		mux,
-		"/api/v1/users/",
-		"users",
-		IDHandler{
-			Get:    userHandler.Get,
-			Update: userHandler.Update,
-			Delete: userHandler.Delete,
-		},
+	mux.HandleFunc(
+		"DELETE /api/v1/users/me",
+		userHandler.Delete,
 	)
 
 	// =========================
-	// tasks
+	// TASKS
 	// =========================
 
-	mux.HandleFunc("/api/v1/tasks", func(w http.ResponseWriter, r *http.Request) {
+	// list my tasks
+	mux.HandleFunc(
+		"GET /api/v1/tasks",
+		taskHandler.List,
+	)
 
-		switch r.Method {
+	// create task
+	mux.HandleFunc(
+		"POST /api/v1/tasks",
+		taskHandler.Create,
+	)
 
-		case http.MethodGet:
-			taskHandler.ListWithUser(w, r)
+	// get task
+	mux.HandleFunc(
+		"GET /api/v1/tasks/{id}",
+		taskHandler.Get,
+	)
 
-		case http.MethodPost:
-			taskHandler.Create(w, r)
+	// update task
+	mux.HandleFunc(
+		"PUT /api/v1/tasks/{id}",
+		taskHandler.Update,
+	)
 
-		default:
-			methodNotAllowed(w)
-		}
-	})
-
-	RegisterIDRoutes(
-		mux,
-		"/api/v1/tasks/",
-		"tasks",
-		IDHandler{
-			Get:    taskHandler.Get,
-			Update: taskHandler.Update,
-			Delete: taskHandler.Delete,
-		},
+	// delete task
+	mux.HandleFunc(
+		"DELETE /api/v1/tasks/{id}",
+		taskHandler.Delete,
 	)
 
 	return mux

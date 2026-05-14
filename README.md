@@ -1,306 +1,255 @@
-# 📌 タスク管理アプリ（ポートフォリオ）
+# 📌 タスク管理アプリ（Portfolio）
 
-このプロジェクトは Next.js × Go × AWS × Terraform × RDS(MySQL) を用いて構築した、
-フルスタック構成のタスク管理 Web アプリです。
+Next.js × Go × AWS × Terraform × MySQL を用いたフルスタックWebアプリです。
 
-フロントエンド・バックエンド・インフラをすべて自前で設計・実装し、
-AWS 上で本番運用可能な構成を Terraform により IaC 化しています。
-
-また、Go バックエンドでは layered architecture を採用し、
-
-* Handler
-* Service
-* Repository
-
-を分離することで責務分離・保守性・テスタビリティを意識した設計を行っています。
+単なるCRUDではなく、**実務レベルの設計思想（認証・マルチテナント・レイヤード構造・IaC）**を意識して構築しています。
 
 ---
 
-# 🏗 アーキテクチャ図
-
-<img src="./docs/architecture.png" width="600">
-
----
-
-# 🗄 ER 図
-
-<img src="./docs/erd.png" width="450">
+## アーキテクチャ図 & ER 図
+<img src="./docs/architecture_and_erd_v1.png" width="500">
 
 ---
 
-# 🟦 技術スタック（Tech Stack）
+# 🌐 システム構成
 
-## フロントエンド
-
-* Next.js（App Router）
-* TypeScript
-* React
-* Tailwind CSS
-
-## バックエンド
-
-* Go（標準ライブラリ中心）
-* AWS Lambda（Go Runtime）
-* API Gateway（HTTP API）
-* Swagger（OpenAPI）
-
-## インフラ（AWS）
-
-* VPC
-* RDS for MySQL
-* Lambda（VPC 内接続）
-* API Gateway
-* Cognito
-* S3
-* CloudFront
-* IAM
-* Terraform（IaC）
-
-## その他
-
-* Docker
-* Git / GitHub
-* GitHub Actions（CI/CD）
+- Frontend: Next.js（S3 + CloudFront）
+- Backend: Go（AWS Lambda）
+- API Gateway（HTTP API）
+- Database: RDS MySQL（Private Subnet）
+- Auth: AWS Cognito（JWT / RS256）
 
 ---
 
-# 🟩 アプリ概要
+# 🏗 アーキテクチャ
+
+Client
+  ↓
+CloudFront
+  ↓
+API Gateway
+  ↓
+Lambda（Go）
+  ↓
+Service → Repository → MySQL
+
+---
+
+# 🧠 アーキテクチャ設計思想
+
+- レイヤードアーキテクチャ採用
+- Handler / Service / Repository 分離
+- DI（Interface）による依存逆転
+- AWSサーバレス前提設計
+- テスト容易性を重視した構造
+
+---
+
+# 🔐 認証設計
+
+- AWS Cognitoを利用
+- JWT（ID Token）による認証
+- RS256 + JWKS検証
+- Middlewareで認証処理を一元化
+
+### 認証フロー
+
+1. Cognitoでログイン
+2. ID Token取得
+3. APIリクエストにBearer付与
+4. LambdaでJWT検証
+5. usersテーブルへ自動同期（Ensure）
+
+---
+
+# 👤 ユーザー管理
+
+本システムは**ユーザー作成APIを持たない設計**です。
+
+ログイン時に自動でユーザーが作成されます。
+
+### Ensure方式
+
+- Cognito sub（auth_user_id）をキーに管理
+- 初回ログイン時にINSERT
+- 既存ユーザーはUPSERTで更新
+
+👉 ユーザー登録 = ログイン処理
+
+---
+
+# 📝 タスク管理機能
+
+本アプリの中核機能であり、
+ユーザーごとにタスクを完全分離して管理します（マルチテナント設計）。
+
+---
 
 ## 機能一覧
 
-### 認証
-
-* Cognito 認証
-* JWT 認証 Middleware
-
-### タスク管理
-
-* タスク CRUD
-* ステータス管理（TODO / DOING / DONE）
-* ユーザーごとのタスク管理
-* ページネーション対応
-
-### API
-
-* REST API
-* OpenAPI / Swagger ドキュメント
-* DTO ベースの Request 管理
-* strict JSON decode
-* validation 対応
+### ■ タスク作成（Create）
+- タイトル / 説明 / ステータス / 期限を登録
+- user_idは認証コンテキストから自動付与
 
 ---
 
-# 🟧 AWS アーキテクチャ
-
-```text
-Next.js (S3 + CloudFront)
-        ↓
-API Gateway（JWT 認証）
-        ↓
-Lambda（Go）
-        ↓
-RDS MySQL（Private Subnet）
-```
+### ■ タスク一覧取得（List）
+- 自分のタスクのみ取得
+- ページネーション対応（limit / offset）
+- created_at降順
 
 ---
 
-# 🔐 セキュアな構成
-
-RDS を安全に利用するため、以下の構成を採用しています。
-
-* VPC（/16）
-* パブリックサブネット × 2
-* プライベートサブネット × 2（RDS 用）
-* Internet Gateway
-* Security Group
-* Lambda → RDS のみ接続許可
-* RDS は Private Subnet に配置
+### ■ タスク詳細取得（Get）
+- task_id + user_idで取得
+- 他ユーザーのデータはアクセス不可
 
 ---
 
-# 🟨 バックエンド設計
-
-バックエンドは layered architecture を採用しています。
-
-```text
-Handler
-  ↓
-Service
-  ↓
-Repository
-  ↓
-MySQL
-```
-
-## 設計で意識した点
-
-* 責務分離
-* DTO による API 入出力分離
-* Repository Interface による DI 対応
-* strict JSON decode
-* Middleware Chain
-* Graceful Shutdown
-* DB Connection Pool 最適化
+### ■ タスク更新（Update）
+- タイトル / 説明 / ステータス / 期限更新
+- 所有者チェックあり（user_id制御）
 
 ---
 
-# 📂 リポジトリ構成
-
-```text
-portfolio/
-├── frontend/
-├── backend/
-├── infra/
-├── docs/
-└── scripts/
-```
+### ■ タスク削除（Delete）
+- 物理削除
+- user_idによる厳密制御
 
 ---
 
-# 🗄 DB 設計（Database Design）
-
-RDS MySQL を利用し、
-データ整合性・検索性能を意識したテーブル設計を行っています。
-
-## 設計で意識した点
-
-* users.email に UNIQUE 制約を設定
-* tasks.user_id に外部キー制約を設定
-* ON DELETE CASCADE による整合性維持
-* tasks.status に INDEX を付与
-* tasks.user_id に INDEX を付与
-* ENUM による status 制御
-* created_at / updated_at の DB 自動管理
+### ■ ステータス管理
+- TODO / DOING / DONE
+- シンプルな3状態管理で進捗を可視化
 
 ---
 
-# 🧩 Migration 管理
+## 技術的ポイント
 
-DB schema は migration SQL により管理しています。
-
-```text
-backend/
-└── migrations/
-    ├── 001_create_users.up.sql
-    ├── 001_create_users.down.sql
-    ├── 002_create_tasks.up.sql
-    └── 002_create_tasks.down.sql
-```
+- RepositoryパターンでDB層を分離
+- Service層でビジネスロジック制御
+- SQLレベルで user_id 制約を強制
+- マルチテナント設計
 
 ---
 
-# 📚 Swagger / OpenAPI
+# 🗄 データベース設計
 
-Swagger UI:
+## users
 
-```text
+- id (PK)
+- auth_user_id (Cognito sub)
+- email
+- created_at
+- updated_at
+
+## tasks
+
+- id (PK)
+- user_id (FK)
+- title
+- description
+- status
+- due_date
+- created_at
+- updated_at
+
+---
+
+# 📊 インデックス設計
+
+CREATE INDEX idx_tasks_user_id ON tasks(user_id);
+CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE INDEX idx_tasks_user_status ON tasks(user_id, status);
+CREATE INDEX idx_tasks_user_created_at ON tasks(user_id, created_at DESC, id DESC);
+
+---
+
+# 🔌 Middleware構成
+
+- CORS
+- Recovery（panic制御）
+- Logging（リクエスト追跡）
+- Auth（JWT検証 + ユーザー同期）
+
+実行順：
+
+CORS → Recovery → Logging → Auth → Router
+
+---
+
+# 📡 API一覧
+
+## Users
+
+- GET /api/v1/users/me
+- DELETE /api/v1/users/me
+
+## Tasks
+
+- GET /api/v1/tasks
+- POST /api/v1/tasks
+- GET /api/v1/tasks/{id}
+- PUT /api/v1/tasks/{id}
+- DELETE /api/v1/tasks/{id}
+
+---
+
+# 📄 API仕様（Swagger / OpenAPI）
+
+本プロジェクトではAPI仕様管理に **Swagger（OpenAPI 3.0）** を採用しています。
+
+## 🌐 Swagger UI
+
 http://localhost:8080/api/v1/docs/
-```
 
-OpenAPI schema:
 
-```text
-backend/swagger/swagger.yml
-```
+# 🔒 セキュリティ設計
+
+- RDSはPrivate Subnet配置
+- Lambdaのみアクセス許可
+- IAM最小権限
+- JWT検証（RS256 + JWKS）
+- request size制限（1MB）
+- unknown field拒否
+- SQL timeout / context timeout
+- graceful shutdown対応
 
 ---
 
-# 🚀 ローカル開発
+# ⚙️ ローカル開発
 
-## 起動
-
-```bash
 make run
-```
-
-## Migration 実行
-
-```bash
 make migrate-up
-```
-
----
-
-# 🧪 API 機能
-
-## ページネーション
-
-```http
-GET /api/v1/tasks?limit=20&offset=0
-```
-
-## Validation
-
-* strict JSON decode
-* unknown field rejection
-* request size 制限
-* DTO ベース validation
-
----
-
-# 🔄 Middleware
-
-Middleware Chain により以下を実装しています。
-
-* Logging
-* CORS
-* JWT Authentication
-* Request Logging
-
----
-
-# ⚡ パフォーマンス・運用面
-
-* Lambda cold start を考慮した DB 初期化
-* Connection Pool 最適化
-* Graceful Shutdown
-* Context timeout 対応
-* Pagination による負荷軽減
 
 ---
 
 # 🚀 CI/CD
 
-GitHub Actions による自動デプロイ。
-
 ## Frontend
-
-* S3 + CloudFront へ deploy
+- S3 deploy
+- CloudFront invalidation
 
 ## Backend
-
-* Lambda へ deploy
+- Lambda deploy
 
 ## Infrastructure
-
-* Terraform apply
-
----
-
-# 🧠 工夫した点
-
-* Terraform による AWS IaC 化
-* Cognito JWT 認証構成
-* OpenAPI ベース API 設計
-* Layered Architecture 採用
-* Repository Interface による DI 対応
-* Middleware Chain 導入
-* Docker ベース開発環境
-* Migration による DB schema 管理
-* Graceful Shutdown 実装
-* strict JSON decode による API 安全性向上
+- Terraform apply
 
 ---
 
-# 🔧 今後の改善点
+# 🧠 このプロジェクトの特徴
 
-* JWT 検証本実装（JWKS / RS256）
-* Unit Test / Mock Repository
-* E2E テスト（Playwright）
-* OpenAPI 自動生成
-* タスク検索・フィルタリング
-* Redis cache
-* 非同期 Job Queue
-* ダークモード
-* 通知機能
-* Monitoring / Observability
+- AWSサーバレス構成
+- 認証付きマルチテナント設計
+- DI + レイヤードアーキテクチャ
+- 実務想定のセキュリティ設計
+- TerraformによるIaC
+
+---
+
+# ⚠️ 現状の制約
+
+- Access Tokenベース認可は未実装（ID Tokenのみ）
+- ユーザー登録APIなし（ログイン時自動作成）
+- 全APIは認証必須（/health除く）

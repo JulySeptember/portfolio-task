@@ -1,22 +1,35 @@
 <!doctype html>
+
 <html lang="en">
   <head>
     <meta charset="utf-8" />
 
-    <title>API Docs</title>
+    <title>Task Management API Docs</title>
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <link
       rel="stylesheet"
-      href="https://unpkg.com/swagger-ui-dist@4.18.3/swagger-ui.css"
+      href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"
     />
+
+    <style>
+      body {
+        margin: 0;
+        background: #fafafa;
+      }
+
+      #root {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+    </style>
   </head>
 
   <body>
     <div id="root"></div>
 
-    <script src="https://unpkg.com/swagger-ui-dist@4.18.3/swagger-ui-bundle.js"></script>
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
 
     <script>
       window.onload = function () {
@@ -26,6 +39,14 @@
           dom_id: "{{ .DomID }}",
 
           deepLinking: true,
+
+          displayRequestDuration: true,
+
+          persistAuthorization: true,
+
+          docExpansion: "list",
+
+          defaultModelsExpandDepth: 1,
 
           presets: [
             SwaggerUIBundle.presets.apis,

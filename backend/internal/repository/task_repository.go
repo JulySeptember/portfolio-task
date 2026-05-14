@@ -1,3 +1,5 @@
+// internal/repository/task_repository.go
+
 package repository
 
 import (
@@ -10,32 +12,27 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
-// =========================
-// interface
-// =========================
-
 type TaskRepositoryInterface interface {
 	Create(ctx context.Context, t *models.Task) error
-	Get(ctx context.Context, id int64) (*models.Task, error)
+	Get(ctx context.Context, id int64, userID int64) (*models.Task, error)
 	Update(ctx context.Context, t *models.Task) error
-	Delete(ctx context.Context, id int64) error
-
-	ListWithUser(
+	Delete(ctx context.Context, id int64, userID int64) error
+	ListByUserID(
 		ctx context.Context,
+		userID int64,
 		limit int,
 		offset int,
-	) ([]models.TaskWithUser, error)
+	) ([]models.Task, error)
 }
-
-// =========================
-// repository
-// =========================
 
 type TaskRepository struct {
 	db *sql.DB
 }
 
-func NewTaskRepository(db *sql.DB) *TaskRepository {
+func NewTaskRepository(
+	db *sql.DB,
+) *TaskRepository {
+
 	return &TaskRepository{
 		db: db,
 	}
@@ -49,6 +46,9 @@ func (r *TaskRepository) Create(
 	ctx context.Context,
 	t *models.Task,
 ) error {
+
+	ctx, cancel := withTimeout(ctx)
+	defer cancel()
 
 	q := `
 		INSERT INTO tasks (
@@ -75,19 +75,17 @@ func (r *TaskRepository) Create(
 
 		var mysqlErr *mysqlDriver.MySQLError
 
-		if errors.As(err, &mysqlErr) {
+		if errors.As(err, &mysqlErr) &&
+			mysqlErr.Number == 1452 {
 
-			switch mysqlErr.Number {
-
-			case 1452:
-				return ErrForeignKeyViolation
-			}
+			return ErrForeignKeyViolation
 		}
 
 		return err
 	}
 
 	id, err := res.LastInsertId()
+
 	if err != nil {
 		return err
 	}
@@ -104,7 +102,11 @@ func (r *TaskRepository) Create(
 func (r *TaskRepository) Get(
 	ctx context.Context,
 	id int64,
+	userID int64,
 ) (*models.Task, error) {
+
+	ctx, cancel := withTimeout(ctx)
+	defer cancel()
 
 	q := `
 		SELECT
@@ -118,6 +120,7 @@ func (r *TaskRepository) Get(
 			updated_at
 		FROM tasks
 		WHERE id = ?
+		AND user_id = ?
 	`
 
 	t := &models.Task{}
@@ -126,6 +129,7 @@ func (r *TaskRepository) Get(
 		ctx,
 		q,
 		id,
+		userID,
 	).Scan(
 		&t.ID,
 		&t.UserID,
@@ -158,6 +162,9 @@ func (r *TaskRepository) Update(
 	t *models.Task,
 ) error {
 
+	ctx, cancel := withTimeout(ctx)
+	defer cancel()
+
 	q := `
 		UPDATE tasks
 		SET
@@ -166,6 +173,7 @@ func (r *TaskRepository) Update(
 			status = ?,
 			due_date = ?
 		WHERE id = ?
+		AND user_id = ?
 	`
 
 	res, err := r.db.ExecContext(
@@ -176,18 +184,16 @@ func (r *TaskRepository) Update(
 		t.Status,
 		t.DueDate,
 		t.ID,
+		t.UserID,
 	)
 
 	if err != nil {
 		return err
 	}
 
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
+	aff, _ := res.RowsAffected()
 
-	if affected == 0 {
+	if aff == 0 {
 		return ErrTaskNotFound
 	}
 
@@ -201,29 +207,32 @@ func (r *TaskRepository) Update(
 func (r *TaskRepository) Delete(
 	ctx context.Context,
 	id int64,
+	userID int64,
 ) error {
+
+	ctx, cancel := withTimeout(ctx)
+	defer cancel()
 
 	q := `
 		DELETE FROM tasks
 		WHERE id = ?
+		AND user_id = ?
 	`
 
 	res, err := r.db.ExecContext(
 		ctx,
 		q,
 		id,
+		userID,
 	)
 
 	if err != nil {
 		return err
 	}
 
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
+	aff, _ := res.RowsAffected()
 
-	if affected == 0 {
+	if aff == 0 {
 		return ErrTaskNotFound
 	}
 
@@ -231,32 +240,39 @@ func (r *TaskRepository) Delete(
 }
 
 // =========================
-// ListWithUser
+// List
 // =========================
 
-func (r *TaskRepository) ListWithUser(
+func (r *TaskRepository) ListByUserID(
 	ctx context.Context,
+	userID int64,
 	limit int,
 	offset int,
-) ([]models.TaskWithUser, error) {
+) ([]models.Task, error) {
+
+	ctx, cancel := withTimeout(ctx)
+	defer cancel()
 
 	q := `
 		SELECT
-			t.id,
-			t.title,
-			t.status,
-			u.id,
-			u.email
-		FROM tasks t
-		INNER JOIN users u
-			ON t.user_id = u.id
-		ORDER BY t.id DESC
+			id,
+			user_id,
+			title,
+			description,
+			status,
+			due_date,
+			created_at,
+			updated_at
+		FROM tasks
+		WHERE user_id = ?
+		ORDER BY created_at DESC, id DESC
 		LIMIT ? OFFSET ?
 	`
 
 	rows, err := r.db.QueryContext(
 		ctx,
 		q,
+		userID,
 		limit,
 		offset,
 	)
@@ -267,30 +283,32 @@ func (r *TaskRepository) ListWithUser(
 
 	defer rows.Close()
 
-	var tasks []models.TaskWithUser
+	result := make([]models.Task, 0)
 
 	for rows.Next() {
 
-		var t models.TaskWithUser
+		var t models.Task
 
-		err := rows.Scan(
-			&t.TaskID,
-			&t.Title,
-			&t.Status,
+		if err := rows.Scan(
+			&t.ID,
 			&t.UserID,
-			&t.UserEmail,
-		)
+			&t.Title,
+			&t.Description,
+			&t.Status,
+			&t.DueDate,
+			&t.CreatedAt,
+			&t.UpdatedAt,
+		); err != nil {
 
-		if err != nil {
 			return nil, err
 		}
 
-		tasks = append(tasks, t)
+		result = append(result, t)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return tasks, nil
+	return result, nil
 }

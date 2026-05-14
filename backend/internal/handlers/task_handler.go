@@ -1,21 +1,27 @@
+// internal/handlers/task_handler.go
+
 package handlers
 
 import (
 	"net/http"
 
-	"portfolio/backend/internal/apierrors"
 	"portfolio/backend/internal/dto"
+	"portfolio/backend/internal/httpx"
 	"portfolio/backend/internal/models"
-	"portfolio/backend/internal/repository"
 	"portfolio/backend/internal/service"
 )
 
 type TaskHandler struct {
-	svc *service.TaskService
+	taskSvc *service.TaskService
 }
 
-func NewTaskHandler(s *service.TaskService) *TaskHandler {
-	return &TaskHandler{svc: s}
+func NewTaskHandler(
+	taskSvc *service.TaskService,
+) *TaskHandler {
+
+	return &TaskHandler{
+		taskSvc: taskSvc,
+	}
 }
 
 // =========================
@@ -29,102 +35,44 @@ func (h *TaskHandler) Create(
 
 	var req dto.CreateTaskRequest
 
-	if err := DecodeJSON(w, r, &req); err != nil {
-
-		WriteError(
-			w,
-			http.StatusBadRequest,
-			apierrors.CodeInvalidJSON,
-			err.Error(),
-		)
-
+	if !decodeAndValidate(w, r, &req) {
 		return
 	}
 
-	if errs := ValidateStruct(req); errs != nil {
+	userID, ok := requireAuthUserID(w, r)
 
-		WriteValidationErrors(w, errs)
+	if !ok {
 		return
 	}
 
-	dueDate, err := ParseOptionalTime(req.DueDate)
+	dueDate, ok := parseOptionalDueDate(
+		w,
+		req.DueDate,
+	)
 
-	if err != nil {
-
-		WriteError(
-			w,
-			http.StatusBadRequest,
-			apierrors.CodeInvalidDueDate,
-			"invalid due_date format",
-		)
-
+	if !ok {
 		return
 	}
 
 	task := &models.Task{
-		UserID:      req.UserID,
 		Title:       req.Title,
 		Description: req.Description,
 		Status:      req.Status,
 		DueDate:     dueDate,
 	}
 
-	res, err := h.svc.Create(
+	res, err := h.taskSvc.Create(
 		r.Context(),
+		userID,
 		task,
 	)
 
 	if err != nil {
-
-		switch err {
-
-		case service.ErrInvalidUserID:
-
-			WriteError(
-				w,
-				http.StatusBadRequest,
-				apierrors.CodeInvalidUserID,
-				"invalid user_id",
-			)
-
-			return
-
-		case service.ErrInvalidStatus:
-
-			WriteError(
-				w,
-				http.StatusBadRequest,
-				apierrors.CodeValidationError,
-				"invalid status",
-			)
-
-			return
-
-		case repository.ErrForeignKeyViolation:
-
-			WriteError(
-				w,
-				http.StatusBadRequest,
-				apierrors.CodeInvalidUserID,
-				"invalid user_id",
-			)
-
-			return
-
-		default:
-
-			WriteError(
-				w,
-				http.StatusInternalServerError,
-				apierrors.CodeInternalServerError,
-				"internal server error",
-			)
-
-			return
-		}
+		httpx.HandleError(w, err)
+		return
 	}
 
-	WriteJSON(
+	httpx.WriteJSON(
 		w,
 		http.StatusCreated,
 		dto.ToTaskResponse(res),
@@ -138,54 +86,35 @@ func (h *TaskHandler) Create(
 func (h *TaskHandler) Get(
 	w http.ResponseWriter,
 	r *http.Request,
-	id int64,
 ) {
 
-	res, err := h.svc.Get(
+	id, ok := parseID(w, r)
+
+	if !ok {
+		return
+	}
+
+	userID, ok := requireAuthUserID(
+		w,
+		r,
+	)
+
+	if !ok {
+		return
+	}
+
+	res, err := h.taskSvc.Get(
 		r.Context(),
 		id,
+		userID,
 	)
 
 	if err != nil {
-
-		switch err {
-
-		case service.ErrInvalidID:
-
-			WriteError(
-				w,
-				http.StatusBadRequest,
-				apierrors.CodeInvalidID,
-				"invalid id",
-			)
-
-			return
-
-		case repository.ErrTaskNotFound:
-
-			WriteError(
-				w,
-				http.StatusNotFound,
-				apierrors.CodeTaskNotFound,
-				"task not found",
-			)
-
-			return
-
-		default:
-
-			WriteError(
-				w,
-				http.StatusInternalServerError,
-				apierrors.CodeInternalServerError,
-				"internal server error",
-			)
-
-			return
-		}
+		httpx.HandleError(w, err)
+		return
 	}
 
-	WriteJSON(
+	httpx.WriteJSON(
 		w,
 		http.StatusOK,
 		dto.ToTaskResponse(res),
@@ -199,40 +128,35 @@ func (h *TaskHandler) Get(
 func (h *TaskHandler) Update(
 	w http.ResponseWriter,
 	r *http.Request,
-	id int64,
 ) {
+
+	id, ok := parseID(w, r)
+
+	if !ok {
+		return
+	}
+
+	userID, ok := requireAuthUserID(
+		w,
+		r,
+	)
+
+	if !ok {
+		return
+	}
 
 	var req dto.UpdateTaskRequest
 
-	if err := DecodeJSON(w, r, &req); err != nil {
-
-		WriteError(
-			w,
-			http.StatusBadRequest,
-			apierrors.CodeInvalidJSON,
-			err.Error(),
-		)
-
+	if !decodeAndValidate(w, r, &req) {
 		return
 	}
 
-	if errs := ValidateStruct(req); errs != nil {
+	dueDate, ok := parseOptionalDueDate(
+		w,
+		req.DueDate,
+	)
 
-		WriteValidationErrors(w, errs)
-		return
-	}
-
-	dueDate, err := ParseOptionalTime(req.DueDate)
-
-	if err != nil {
-
-		WriteError(
-			w,
-			http.StatusBadRequest,
-			apierrors.CodeInvalidDueDate,
-			"invalid due_date format",
-		)
-
+	if !ok {
 		return
 	}
 
@@ -244,62 +168,18 @@ func (h *TaskHandler) Update(
 		DueDate:     dueDate,
 	}
 
-	res, err := h.svc.Update(
+	res, err := h.taskSvc.Update(
 		r.Context(),
 		task,
+		userID,
 	)
 
 	if err != nil {
-
-		switch err {
-
-		case service.ErrInvalidID:
-
-			WriteError(
-				w,
-				http.StatusBadRequest,
-				apierrors.CodeInvalidID,
-				"invalid id",
-			)
-
-			return
-
-		case service.ErrInvalidStatus:
-
-			WriteError(
-				w,
-				http.StatusBadRequest,
-				apierrors.CodeValidationError,
-				"invalid status",
-			)
-
-			return
-
-		case repository.ErrTaskNotFound:
-
-			WriteError(
-				w,
-				http.StatusNotFound,
-				apierrors.CodeTaskNotFound,
-				"task not found",
-			)
-
-			return
-
-		default:
-
-			WriteError(
-				w,
-				http.StatusInternalServerError,
-				apierrors.CodeInternalServerError,
-				"internal server error",
-			)
-
-			return
-		}
+		httpx.HandleError(w, err)
+		return
 	}
 
-	WriteJSON(
+	httpx.WriteJSON(
 		w,
 		http.StatusOK,
 		dto.ToTaskResponse(res),
@@ -313,119 +193,99 @@ func (h *TaskHandler) Update(
 func (h *TaskHandler) Delete(
 	w http.ResponseWriter,
 	r *http.Request,
-	id int64,
 ) {
 
-	err := h.svc.Delete(
-		r.Context(),
-		id,
-	)
+	id, ok := parseID(w, r)
 
-	if err != nil {
-
-		switch err {
-
-		case service.ErrInvalidID:
-
-			WriteError(
-				w,
-				http.StatusBadRequest,
-				apierrors.CodeInvalidID,
-				"invalid id",
-			)
-
-			return
-
-		case repository.ErrTaskNotFound:
-
-			WriteError(
-				w,
-				http.StatusNotFound,
-				apierrors.CodeTaskNotFound,
-				"task not found",
-			)
-
-			return
-
-		default:
-
-			WriteError(
-				w,
-				http.StatusInternalServerError,
-				apierrors.CodeInternalServerError,
-				"internal server error",
-			)
-
-			return
-		}
+	if !ok {
+		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	userID, ok := requireAuthUserID(
+		w,
+		r,
+	)
+
+	if !ok {
+		return
+	}
+
+	if err := h.taskSvc.Delete(
+		r.Context(),
+		id,
+		userID,
+	); err != nil {
+
+		httpx.HandleError(w, err)
+		return
+	}
+
+	w.WriteHeader(
+		http.StatusNoContent,
+	)
 }
 
 // =========================
-// ListWithUser
+// List
 // =========================
 
-func (h *TaskHandler) ListWithUser(
+func (h *TaskHandler) List(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
 
-	limit := ParseIntOrDefault(
-		r.URL.Query().Get("limit"),
-		20,
+	userID, ok := requireAuthUserID(
+		w,
+		r,
 	)
 
-	offset := ParseIntOrDefault(
-		r.URL.Query().Get("offset"),
+	if !ok {
+		return
+	}
+
+	limit := httpx.QueryInt(
+		r,
+		"limit",
+		20,
+		1,
+		100,
+	)
+
+	offset := httpx.QueryInt(
+		r,
+		"offset",
+		0,
+		0,
 		0,
 	)
 
-	if limit > 100 {
-		limit = 100
-	}
-
-	if limit < 1 {
-		limit = 20
-	}
-
-	if offset < 0 {
-		offset = 0
-	}
-
-	res, err := h.svc.ListWithUser(
+	res, err := h.taskSvc.List(
 		r.Context(),
+		userID,
 		limit,
 		offset,
 	)
 
 	if err != nil {
-
-		WriteError(
-			w,
-			http.StatusInternalServerError,
-			apierrors.CodeInternalServerError,
-			"internal server error",
-		)
-
+		httpx.HandleError(w, err)
 		return
 	}
 
 	items := make(
-		[]dto.TaskWithUserResponse,
+		[]dto.TaskResponse,
 		0,
 		len(res),
 	)
 
 	for _, t := range res {
+
 		items = append(
 			items,
-			dto.ToTaskWithUserResponse(t),
+			dto.ToTaskResponse(&t),
 		)
 	}
 
-	WriteJSON(
+	httpx.WriteJSON(
 		w,
 		http.StatusOK,
 		dto.TaskListResponse{

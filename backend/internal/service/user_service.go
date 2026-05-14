@@ -11,33 +11,36 @@ type UserService struct {
 	repo repository.UserRepositoryInterface
 }
 
-func NewUserService(
-	r repository.UserRepositoryInterface,
-) *UserService {
-
-	return &UserService{
-		repo: r,
-	}
+func NewUserService(r repository.UserRepositoryInterface) *UserService {
+	return &UserService{repo: r}
 }
 
 // =========================
-// Create
+// ENSURE (middleware only)
+// =========================
+// CognitoユーザーをDBに同期する唯一の入口
 // =========================
 
-func (s *UserService) Create(
+func (s *UserService) Ensure(
 	ctx context.Context,
-	u *models.User,
+	authUserID string,
+	email string,
 ) (*models.User, error) {
 
-	if err := s.repo.Create(ctx, u); err != nil {
+	u := &models.User{
+		AuthUserID: authUserID,
+		Email:      email,
+	}
+
+	if err := s.repo.UpsertByAuthID(ctx, u); err != nil {
 		return nil, err
 	}
 
-	return s.repo.Get(ctx, u.ID)
+	return s.repo.GetByAuthID(ctx, authUserID)
 }
 
 // =========================
-// Get
+// Get (internal ID)
 // =========================
 
 func (s *UserService) Get(
@@ -53,37 +56,17 @@ func (s *UserService) Get(
 }
 
 // =========================
-// Update
-// =========================
-
-func (s *UserService) Update(
-	ctx context.Context,
-	u *models.User,
-) (*models.User, error) {
-
-	if u.ID <= 0 {
-		return nil, ErrInvalidID
-	}
-
-	if err := s.repo.Update(ctx, u); err != nil {
-		return nil, err
-	}
-
-	return s.repo.Get(ctx, u.ID)
-}
-
-// =========================
-// Delete
+// Delete (self only)
 // =========================
 
 func (s *UserService) Delete(
 	ctx context.Context,
-	id int64,
+	userID int64,
 ) error {
 
-	if id <= 0 {
-		return ErrInvalidID
+	if userID <= 0 {
+		return ErrInvalidUserID
 	}
 
-	return s.repo.Delete(ctx, id)
+	return s.repo.Delete(ctx, userID)
 }
