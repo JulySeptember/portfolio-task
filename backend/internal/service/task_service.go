@@ -6,15 +6,14 @@ import (
 	"context"
 
 	"portfolio/backend/internal/models"
-	"portfolio/backend/internal/repository"
 )
 
 type TaskService struct {
-	repo repository.TaskRepositoryInterface
+	repo TaskRepository
 }
 
 func NewTaskService(
-	r repository.TaskRepositoryInterface,
+	r TaskRepository,
 ) *TaskService {
 
 	return &TaskService{

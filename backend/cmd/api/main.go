@@ -78,8 +78,8 @@ func NewApp(db *sql.DB) *App {
 
 	apiHandler := middleware.Chain(
 		apiRouter,
-		middleware.Logging,
 		middleware.AuthMiddleware(userSvc),
+		middleware.Logging,
 	)
 
 	// =========================

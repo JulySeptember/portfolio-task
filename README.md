@@ -2,8 +2,6 @@
 
 Next.js × Go × AWS × Terraform × MySQL を用いたフルスタックWebアプリです。
 
-単なるCRUDではなく、**実務レベルの設計思想（認証・マルチテナント・レイヤード構造・IaC）**を意識して構築しています。
-
 ---
 
 ## アーキテクチャ図 & ER 図
@@ -39,7 +37,6 @@ Service → Repository → MySQL
 
 - レイヤードアーキテクチャ採用
 - Handler / Service / Repository 分離
-- DI（Interface）による依存逆転
 - AWSサーバレス前提設計
 - テスト容易性を重視した構造
 
@@ -213,7 +210,6 @@ http://localhost:8080/api/v1/docs/
 - request size制限（1MB）
 - unknown field拒否
 - SQL timeout / context timeout
-- graceful shutdown対応
 
 ---
 
@@ -241,9 +237,6 @@ make migrate-up
 # 🧠 このプロジェクトの特徴
 
 - AWSサーバレス構成
-- 認証付きマルチテナント設計
-- DI + レイヤードアーキテクチャ
-- 実務想定のセキュリティ設計
 - TerraformによるIaC
 
 ---
