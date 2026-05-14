@@ -1,3 +1,5 @@
+// internal/dto/task_dto.go
+
 package dto
 
 import (
@@ -11,17 +13,17 @@ import (
 // =========================
 
 type CreateTaskRequest struct {
-	Title       string `json:"title" validate:"required,min=1,max=255"`
-	Description string `json:"description" validate:"max=1000"`
-	Status      string `json:"status" validate:"required,oneof=TODO DOING DONE"`
-	DueDate     string `json:"due_date"`
+	Title       string            `json:"title" validate:"required,min=1,max=255"`
+	Description string            `json:"description" validate:"max=1000"`
+	Status      models.TaskStatus `json:"status" validate:"required,oneof=TODO DOING DONE"`
+	DueDate     string            `json:"due_date"`
 }
 
 type UpdateTaskRequest struct {
-	Title       string `json:"title" validate:"required,min=1,max=255"`
-	Description string `json:"description" validate:"max=1000"`
-	Status      string `json:"status" validate:"required,oneof=TODO DOING DONE"`
-	DueDate     string `json:"due_date"`
+	Title       string            `json:"title" validate:"required,min=1,max=255"`
+	Description string            `json:"description" validate:"max=1000"`
+	Status      models.TaskStatus `json:"status" validate:"required,oneof=TODO DOING DONE"`
+	DueDate     string            `json:"due_date"`
 }
 
 // =========================
@@ -29,14 +31,14 @@ type UpdateTaskRequest struct {
 // =========================
 
 type TaskResponse struct {
-	ID          int64      `json:"id"`
-	UserID      int64      `json:"user_id"`
-	Title       string     `json:"title"`
-	Description string     `json:"description"`
-	Status      string     `json:"status"`
-	DueDate     *time.Time `json:"due_date"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID          int64             `json:"id"`
+	UserID      int64             `json:"user_id"`
+	Title       string            `json:"title"`
+	Description string            `json:"description"`
+	Status      models.TaskStatus `json:"status"`
+	DueDate     *time.Time        `json:"due_date"`
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at"`
 }
 
 type TaskListResponse struct {

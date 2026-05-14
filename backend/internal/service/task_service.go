@@ -22,6 +22,27 @@ func NewTaskService(
 }
 
 // =========================
+// business validation
+// =========================
+
+func validateTaskStatus(
+	status models.TaskStatus,
+) error {
+
+	switch status {
+
+	case models.TaskStatusTODO,
+		models.TaskStatusDOING,
+		models.TaskStatusDONE:
+
+		return nil
+
+	default:
+		return ErrInvalidStatus
+	}
+}
+
+// =========================
 // Create
 // =========================
 
@@ -35,9 +56,20 @@ func (s *TaskService) Create(
 		return nil, ErrInvalidUserID
 	}
 
+	if err := validateTaskStatus(
+		t.Status,
+	); err != nil {
+
+		return nil, err
+	}
+
 	t.UserID = userID
 
-	if err := s.repo.Create(ctx, t); err != nil {
+	if err := s.repo.Create(
+		ctx,
+		t,
+	); err != nil {
+
 		return nil, err
 	}
 
@@ -66,7 +98,11 @@ func (s *TaskService) Get(
 		return nil, ErrInvalidUserID
 	}
 
-	return s.repo.Get(ctx, id, userID)
+	return s.repo.Get(
+		ctx,
+		id,
+		userID,
+	)
 }
 
 // =========================
@@ -87,9 +123,20 @@ func (s *TaskService) Update(
 		return nil, ErrInvalidUserID
 	}
 
+	if err := validateTaskStatus(
+		t.Status,
+	); err != nil {
+
+		return nil, err
+	}
+
 	t.UserID = userID
 
-	if err := s.repo.Update(ctx, t); err != nil {
+	if err := s.repo.Update(
+		ctx,
+		t,
+	); err != nil {
+
 		return nil, err
 	}
 

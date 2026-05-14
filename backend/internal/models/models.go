@@ -2,10 +2,16 @@ package models
 
 import "time"
 
+// =========================
+// TaskStatus
+// =========================
+
+type TaskStatus string
+
 const (
-	TaskStatusTODO  = "TODO"
-	TaskStatusDOING = "DOING"
-	TaskStatusDONE  = "DONE"
+	TaskStatusTODO  TaskStatus = "TODO"
+	TaskStatusDOING TaskStatus = "DOING"
+	TaskStatusDONE  TaskStatus = "DONE"
 )
 
 // =========================
@@ -29,7 +35,7 @@ type Task struct {
 	UserID      int64      `json:"user_id"`
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
-	Status      string     `json:"status"`
+	Status      TaskStatus `json:"status"`
 	DueDate     *time.Time `json:"due_date"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
