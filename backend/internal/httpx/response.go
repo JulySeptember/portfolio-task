@@ -1,21 +1,18 @@
-package handlers
+package httpx
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
-
-	"portfolio/backend/internal/apierrors"
 )
 
 // =========================
-// JSON response
+// JSON
 // =========================
 
 func WriteJSON(
 	w http.ResponseWriter,
 	status int,
-	v any,
+	data any,
 ) {
 
 	w.Header().Set(
@@ -25,52 +22,46 @@ func WriteJSON(
 
 	w.WriteHeader(status)
 
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-
-		log.Printf(
-			"[ERROR] response encode failed: %v",
-			err,
-		)
-	}
+	_ = json.NewEncoder(w).Encode(data)
 }
 
 // =========================
-// error response
+// Error
 // =========================
 
 func WriteError(
 	w http.ResponseWriter,
 	status int,
 	code string,
-	msg string,
+	message string,
 ) {
 
 	WriteJSON(
 		w,
 		status,
-		apierrors.ErrorResponse{
+		ErrorResponse{
 			Code:    code,
-			Message: msg,
+			Message: message,
 		},
 	)
 }
 
 // =========================
-// validation error response
+// Validation Error
 // =========================
 
 func WriteValidationErrors(
 	w http.ResponseWriter,
-	errs map[string]string,
+	fields map[string]string,
 ) {
 
 	WriteJSON(
 		w,
 		http.StatusBadRequest,
-		apierrors.ValidationErrorResponse{
-			Code:    apierrors.CodeValidationError,
+		ValidationErrorResponse{
+			Code:    CodeValidationError,
 			Message: "validation failed",
-			Errors:  errs,
+			Errors:  fields,
 		},
 	)
 }

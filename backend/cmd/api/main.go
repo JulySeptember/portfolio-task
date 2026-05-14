@@ -12,6 +12,7 @@ import (
 
 	"portfolio/backend/internal/config"
 	"portfolio/backend/internal/handlers"
+	"portfolio/backend/internal/httpx"
 	"portfolio/backend/internal/middleware"
 	"portfolio/backend/internal/repository"
 	"portfolio/backend/internal/router"
@@ -25,7 +26,6 @@ import (
 
 var (
 	globalDB      *sql.DB
-	globalApp     *App
 	globalHandler *httpadapter.HandlerAdapter
 )
 
@@ -36,40 +36,61 @@ type App struct {
 
 func NewApp(db *sql.DB) *App {
 
+	// =========================
 	// repository
+	// =========================
 
 	userRepo := repository.NewUserRepository(db)
 	taskRepo := repository.NewTaskRepository(db)
 
+	// =========================
 	// service
+	// =========================
 
 	userSvc := service.NewUserService(userRepo)
 	taskSvc := service.NewTaskService(taskRepo)
 
+	// =========================
 	// handler
+	// =========================
 
 	userHandler := handlers.NewUserHandler(userSvc)
 	taskHandler := handlers.NewTaskHandler(taskSvc)
 
-	// api router
+	// =========================
+	// router
+	// =========================
 
 	apiRouter := router.NewRouter(
 		userHandler,
 		taskHandler,
 	)
 
-	// protected api
+	// =========================
+	// api middleware
+	// =========================
+	// execution order:
+	// Auth -> Logging -> Router
+	//
+	// Logging can access user_id
+	// after AuthMiddleware sets context
+	// =========================
 
 	apiHandler := middleware.Chain(
 		apiRouter,
-		middleware.JWT,
+		middleware.Logging,
+		middleware.AuthMiddleware(userSvc),
 	)
 
+	// =========================
 	// root mux
+	// =========================
 
 	mux := http.NewServeMux()
 
-	// health
+	// =========================
+	// public endpoints
+	// =========================
 
 	mux.HandleFunc(
 		"/health",
@@ -77,12 +98,20 @@ func NewApp(db *sql.DB) *App {
 			w http.ResponseWriter,
 			r *http.Request,
 		) {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("ok"))
+
+			httpx.WriteJSON(
+				w,
+				http.StatusOK,
+				map[string]string{
+					"status": "ok",
+				},
+			)
 		},
 	)
 
+	// =========================
 	// swagger
+	// =========================
 
 	mux.HandleFunc(
 		"/api/v1/docs/",
@@ -94,19 +123,22 @@ func NewApp(db *sql.DB) *App {
 		swagger.SpecHandler,
 	)
 
-	// api
+	// =========================
+	// protected api
+	// =========================
 
 	mux.Handle(
 		"/api/v1/",
 		apiHandler,
 	)
 
-	// middleware
+	// =========================
+	// global middleware
+	// =========================
 
 	handler := middleware.Chain(
 		mux,
 		middleware.Recovery,
-		middleware.Logging,
 		middleware.CORS,
 	)
 
@@ -115,6 +147,10 @@ func NewApp(db *sql.DB) *App {
 		HTTP: handler,
 	}
 }
+
+// =========================
+// lambda singleton
+// =========================
 
 func lambdaHandler() *httpadapter.HandlerAdapter {
 
@@ -132,10 +168,10 @@ func lambdaHandler() *httpadapter.HandlerAdapter {
 		globalDB = db
 	}
 
-	globalApp = NewApp(globalDB)
+	app := NewApp(globalDB)
 
 	globalHandler = httpadapter.New(
-		globalApp.HTTP,
+		app.HTTP,
 	)
 
 	return globalHandler
@@ -143,7 +179,9 @@ func lambdaHandler() *httpadapter.HandlerAdapter {
 
 func main() {
 
-	// local
+	// =========================
+	// local mode
+	// =========================
 
 	if os.Getenv("RUN_MODE") == "local" {
 
@@ -152,8 +190,6 @@ func main() {
 			log.Fatal(err)
 		}
 
-		defer db.Close()
-
 		app := NewApp(db)
 
 		runLocal(app)
@@ -161,7 +197,9 @@ func main() {
 		return
 	}
 
-	// lambda
+	// =========================
+	// lambda mode
+	// =========================
 
 	lambda.Start(
 		func(
@@ -178,9 +216,14 @@ func main() {
 	)
 }
 
+// =========================
+// local server
+// =========================
+
 func runLocal(app *App) {
 
 	port := os.Getenv("PORT")
+
 	if port == "" {
 		port = "8080"
 	}
@@ -190,23 +233,26 @@ func runLocal(app *App) {
 		Handler:      app.HTTP,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
-	idleConnsClosed := make(chan struct{})
+	shutdownDone := make(chan struct{})
 
 	go func() {
 
-		c := make(chan os.Signal, 1)
+		sigCh := make(chan os.Signal, 1)
 
 		signal.Notify(
-			c,
+			sigCh,
 			syscall.SIGINT,
 			syscall.SIGTERM,
 		)
 
-		<-c
+		<-sigCh
 
-		log.Println("shutting down server...")
+		log.Println(
+			"shutting down server...",
+		)
 
 		ctx, cancel := context.WithTimeout(
 			context.Background(),
@@ -224,10 +270,21 @@ func runLocal(app *App) {
 		}
 
 		if app.DB != nil {
-			app.DB.Close()
+
+			log.Println(
+				"closing database connection...",
+			)
+
+			if err := app.DB.Close(); err != nil {
+
+				log.Printf(
+					"db close error: %v",
+					err,
+				)
+			}
 		}
 
-		close(idleConnsClosed)
+		close(shutdownDone)
 	}()
 
 	log.Printf(
@@ -235,7 +292,8 @@ func runLocal(app *App) {
 		port,
 	)
 
-	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+	if err := srv.ListenAndServe(); err != nil &&
+		err != http.ErrServerClosed {
 
 		log.Fatalf(
 			"server failed: %v",
@@ -243,5 +301,5 @@ func runLocal(app *App) {
 		)
 	}
 
-	<-idleConnsClosed
+	<-shutdownDone
 }

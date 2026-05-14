@@ -1,3 +1,5 @@
+// internal/service/task_service.go
+
 package service
 
 import (
@@ -21,46 +23,30 @@ func NewTaskService(
 }
 
 // =========================
-// status validation
-// =========================
-
-func isValidTaskStatus(status string) bool {
-
-	switch status {
-
-	case models.TaskStatusTODO,
-		models.TaskStatusDOING,
-		models.TaskStatusDONE:
-
-		return true
-
-	default:
-		return false
-	}
-}
-
-// =========================
 // Create
 // =========================
 
 func (s *TaskService) Create(
 	ctx context.Context,
+	userID int64,
 	t *models.Task,
 ) (*models.Task, error) {
 
-	if t.UserID <= 0 {
+	if userID <= 0 {
 		return nil, ErrInvalidUserID
 	}
 
-	if !isValidTaskStatus(t.Status) {
-		return nil, ErrInvalidStatus
-	}
+	t.UserID = userID
 
 	if err := s.repo.Create(ctx, t); err != nil {
 		return nil, err
 	}
 
-	return s.repo.Get(ctx, t.ID)
+	return s.repo.Get(
+		ctx,
+		t.ID,
+		userID,
+	)
 }
 
 // =========================
@@ -70,13 +56,18 @@ func (s *TaskService) Create(
 func (s *TaskService) Get(
 	ctx context.Context,
 	id int64,
+	userID int64,
 ) (*models.Task, error) {
 
 	if id <= 0 {
 		return nil, ErrInvalidID
 	}
 
-	return s.repo.Get(ctx, id)
+	if userID <= 0 {
+		return nil, ErrInvalidUserID
+	}
+
+	return s.repo.Get(ctx, id, userID)
 }
 
 // =========================
@@ -86,21 +77,28 @@ func (s *TaskService) Get(
 func (s *TaskService) Update(
 	ctx context.Context,
 	t *models.Task,
+	userID int64,
 ) (*models.Task, error) {
 
 	if t.ID <= 0 {
 		return nil, ErrInvalidID
 	}
 
-	if !isValidTaskStatus(t.Status) {
-		return nil, ErrInvalidStatus
+	if userID <= 0 {
+		return nil, ErrInvalidUserID
 	}
+
+	t.UserID = userID
 
 	if err := s.repo.Update(ctx, t); err != nil {
 		return nil, err
 	}
 
-	return s.repo.Get(ctx, t.ID)
+	return s.repo.Get(
+		ctx,
+		t.ID,
+		userID,
+	)
 }
 
 // =========================
@@ -110,27 +108,42 @@ func (s *TaskService) Update(
 func (s *TaskService) Delete(
 	ctx context.Context,
 	id int64,
+	userID int64,
 ) error {
 
 	if id <= 0 {
 		return ErrInvalidID
 	}
 
-	return s.repo.Delete(ctx, id)
+	if userID <= 0 {
+		return ErrInvalidUserID
+	}
+
+	return s.repo.Delete(
+		ctx,
+		id,
+		userID,
+	)
 }
 
 // =========================
-// ListWithUser
+// List
 // =========================
 
-func (s *TaskService) ListWithUser(
+func (s *TaskService) List(
 	ctx context.Context,
+	userID int64,
 	limit int,
 	offset int,
-) ([]models.TaskWithUser, error) {
+) ([]models.Task, error) {
 
-	return s.repo.ListWithUser(
+	if userID <= 0 {
+		return nil, ErrInvalidUserID
+	}
+
+	return s.repo.ListByUserID(
 		ctx,
+		userID,
 		limit,
 		offset,
 	)

@@ -1,12 +1,17 @@
 CREATE TABLE users (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
 
+    -- Cognito sub
+    auth_user_id VARCHAR(255) NOT NULL UNIQUE,
+
+    -- login email
     email VARCHAR(255) NOT NULL UNIQUE,
 
-    display_name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
 
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP NOT NULL
+        DEFAULT CURRENT_TIMESTAMP
         ON UPDATE CURRENT_TIMESTAMP
 );
+

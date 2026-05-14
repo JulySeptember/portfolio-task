@@ -1,9 +1,16 @@
 package dto
 
-import "time"
+import (
+	"time"
+
+	"portfolio/backend/internal/models"
+)
+
+// =========================
+// request
+// =========================
 
 type CreateTaskRequest struct {
-	UserID      int64  `json:"user_id" validate:"required"`
 	Title       string `json:"title" validate:"required,min=1,max=255"`
 	Description string `json:"description" validate:"max=1000"`
 	Status      string `json:"status" validate:"required,oneof=TODO DOING DONE"`
@@ -17,6 +24,10 @@ type UpdateTaskRequest struct {
 	DueDate     string `json:"due_date"`
 }
 
+// =========================
+// response
+// =========================
+
 type TaskResponse struct {
 	ID          int64      `json:"id"`
 	UserID      int64      `json:"user_id"`
@@ -28,17 +39,29 @@ type TaskResponse struct {
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
-type TaskWithUserResponse struct {
-	TaskID    int64  `json:"task_id"`
-	Title     string `json:"title"`
-	Status    string `json:"status"`
-	UserID    int64  `json:"user_id"`
-	UserEmail string `json:"user_email"`
+type TaskListResponse struct {
+	Count  int            `json:"count"`
+	Items  []TaskResponse `json:"items"`
+	Limit  int            `json:"limit"`
+	Offset int            `json:"offset"`
 }
 
-type TaskListResponse struct {
-	Count  int                    `json:"count"`
-	Items  []TaskWithUserResponse `json:"items"`
-	Limit  int                    `json:"limit"`
-	Offset int                    `json:"offset"`
+// =========================
+// mapper
+// =========================
+
+func ToTaskResponse(
+	t *models.Task,
+) TaskResponse {
+
+	return TaskResponse{
+		ID:          t.ID,
+		UserID:      t.UserID,
+		Title:       t.Title,
+		Description: t.Description,
+		Status:      t.Status,
+		DueDate:     t.DueDate,
+		CreatedAt:   t.CreatedAt,
+		UpdatedAt:   t.UpdatedAt,
+	}
 }

@@ -1,21 +1,34 @@
 package dto
 
-import "time"
+import (
+	"time"
 
-type CreateUserRequest struct {
-	Email       string `json:"email" validate:"required,email,max=255"`
-	DisplayName string `json:"display_name" validate:"required,min=1,max=255"`
-}
+	"portfolio/backend/internal/models"
+)
 
-type UpdateUserRequest struct {
-	Email       string `json:"email" validate:"required,email,max=255"`
-	DisplayName string `json:"display_name" validate:"required,min=1,max=255"`
-}
+// =========================
+// response
+// =========================
 
 type UserResponse struct {
-	ID          int64     `json:"id"`
-	Email       string    `json:"email"`
-	DisplayName string    `json:"display_name"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID        int64     `json:"id"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// =========================
+// mapper
+// =========================
+
+func ToUserResponse(
+	u *models.User,
+) UserResponse {
+
+	return UserResponse{
+		ID:        u.ID,
+		Email:     u.Email,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+	}
 }

@@ -6,83 +6,58 @@ import (
 	"errors"
 
 	"portfolio/backend/internal/models"
-
-	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
-// =========================
-// interface
-// =========================
-
 type UserRepositoryInterface interface {
-	Create(ctx context.Context, u *models.User) error
+	UpsertByAuthID(ctx context.Context, u *models.User) error
 	Get(ctx context.Context, id int64) (*models.User, error)
-	Update(ctx context.Context, u *models.User) error
+	GetByAuthID(ctx context.Context, authUserID string) (*models.User, error)
 	Delete(ctx context.Context, id int64) error
 }
-
-// =========================
-// repository
-// =========================
 
 type UserRepository struct {
 	db *sql.DB
 }
 
-func NewUserRepository(db *sql.DB) *UserRepository {
+func NewUserRepository(
+	db *sql.DB,
+) *UserRepository {
+
 	return &UserRepository{
 		db: db,
 	}
 }
 
 // =========================
-// Create
+// UPSERT
 // =========================
 
-func (r *UserRepository) Create(
+func (r *UserRepository) UpsertByAuthID(
 	ctx context.Context,
 	u *models.User,
 ) error {
 
+	ctx, cancel := withTimeout(ctx)
+	defer cancel()
+
 	q := `
 		INSERT INTO users (
-			email,
-			display_name
+			auth_user_id,
+			email
 		)
 		VALUES (?, ?)
+		ON DUPLICATE KEY UPDATE
+			email = VALUES(email)
 	`
 
-	res, err := r.db.ExecContext(
+	_, err := r.db.ExecContext(
 		ctx,
 		q,
+		u.AuthUserID,
 		u.Email,
-		u.DisplayName,
 	)
 
-	if err != nil {
-
-		var mysqlErr *mysqlDriver.MySQLError
-
-		if errors.As(err, &mysqlErr) {
-
-			switch mysqlErr.Number {
-
-			case 1062:
-				return ErrDuplicateEmail
-			}
-		}
-
-		return err
-	}
-
-	id, err := res.LastInsertId()
-	if err != nil {
-		return err
-	}
-
-	u.ID = id
-
-	return nil
+	return err
 }
 
 // =========================
@@ -94,11 +69,14 @@ func (r *UserRepository) Get(
 	id int64,
 ) (*models.User, error) {
 
+	ctx, cancel := withTimeout(ctx)
+	defer cancel()
+
 	q := `
 		SELECT
 			id,
+			auth_user_id,
 			email,
-			display_name,
 			created_at,
 			updated_at
 		FROM users
@@ -113,8 +91,8 @@ func (r *UserRepository) Get(
 		id,
 	).Scan(
 		&u.ID,
+		&u.AuthUserID,
 		&u.Email,
-		&u.DisplayName,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 	)
@@ -132,56 +110,52 @@ func (r *UserRepository) Get(
 }
 
 // =========================
-// Update
+// GetByAuthID
 // =========================
 
-func (r *UserRepository) Update(
+func (r *UserRepository) GetByAuthID(
 	ctx context.Context,
-	u *models.User,
-) error {
+	authUserID string,
+) (*models.User, error) {
+
+	ctx, cancel := withTimeout(ctx)
+	defer cancel()
 
 	q := `
-		UPDATE users
-		SET
-			email = ?,
-			display_name = ?
-		WHERE id = ?
+		SELECT
+			id,
+			auth_user_id,
+			email,
+			created_at,
+			updated_at
+		FROM users
+		WHERE auth_user_id = ?
 	`
 
-	res, err := r.db.ExecContext(
+	u := &models.User{}
+
+	err := r.db.QueryRowContext(
 		ctx,
 		q,
-		u.Email,
-		u.DisplayName,
-		u.ID,
+		authUserID,
+	).Scan(
+		&u.ID,
+		&u.AuthUserID,
+		&u.Email,
+		&u.CreatedAt,
+		&u.UpdatedAt,
 	)
 
 	if err != nil {
 
-		var mysqlErr *mysqlDriver.MySQLError
-
-		if errors.As(err, &mysqlErr) {
-
-			switch mysqlErr.Number {
-
-			case 1062:
-				return ErrDuplicateEmail
-			}
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserNotFound
 		}
 
-		return err
+		return nil, err
 	}
 
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if affected == 0 {
-		return ErrUserNotFound
-	}
-
-	return nil
+	return u, nil
 }
 
 // =========================
@@ -193,14 +167,12 @@ func (r *UserRepository) Delete(
 	id int64,
 ) error {
 
-	q := `
-		DELETE FROM users
-		WHERE id = ?
-	`
+	ctx, cancel := withTimeout(ctx)
+	defer cancel()
 
 	res, err := r.db.ExecContext(
 		ctx,
-		q,
+		`DELETE FROM users WHERE id = ?`,
 		id,
 	)
 
@@ -208,12 +180,9 @@ func (r *UserRepository) Delete(
 		return err
 	}
 
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
+	aff, _ := res.RowsAffected()
 
-	if affected == 0 {
+	if aff == 0 {
 		return ErrUserNotFound
 	}
 
