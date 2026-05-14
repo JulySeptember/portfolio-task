@@ -4,21 +4,25 @@ import (
 	"context"
 
 	"portfolio/backend/internal/models"
-	"portfolio/backend/internal/repository"
 )
 
 type UserService struct {
-	repo repository.UserRepositoryInterface
+	repo UserRepository
 }
 
-func NewUserService(r repository.UserRepositoryInterface) *UserService {
-	return &UserService{repo: r}
+func NewUserService(
+	r UserRepository,
+) *UserService {
+
+	return &UserService{
+		repo: r,
+	}
 }
 
 // =========================
 // ENSURE (middleware only)
 // =========================
-// CognitoユーザーをDBに同期する唯一の入口
+// Cognito user sync entrypoint
 // =========================
 
 func (s *UserService) Ensure(
@@ -32,15 +36,14 @@ func (s *UserService) Ensure(
 		Email:      email,
 	}
 
-	if err := s.repo.UpsertByAuthID(ctx, u); err != nil {
-		return nil, err
-	}
-
-	return s.repo.GetByAuthID(ctx, authUserID)
+	return s.repo.Ensure(
+		ctx,
+		u,
+	)
 }
 
 // =========================
-// Get (internal ID)
+// Get
 // =========================
 
 func (s *UserService) Get(
@@ -52,11 +55,14 @@ func (s *UserService) Get(
 		return nil, ErrInvalidID
 	}
 
-	return s.repo.Get(ctx, id)
+	return s.repo.Get(
+		ctx,
+		id,
+	)
 }
 
 // =========================
-// Delete (self only)
+// Delete
 // =========================
 
 func (s *UserService) Delete(
@@ -68,5 +74,8 @@ func (s *UserService) Delete(
 		return ErrInvalidUserID
 	}
 
-	return s.repo.Delete(ctx, userID)
+	return s.repo.Delete(
+		ctx,
+		userID,
+	)
 }

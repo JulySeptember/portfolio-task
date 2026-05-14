@@ -61,16 +61,11 @@ func Logging(
 
 		requestID := newRequestID()
 
-		userID, _ := auth.GetUserID(
-			r.Context(),
-		)
-
 		rw := &responseWriter{
 			ResponseWriter: w,
 			statusCode:     http.StatusOK,
 		}
 
-		// expose request id to downstream
 		rw.Header().Set(
 			"X-Request-ID",
 			requestID,
@@ -79,6 +74,10 @@ func Logging(
 		next.ServeHTTP(
 			rw,
 			r,
+		)
+
+		userID, _ := auth.GetUserID(
+			r.Context(),
 		)
 
 		duration := time.Since(start)

@@ -8,13 +8,6 @@ import (
 	"portfolio/backend/internal/models"
 )
 
-type UserRepositoryInterface interface {
-	UpsertByAuthID(ctx context.Context, u *models.User) error
-	Get(ctx context.Context, id int64) (*models.User, error)
-	GetByAuthID(ctx context.Context, authUserID string) (*models.User, error)
-	Delete(ctx context.Context, id int64) error
-}
-
 type UserRepository struct {
 	db *sql.DB
 }
@@ -29,13 +22,15 @@ func NewUserRepository(
 }
 
 // =========================
-// UPSERT
+// Ensure
+// =========================
+// atomic upsert + fetch
 // =========================
 
-func (r *UserRepository) UpsertByAuthID(
+func (r *UserRepository) Ensure(
 	ctx context.Context,
 	u *models.User,
-) error {
+) (*models.User, error) {
 
 	ctx, cancel := withTimeout(ctx)
 	defer cancel()
@@ -47,17 +42,31 @@ func (r *UserRepository) UpsertByAuthID(
 		)
 		VALUES (?, ?)
 		ON DUPLICATE KEY UPDATE
-			email = VALUES(email)
+			email = VALUES(email),
+			id = LAST_INSERT_ID(id)
 	`
 
-	_, err := r.db.ExecContext(
+	res, err := r.db.ExecContext(
 		ctx,
 		q,
 		u.AuthUserID,
 		u.Email,
 	)
 
-	return err
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := res.LastInsertId()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return r.Get(
+		ctx,
+		id,
+	)
 }
 
 // =========================
@@ -89,55 +98,6 @@ func (r *UserRepository) Get(
 		ctx,
 		q,
 		id,
-	).Scan(
-		&u.ID,
-		&u.AuthUserID,
-		&u.Email,
-		&u.CreatedAt,
-		&u.UpdatedAt,
-	)
-
-	if err != nil {
-
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrUserNotFound
-		}
-
-		return nil, err
-	}
-
-	return u, nil
-}
-
-// =========================
-// GetByAuthID
-// =========================
-
-func (r *UserRepository) GetByAuthID(
-	ctx context.Context,
-	authUserID string,
-) (*models.User, error) {
-
-	ctx, cancel := withTimeout(ctx)
-	defer cancel()
-
-	q := `
-		SELECT
-			id,
-			auth_user_id,
-			email,
-			created_at,
-			updated_at
-		FROM users
-		WHERE auth_user_id = ?
-	`
-
-	u := &models.User{}
-
-	err := r.db.QueryRowContext(
-		ctx,
-		q,
-		authUserID,
 	).Scan(
 		&u.ID,
 		&u.AuthUserID,

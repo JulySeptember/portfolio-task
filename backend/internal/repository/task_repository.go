@@ -12,19 +12,6 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
-type TaskRepositoryInterface interface {
-	Create(ctx context.Context, t *models.Task) error
-	Get(ctx context.Context, id int64, userID int64) (*models.Task, error)
-	Update(ctx context.Context, t *models.Task) error
-	Delete(ctx context.Context, id int64, userID int64) error
-	ListByUserID(
-		ctx context.Context,
-		userID int64,
-		limit int,
-		offset int,
-	) ([]models.Task, error)
-}
-
 type TaskRepository struct {
 	db *sql.DB
 }
