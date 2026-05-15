@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 
-	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/models"
 	"portfolio/backend/internal/repository"
 )
@@ -324,7 +323,7 @@ func (s *TaskService) Delete(
 func (s *TaskService) List(
 	ctx context.Context,
 	userID int64,
-	query dto.TaskListQuery,
+	query models.TaskListQuery,
 ) ([]models.Task, error) {
 
 	if userID <= 0 {

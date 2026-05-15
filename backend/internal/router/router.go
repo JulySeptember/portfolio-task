@@ -16,27 +16,6 @@ func NewRouter(
 	mux := http.NewServeMux()
 
 	// =========================
-	// health
-	// =========================
-
-	mux.HandleFunc(
-		"GET /health",
-		func(
-			w http.ResponseWriter,
-			r *http.Request,
-		) {
-
-			w.WriteHeader(
-				http.StatusOK,
-			)
-
-			_, _ = w.Write(
-				[]byte("ok"),
-			)
-		},
-	)
-
-	// =========================
 	// users
 	// =========================
 

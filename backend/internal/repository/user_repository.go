@@ -32,7 +32,7 @@ func (r *UserRepository) Ensure(
 	u *models.User,
 ) (*models.User, error) {
 
-	ctx, cancel := withTimeout(ctx)
+	ctxWithTimeout, cancel := withTimeout(ctx)
 	defer cancel()
 
 	q := `
@@ -47,7 +47,7 @@ func (r *UserRepository) Ensure(
 	`
 
 	res, err := r.db.ExecContext(
-		ctx,
+		ctxWithTimeout,
 		q,
 		u.AuthUserID,
 		u.Email,
@@ -63,6 +63,8 @@ func (r *UserRepository) Ensure(
 		return nil, err
 	}
 
+	// IMPORTANT:
+	// pass original ctx
 	return r.Get(
 		ctx,
 		id,

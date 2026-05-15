@@ -5,6 +5,7 @@ import (
 
 	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/httpx"
+	"portfolio/backend/internal/models"
 	"portfolio/backend/internal/service"
 )
 
@@ -161,7 +162,7 @@ func (h *TaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 // =========================
-// List（ここが変更点）
+// List
 // =========================
 
 func (h *TaskHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -170,8 +171,7 @@ func (h *TaskHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ★ ここが重要：DTOで生成してNormalize
-	query := dto.TaskListQuery{
+	query := models.TaskListQuery{
 		Status: httpx.QueryString(r, "status", ""),
 		Sort:   httpx.QueryString(r, "sort", ""),
 		Order:  httpx.QueryString(r, "order", ""),
@@ -179,21 +179,39 @@ func (h *TaskHandler) List(w http.ResponseWriter, r *http.Request) {
 		Offset: httpx.QueryInt(r, "offset", 0, 0, 0),
 	}.Normalize()
 
-	res, err := h.taskSvc.List(r.Context(), userID, query)
+	res, err := h.taskSvc.List(
+		r.Context(),
+		userID,
+		query,
+	)
+
 	if err != nil {
 		httpx.HandleError(w, err)
 		return
 	}
 
-	items := make([]dto.TaskResponse, 0, len(res))
+	items := make(
+		[]dto.TaskResponse,
+		0,
+		len(res),
+	)
+
 	for _, t := range res {
-		items = append(items, dto.ToTaskResponse(&t))
+
+		items = append(
+			items,
+			dto.ToTaskResponse(&t),
+		)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, dto.TaskListResponse{
-		Count:  len(items),
-		Items:  items,
-		Limit:  query.Limit,
-		Offset: query.Offset,
-	})
+	httpx.WriteJSON(
+		w,
+		http.StatusOK,
+		dto.TaskListResponse{
+			Count:  len(items),
+			Items:  items,
+			Limit:  query.Limit,
+			Offset: query.Offset,
+		},
+	)
 }

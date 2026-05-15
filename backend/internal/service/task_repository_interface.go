@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 
-	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/models"
 )
 
@@ -16,7 +15,7 @@ type TaskRepository interface {
 	ListByUserID(
 		ctx context.Context,
 		userID int64,
-		query dto.TaskListQuery,
+		query models.TaskListQuery,
 	) ([]models.Task, error)
 
 	Get(

@@ -9,7 +9,8 @@ import (
 	"fmt"
 	"strings"
 
-	"portfolio/backend/internal/dto"
+	mysqlDriver "github.com/go-sql-driver/mysql"
+
 	"portfolio/backend/internal/models"
 )
 
@@ -35,6 +36,9 @@ func (r *TaskRepository) Create(
 	task *models.Task,
 ) error {
 
+	ctx, cancel := withTimeout(ctx)
+	defer cancel()
+
 	query := `
 INSERT INTO tasks (
 	user_id,
@@ -57,12 +61,19 @@ INSERT INTO tasks (
 
 	if err != nil {
 
-		if errors.Is(err, ErrForeignKeyViolation) {
-			return ErrForeignKeyViolation
+		var mysqlErr *mysqlDriver.MySQLError
+
+		if errors.As(err, &mysqlErr) {
+
+			// ER_NO_REFERENCED_ROW_2
+			if mysqlErr.Number == 1452 {
+				return ErrForeignKeyViolation
+			}
 		}
 
 		return err
 	}
+
 	id, err := result.LastInsertId()
 
 	if err != nil {
@@ -81,8 +92,11 @@ INSERT INTO tasks (
 func (r *TaskRepository) ListByUserID(
 	ctx context.Context,
 	userID int64,
-	query dto.TaskListQuery,
+	query models.TaskListQuery,
 ) ([]models.Task, error) {
+
+	ctx, cancel := withTimeout(ctx)
+	defer cancel()
 
 	sortColumn := "created_at"
 
@@ -101,6 +115,24 @@ func (r *TaskRepository) ListByUserID(
 		order = "ASC"
 	}
 
+	orderBy := "created_at DESC, id DESC"
+
+	if sortColumn == "due_date" {
+
+		orderBy = fmt.Sprintf(
+			"due_date IS NULL, due_date %s, id DESC",
+			order,
+		)
+
+	} else {
+
+		orderBy = fmt.Sprintf(
+			"%s %s, id DESC",
+			sortColumn,
+			order,
+		)
+	}
+
 	queryStr := fmt.Sprintf(`
 SELECT
 	id,
@@ -114,12 +146,11 @@ SELECT
 FROM tasks
 WHERE user_id = ?
 AND (? = '' OR status = ?)
-ORDER BY %s %s, id DESC
+ORDER BY %s
 LIMIT ?
 OFFSET ?
 `,
-		sortColumn,
-		order,
+		orderBy,
 	)
 
 	rows, err := r.db.QueryContext(
@@ -186,6 +217,9 @@ func (r *TaskRepository) Get(
 	userID int64,
 ) (*models.Task, error) {
 
+	ctx, cancel := withTimeout(ctx)
+	defer cancel()
+
 	query := `
 SELECT
 	id,
@@ -244,6 +278,9 @@ func (r *TaskRepository) Update(
 	task *models.Task,
 ) error {
 
+	ctx, cancel := withTimeout(ctx)
+	defer cancel()
+
 	query := `
 UPDATE tasks
 SET
@@ -295,6 +332,9 @@ func (r *TaskRepository) UpdateStatus(
 	status models.TaskStatus,
 ) error {
 
+	ctx, cancel := withTimeout(ctx)
+	defer cancel()
+
 	query := `
 UPDATE tasks
 SET
@@ -338,6 +378,9 @@ func (r *TaskRepository) Delete(
 	taskID int64,
 	userID int64,
 ) error {
+
+	ctx, cancel := withTimeout(ctx)
+	defer cancel()
 
 	query := `
 DELETE FROM tasks
