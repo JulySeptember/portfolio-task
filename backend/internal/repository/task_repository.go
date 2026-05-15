@@ -6,10 +6,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 
+	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/models"
-
-	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
 type TaskRepository struct {
@@ -31,55 +32,148 @@ func NewTaskRepository(
 
 func (r *TaskRepository) Create(
 	ctx context.Context,
-	t *models.Task,
+	task *models.Task,
 ) error {
 
-	ctx, cancel := withTimeout(ctx)
-	defer cancel()
+	query := `
+INSERT INTO tasks (
+	user_id,
+	title,
+	description,
+	status,
+	due_date
+) VALUES (?, ?, ?, ?, ?)
+`
 
-	q := `
-		INSERT INTO tasks (
-			user_id,
-			title,
-			description,
-			status,
-			due_date
-		)
-		VALUES (?, ?, ?, ?, ?)
-	`
-
-	res, err := r.db.ExecContext(
+	result, err := r.db.ExecContext(
 		ctx,
-		q,
-		t.UserID,
-		t.Title,
-		t.Description,
-		t.Status,
-		t.DueDate,
+		query,
+		task.UserID,
+		task.Title,
+		task.Description,
+		task.Status,
+		task.DueDate,
 	)
 
 	if err != nil {
 
-		var mysqlErr *mysqlDriver.MySQLError
-
-		if errors.As(err, &mysqlErr) &&
-			mysqlErr.Number == 1452 {
-
+		if errors.Is(err, ErrForeignKeyViolation) {
 			return ErrForeignKeyViolation
 		}
 
 		return err
 	}
-
-	id, err := res.LastInsertId()
+	id, err := result.LastInsertId()
 
 	if err != nil {
 		return err
 	}
 
-	t.ID = id
+	task.ID = id
 
 	return nil
+}
+
+// =========================
+// ListByUserID
+// =========================
+
+func (r *TaskRepository) ListByUserID(
+	ctx context.Context,
+	userID int64,
+	query dto.TaskListQuery,
+) ([]models.Task, error) {
+
+	sortColumn := "created_at"
+
+	switch query.Sort {
+
+	case "due_date":
+		sortColumn = "due_date"
+
+	case "created_at":
+		sortColumn = "created_at"
+	}
+
+	order := "DESC"
+
+	if strings.ToUpper(query.Order) == "ASC" {
+		order = "ASC"
+	}
+
+	queryStr := fmt.Sprintf(`
+SELECT
+	id,
+	user_id,
+	title,
+	description,
+	status,
+	due_date,
+	created_at,
+	updated_at
+FROM tasks
+WHERE user_id = ?
+AND (? = '' OR status = ?)
+ORDER BY %s %s, id DESC
+LIMIT ?
+OFFSET ?
+`,
+		sortColumn,
+		order,
+	)
+
+	rows, err := r.db.QueryContext(
+		ctx,
+		queryStr,
+		userID,
+		query.Status,
+		query.Status,
+		query.Limit,
+		query.Offset,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	tasks := make(
+		[]models.Task,
+		0,
+		query.Limit,
+	)
+
+	for rows.Next() {
+
+		var task models.Task
+
+		err := rows.Scan(
+			&task.ID,
+			&task.UserID,
+			&task.Title,
+			&task.Description,
+			&task.Status,
+			&task.DueDate,
+			&task.CreatedAt,
+			&task.UpdatedAt,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		tasks = append(
+			tasks,
+			task,
+		)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return tasks, nil
 }
 
 // =========================
@@ -88,56 +182,57 @@ func (r *TaskRepository) Create(
 
 func (r *TaskRepository) Get(
 	ctx context.Context,
-	id int64,
+	taskID int64,
 	userID int64,
 ) (*models.Task, error) {
 
-	ctx, cancel := withTimeout(ctx)
-	defer cancel()
+	query := `
+SELECT
+	id,
+	user_id,
+	title,
+	description,
+	status,
+	due_date,
+	created_at,
+	updated_at
+FROM tasks
+WHERE id = ?
+AND user_id = ?
+`
 
-	q := `
-		SELECT
-			id,
-			user_id,
-			title,
-			description,
-			status,
-			due_date,
-			created_at,
-			updated_at
-		FROM tasks
-		WHERE id = ?
-		AND user_id = ?
-	`
-
-	t := &models.Task{}
+	var task models.Task
 
 	err := r.db.QueryRowContext(
 		ctx,
-		q,
-		id,
+		query,
+		taskID,
 		userID,
 	).Scan(
-		&t.ID,
-		&t.UserID,
-		&t.Title,
-		&t.Description,
-		&t.Status,
-		&t.DueDate,
-		&t.CreatedAt,
-		&t.UpdatedAt,
+		&task.ID,
+		&task.UserID,
+		&task.Title,
+		&task.Description,
+		&task.Status,
+		&task.DueDate,
+		&task.CreatedAt,
+		&task.UpdatedAt,
 	)
 
 	if err != nil {
 
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(
+			err,
+			sql.ErrNoRows,
+		) {
+
 			return nil, ErrTaskNotFound
 		}
 
 		return nil, err
 	}
 
-	return t, nil
+	return &task, nil
 }
 
 // =========================
@@ -146,41 +241,88 @@ func (r *TaskRepository) Get(
 
 func (r *TaskRepository) Update(
 	ctx context.Context,
-	t *models.Task,
+	task *models.Task,
 ) error {
 
-	ctx, cancel := withTimeout(ctx)
-	defer cancel()
+	query := `
+UPDATE tasks
+SET
+	title = ?,
+	description = ?,
+	status = ?,
+	due_date = ?,
+	updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+AND user_id = ?
+`
 
-	q := `
-		UPDATE tasks
-		SET
-			title = ?,
-			description = ?,
-			status = ?,
-			due_date = ?
-		WHERE id = ?
-		AND user_id = ?
-	`
-
-	res, err := r.db.ExecContext(
+	result, err := r.db.ExecContext(
 		ctx,
-		q,
-		t.Title,
-		t.Description,
-		t.Status,
-		t.DueDate,
-		t.ID,
-		t.UserID,
+		query,
+		task.Title,
+		task.Description,
+		task.Status,
+		task.DueDate,
+		task.ID,
+		task.UserID,
 	)
 
 	if err != nil {
 		return err
 	}
 
-	aff, _ := res.RowsAffected()
+	rowsAffected, err := result.RowsAffected()
 
-	if aff == 0 {
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return ErrTaskNotFound
+	}
+
+	return nil
+}
+
+// =========================
+// UpdateStatus
+// =========================
+
+func (r *TaskRepository) UpdateStatus(
+	ctx context.Context,
+	taskID int64,
+	userID int64,
+	status models.TaskStatus,
+) error {
+
+	query := `
+UPDATE tasks
+SET
+	status = ?,
+	updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+AND user_id = ?
+`
+
+	result, err := r.db.ExecContext(
+		ctx,
+		query,
+		status,
+		taskID,
+		userID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
 		return ErrTaskNotFound
 	}
 
@@ -193,23 +335,20 @@ func (r *TaskRepository) Update(
 
 func (r *TaskRepository) Delete(
 	ctx context.Context,
-	id int64,
+	taskID int64,
 	userID int64,
 ) error {
 
-	ctx, cancel := withTimeout(ctx)
-	defer cancel()
+	query := `
+DELETE FROM tasks
+WHERE id = ?
+AND user_id = ?
+`
 
-	q := `
-		DELETE FROM tasks
-		WHERE id = ?
-		AND user_id = ?
-	`
-
-	res, err := r.db.ExecContext(
+	result, err := r.db.ExecContext(
 		ctx,
-		q,
-		id,
+		query,
+		taskID,
 		userID,
 	)
 
@@ -217,85 +356,15 @@ func (r *TaskRepository) Delete(
 		return err
 	}
 
-	aff, _ := res.RowsAffected()
+	rowsAffected, err := result.RowsAffected()
 
-	if aff == 0 {
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
 		return ErrTaskNotFound
 	}
 
 	return nil
-}
-
-// =========================
-// List
-// =========================
-
-func (r *TaskRepository) ListByUserID(
-	ctx context.Context,
-	userID int64,
-	limit int,
-	offset int,
-) ([]models.Task, error) {
-
-	ctx, cancel := withTimeout(ctx)
-	defer cancel()
-
-	q := `
-		SELECT
-			id,
-			user_id,
-			title,
-			description,
-			status,
-			due_date,
-			created_at,
-			updated_at
-		FROM tasks
-		WHERE user_id = ?
-		ORDER BY created_at DESC, id DESC
-		LIMIT ? OFFSET ?
-	`
-
-	rows, err := r.db.QueryContext(
-		ctx,
-		q,
-		userID,
-		limit,
-		offset,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows.Close()
-
-	result := make([]models.Task, 0)
-
-	for rows.Next() {
-
-		var t models.Task
-
-		if err := rows.Scan(
-			&t.ID,
-			&t.UserID,
-			&t.Title,
-			&t.Description,
-			&t.Status,
-			&t.DueDate,
-			&t.CreatedAt,
-			&t.UpdatedAt,
-		); err != nil {
-
-			return nil, err
-		}
-
-		result = append(result, t)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return result, nil
 }

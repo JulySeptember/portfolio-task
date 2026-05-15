@@ -25,6 +25,8 @@ const (
 	CodeTaskNotFound   = "TASK_NOT_FOUND"
 	CodeInvalidUserID  = "INVALID_USER_ID"
 	CodeInvalidDueDate = "INVALID_DUE_DATE"
+	CodeInvalidSort    = "INVALID_SORT"
+	CodeInvalidOrder   = "INVALID_ORDER"
 )
 
 // =========================

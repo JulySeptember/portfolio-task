@@ -2,32 +2,28 @@ package repository
 
 import "errors"
 
+// =========================
+// base
+// =========================
+
 var ErrNotFound = errors.New("not found")
 
 // =========================
 // user
 // =========================
 
-var ErrUserNotFound = ErrNotFound
-
-var ErrDuplicateEmail = errors.New(
-	"duplicate email",
-)
-
-var ErrDuplicateAuthUserID = errors.New(
-	"duplicate auth user id",
-)
+var ErrUserNotFound = errors.New("user not found")
+var ErrDuplicateEmail = errors.New("duplicate email")
+var ErrDuplicateAuthUserID = errors.New("duplicate auth user id")
 
 // =========================
 // task
 // =========================
 
-var ErrTaskNotFound = ErrNotFound
+var ErrTaskNotFound = errors.New("task not found")
 
 // =========================
-// common db
+// db common
 // =========================
 
-var ErrForeignKeyViolation = errors.New(
-	"foreign key violation",
-)
+var ErrForeignKeyViolation = errors.New("foreign key violation")

@@ -1,3 +1,5 @@
+// internal/service/errors.go
+
 package service
 
 import "errors"
@@ -8,6 +10,8 @@ var (
 	ErrInvalidID     = errors.New("invalid id")
 	ErrInvalidUserID = errors.New("invalid user id")
 	ErrInvalidStatus = errors.New("invalid status")
+	ErrInvalidSort   = errors.New("invalid sort")
+	ErrInvalidOrder  = errors.New("invalid order")
 
 	// user
 	ErrUserNotFound   = errors.New("user not found")

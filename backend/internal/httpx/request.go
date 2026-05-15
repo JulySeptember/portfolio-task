@@ -1,3 +1,5 @@
+// internal/httpx/request.go
+
 package httpx
 
 import (
@@ -25,12 +27,6 @@ var (
 // JSON
 // =========================
 
-// DecodeJSON safely decodes JSON request body.
-//
-// features:
-// - max body size limit
-// - reject unknown fields
-// - strict single-object enforcement
 func DecodeJSON(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -54,76 +50,34 @@ func DecodeJSON(
 		switch {
 
 		case errors.As(err, &syntaxErr):
-
-			return fmt.Errorf(
-				"malformed JSON at position %d",
-				syntaxErr.Offset,
-			)
+			return fmt.Errorf("malformed JSON at position %d", syntaxErr.Offset)
 
 		case errors.Is(err, io.ErrUnexpectedEOF):
-
-			return errors.New(
-				"malformed JSON",
-			)
+			return errors.New("malformed JSON")
 
 		case errors.As(err, &typeErr):
-
 			if typeErr.Field != "" {
-
-				return fmt.Errorf(
-					"invalid value for field %q",
-					typeErr.Field,
-				)
+				return fmt.Errorf("invalid value for field %q", typeErr.Field)
 			}
-
-			return errors.New(
-				"invalid JSON type",
-			)
+			return errors.New("invalid JSON type")
 
 		case errors.Is(err, io.EOF):
+			return errors.New("empty request body")
 
-			return errors.New(
-				"empty request body",
-			)
+		case strings.Contains(err.Error(), "http: request body too large"):
+			return errors.New("request body too large")
 
-		case strings.Contains(
-			err.Error(),
-			"http: request body too large",
-		):
-
-			return errors.New(
-				"request body too large",
-			)
-
-		case strings.HasPrefix(
-			err.Error(),
-			"json: unknown field ",
-		):
-
-			field := strings.TrimPrefix(
-				err.Error(),
-				"json: unknown field ",
-			)
-
-			return fmt.Errorf(
-				"unknown field %s",
-				field,
-			)
+		case strings.HasPrefix(err.Error(), "json: unknown field "):
+			field := strings.TrimPrefix(err.Error(), "json: unknown field ")
+			return fmt.Errorf("unknown field %s", field)
 
 		default:
-
-			return errors.New(
-				"invalid JSON",
-			)
+			return errors.New("invalid JSON")
 		}
 	}
 
-	// ensure only one JSON object exists
 	if err := dec.Decode(&struct{}{}); err != io.EOF {
-
-		return errors.New(
-			"body must contain only one JSON object",
-		)
+		return errors.New("body must contain only one JSON object")
 	}
 
 	return nil
@@ -154,14 +108,6 @@ func PathID(
 // Query params
 // =========================
 
-// QueryInt parses integer query params.
-//
-// behavior:
-// - empty/invalid => default
-// - below min => min
-// - above max => max
-//
-// if max <= 0, max is ignored.
 func QueryInt(
 	r *http.Request,
 	key string,
@@ -193,12 +139,26 @@ func QueryInt(
 	return n
 }
 
+// ★追加：string query
+func QueryString(
+	r *http.Request,
+	key string,
+	def string,
+) string {
+
+	v := r.URL.Query().Get(key)
+
+	if v == "" {
+		return def
+	}
+
+	return v
+}
+
 // =========================
 // Time
 // =========================
 
-// ParseOptionalTime parses RFC3339 datetime.
-// empty string returns nil.
 func ParseOptionalTime(
 	value string,
 ) (*time.Time, error) {

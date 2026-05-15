@@ -1,3 +1,5 @@
+// internal/handlers/helpers.go
+
 package handlers
 
 import (
@@ -63,7 +65,9 @@ func decodeAndValidate(
 		return false
 	}
 
-	if errs := validator.ValidateStruct(dst); errs != nil {
+	if errs := validator.ValidateStruct(
+		dst,
+	); errs != nil {
 
 		httpx.WriteValidationErrors(
 			w,
@@ -133,10 +137,32 @@ func parseOptionalDueDate(
 }
 
 // =========================
-// buildTaskFromRequest
+// mapper
 // =========================
 
-func buildTaskFromRequest(
+func buildTaskFromCreateRequest(
+	w http.ResponseWriter,
+	req *dto.CreateTaskRequest,
+) (*models.Task, bool) {
+
+	dueDate, ok := parseOptionalDueDate(
+		w,
+		req.DueDate,
+	)
+
+	if !ok {
+		return nil, false
+	}
+
+	return &models.Task{
+		Title:       req.Title,
+		Description: req.Description,
+		Status:      req.Status,
+		DueDate:     dueDate,
+	}, true
+}
+
+func buildTaskFromUpdateRequest(
 	w http.ResponseWriter,
 	req *dto.UpdateTaskRequest,
 ) (*models.Task, bool) {
@@ -153,7 +179,7 @@ func buildTaskFromRequest(
 	return &models.Task{
 		Title:       req.Title,
 		Description: req.Description,
-		Status:      models.TaskStatus(req.Status),
+		Status:      req.Status,
 		DueDate:     dueDate,
 	}, true
 }
