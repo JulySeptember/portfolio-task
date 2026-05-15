@@ -5,10 +5,12 @@ package middleware
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"log"
 	"net/http"
-	"portfolio/backend/internal/auth"
 	"time"
+
+	"portfolio/backend/internal/auth"
 )
 
 // =========================
@@ -42,6 +44,23 @@ func newRequestID() string {
 	}
 
 	return hex.EncodeToString(b)
+}
+
+// =========================
+// structured log
+// =========================
+
+type requestLog struct {
+	Timestamp  string `json:"timestamp"`
+	Level      string `json:"level"`
+	RequestID  string `json:"request_id"`
+	UserID     int64  `json:"user_id,omitempty"`
+	Method     string `json:"method"`
+	Path       string `json:"path"`
+	Status     int    `json:"status"`
+	DurationMS int64  `json:"duration_ms"`
+	RemoteAddr string `json:"remote_addr"`
+	UserAgent  string `json:"user_agent"`
 }
 
 // =========================
@@ -80,18 +99,31 @@ func Logging(
 			r.Context(),
 		)
 
-		duration := time.Since(start)
+		entry := requestLog{
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+			Level:     "INFO",
+			RequestID: requestID,
+			UserID:    userID,
+			Method:    r.Method,
+			Path:      r.URL.Path,
+			Status:    rw.statusCode,
+			DurationMS: time.Since(start).
+				Milliseconds(),
+			RemoteAddr: r.RemoteAddr,
+			UserAgent:  r.UserAgent(),
+		}
 
-		log.Printf(
-			"[REQ] request_id=%s user_id=%d method=%s path=%s status=%d duration_ms=%d remote=%s user_agent=%q",
-			requestID,
-			userID,
-			r.Method,
-			r.URL.Path,
-			rw.statusCode,
-			duration.Milliseconds(),
-			r.RemoteAddr,
-			r.UserAgent(),
-		)
+		b, err := json.Marshal(entry)
+
+		if err != nil {
+
+			log.Printf(
+				`{"level":"ERROR","message":"failed to marshal request log"}`,
+			)
+
+			return
+		}
+
+		log.Println(string(b))
 	})
 }

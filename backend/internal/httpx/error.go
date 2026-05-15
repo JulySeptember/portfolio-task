@@ -1,10 +1,11 @@
+// internal/httpx/error.go
+
 package httpx
 
 import (
 	"errors"
 	"net/http"
 
-	"portfolio/backend/internal/repository"
 	"portfolio/backend/internal/service"
 )
 
@@ -32,7 +33,7 @@ func HandleError(
 	// user
 	// =========================
 
-	case errors.Is(err, repository.ErrUserNotFound):
+	case errors.Is(err, service.ErrUserNotFound):
 
 		WriteError(
 			w,
@@ -41,7 +42,7 @@ func HandleError(
 			"user not found",
 		)
 
-	case errors.Is(err, repository.ErrDuplicateEmail):
+	case errors.Is(err, service.ErrDuplicateEmail):
 
 		WriteError(
 			w,
@@ -54,7 +55,7 @@ func HandleError(
 	// task
 	// =========================
 
-	case errors.Is(err, repository.ErrTaskNotFound):
+	case errors.Is(err, service.ErrTaskNotFound):
 
 		WriteError(
 			w,
@@ -81,7 +82,7 @@ func HandleError(
 			"invalid status",
 		)
 
-	case errors.Is(err, repository.ErrForeignKeyViolation):
+	case errors.Is(err, service.ErrForeignKeyViolation):
 
 		WriteError(
 			w,

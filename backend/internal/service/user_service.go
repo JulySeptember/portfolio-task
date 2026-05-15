@@ -1,9 +1,13 @@
+// internal/service/user_service.go
+
 package service
 
 import (
 	"context"
+	"errors"
 
 	"portfolio/backend/internal/models"
+	"portfolio/backend/internal/repository"
 )
 
 type UserService struct {
@@ -36,10 +40,25 @@ func (s *UserService) Ensure(
 		Email:      email,
 	}
 
-	return s.repo.Ensure(
+	res, err := s.repo.Ensure(
 		ctx,
 		u,
 	)
+
+	if err != nil {
+
+		if errors.Is(
+			err,
+			repository.ErrDuplicateEmail,
+		) {
+
+			return nil, ErrDuplicateEmail
+		}
+
+		return nil, err
+	}
+
+	return res, nil
 }
 
 // =========================
@@ -55,10 +74,25 @@ func (s *UserService) Get(
 		return nil, ErrInvalidID
 	}
 
-	return s.repo.Get(
+	res, err := s.repo.Get(
 		ctx,
 		id,
 	)
+
+	if err != nil {
+
+		if errors.Is(
+			err,
+			repository.ErrUserNotFound,
+		) {
+
+			return nil, ErrUserNotFound
+		}
+
+		return nil, err
+	}
+
+	return res, nil
 }
 
 // =========================
@@ -74,8 +108,23 @@ func (s *UserService) Delete(
 		return ErrInvalidUserID
 	}
 
-	return s.repo.Delete(
+	err := s.repo.Delete(
 		ctx,
 		userID,
 	)
+
+	if err != nil {
+
+		if errors.Is(
+			err,
+			repository.ErrUserNotFound,
+		) {
+
+			return ErrUserNotFound
+		}
+
+		return err
+	}
+
+	return nil
 }

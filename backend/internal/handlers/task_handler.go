@@ -7,7 +7,6 @@ import (
 
 	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/httpx"
-	"portfolio/backend/internal/models"
 	"portfolio/backend/internal/service"
 )
 
@@ -35,30 +34,35 @@ func (h *TaskHandler) Create(
 
 	var req dto.CreateTaskRequest
 
-	if !decodeAndValidate(w, r, &req) {
-		return
-	}
-
-	userID, ok := requireAuthUserID(w, r)
-
-	if !ok {
-		return
-	}
-
-	dueDate, ok := parseOptionalDueDate(
+	if !decodeAndValidate(
 		w,
-		req.DueDate,
+		r,
+		&req,
+	) {
+		return
+	}
+
+	userID, ok := requireAuthUserID(
+		w,
+		r,
 	)
 
 	if !ok {
 		return
 	}
 
-	task := &models.Task{
-		Title:       req.Title,
-		Description: req.Description,
-		Status:      req.Status,
-		DueDate:     dueDate,
+	task, ok := buildTaskFromRequest(
+		w,
+		&dto.UpdateTaskRequest{
+			Title:       req.Title,
+			Description: req.Description,
+			Status:      req.Status,
+			DueDate:     req.DueDate,
+		},
+	)
+
+	if !ok {
+		return
 	}
 
 	res, err := h.taskSvc.Create(
@@ -68,7 +72,12 @@ func (h *TaskHandler) Create(
 	)
 
 	if err != nil {
-		httpx.HandleError(w, err)
+
+		httpx.HandleError(
+			w,
+			err,
+		)
+
 		return
 	}
 
@@ -88,7 +97,10 @@ func (h *TaskHandler) Get(
 	r *http.Request,
 ) {
 
-	id, ok := parseID(w, r)
+	id, ok := parseID(
+		w,
+		r,
+	)
 
 	if !ok {
 		return
@@ -110,7 +122,12 @@ func (h *TaskHandler) Get(
 	)
 
 	if err != nil {
-		httpx.HandleError(w, err)
+
+		httpx.HandleError(
+			w,
+			err,
+		)
+
 		return
 	}
 
@@ -130,7 +147,10 @@ func (h *TaskHandler) Update(
 	r *http.Request,
 ) {
 
-	id, ok := parseID(w, r)
+	id, ok := parseID(
+		w,
+		r,
+	)
 
 	if !ok {
 		return
@@ -147,26 +167,24 @@ func (h *TaskHandler) Update(
 
 	var req dto.UpdateTaskRequest
 
-	if !decodeAndValidate(w, r, &req) {
+	if !decodeAndValidate(
+		w,
+		r,
+		&req,
+	) {
 		return
 	}
 
-	dueDate, ok := parseOptionalDueDate(
+	task, ok := buildTaskFromRequest(
 		w,
-		req.DueDate,
+		&req,
 	)
 
 	if !ok {
 		return
 	}
 
-	task := &models.Task{
-		ID:          id,
-		Title:       req.Title,
-		Description: req.Description,
-		Status:      req.Status,
-		DueDate:     dueDate,
-	}
+	task.ID = id
 
 	res, err := h.taskSvc.Update(
 		r.Context(),
@@ -175,7 +193,12 @@ func (h *TaskHandler) Update(
 	)
 
 	if err != nil {
-		httpx.HandleError(w, err)
+
+		httpx.HandleError(
+			w,
+			err,
+		)
+
 		return
 	}
 
@@ -195,7 +218,10 @@ func (h *TaskHandler) Delete(
 	r *http.Request,
 ) {
 
-	id, ok := parseID(w, r)
+	id, ok := parseID(
+		w,
+		r,
+	)
 
 	if !ok {
 		return
@@ -216,7 +242,11 @@ func (h *TaskHandler) Delete(
 		userID,
 	); err != nil {
 
-		httpx.HandleError(w, err)
+		httpx.HandleError(
+			w,
+			err,
+		)
+
 		return
 	}
 
@@ -267,7 +297,12 @@ func (h *TaskHandler) List(
 	)
 
 	if err != nil {
-		httpx.HandleError(w, err)
+
+		httpx.HandleError(
+			w,
+			err,
+		)
+
 		return
 	}
 
