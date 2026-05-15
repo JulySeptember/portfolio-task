@@ -67,13 +67,18 @@ func NewApp(db *sql.DB) *App {
 	)
 
 	// =========================
-	// api middleware
+	// middleware execution order
 	// =========================
-	// execution order:
-	// Auth -> Logging -> Router
 	//
-	// Logging can access user_id
-	// after AuthMiddleware sets context
+	// Recovery
+	// -> CORS
+	// -> Auth
+	// -> Logging
+	// -> Router
+	//
+	// Logging can access user_id because
+	// AuthMiddleware injects user context
+	// before calling the next handler.
 	// =========================
 
 	apiHandler := middleware.Chain(
