@@ -3,33 +3,43 @@ package service
 import (
 	"context"
 
+	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/models"
 )
 
 type TaskRepository interface {
-	Create(ctx context.Context, t *models.Task) error
-
-	Get(
+	Create(
 		ctx context.Context,
-		id int64,
-		userID int64,
-	) (*models.Task, error)
-
-	Update(
-		ctx context.Context,
-		t *models.Task,
-	) error
-
-	Delete(
-		ctx context.Context,
-		id int64,
-		userID int64,
+		task *models.Task,
 	) error
 
 	ListByUserID(
 		ctx context.Context,
 		userID int64,
-		limit int,
-		offset int,
+		query dto.TaskListQuery,
 	) ([]models.Task, error)
+
+	Get(
+		ctx context.Context,
+		taskID int64,
+		userID int64,
+	) (*models.Task, error)
+
+	Update(
+		ctx context.Context,
+		task *models.Task,
+	) error
+
+	UpdateStatus(
+		ctx context.Context,
+		taskID int64,
+		userID int64,
+		status models.TaskStatus,
+	) error
+
+	Delete(
+		ctx context.Context,
+		taskID int64,
+		userID int64,
+	) error
 }

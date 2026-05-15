@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 
+	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/models"
 	"portfolio/backend/internal/repository"
 )
@@ -211,6 +212,72 @@ func (s *TaskService) Update(
 }
 
 // =========================
+// UpdateStatus
+// =========================
+
+func (s *TaskService) UpdateStatus(
+	ctx context.Context,
+	taskID int64,
+	userID int64,
+	status models.TaskStatus,
+) (*models.Task, error) {
+
+	if taskID <= 0 {
+		return nil, ErrInvalidID
+	}
+
+	if userID <= 0 {
+		return nil, ErrInvalidUserID
+	}
+
+	if err := validateTaskStatus(
+		status,
+	); err != nil {
+
+		return nil, err
+	}
+
+	if err := s.repo.UpdateStatus(
+		ctx,
+		taskID,
+		userID,
+		status,
+	); err != nil {
+
+		if errors.Is(
+			err,
+			repository.ErrTaskNotFound,
+		) {
+
+			return nil, ErrTaskNotFound
+		}
+
+		return nil, err
+	}
+
+	res, err := s.repo.Get(
+		ctx,
+		taskID,
+		userID,
+	)
+
+	if err != nil {
+
+		if errors.Is(
+			err,
+			repository.ErrTaskNotFound,
+		) {
+
+			return nil, ErrTaskNotFound
+		}
+
+		return nil, err
+	}
+
+	return res, nil
+}
+
+// =========================
 // Delete
 // =========================
 
@@ -257,8 +324,7 @@ func (s *TaskService) Delete(
 func (s *TaskService) List(
 	ctx context.Context,
 	userID int64,
-	limit int,
-	offset int,
+	query dto.TaskListQuery,
 ) ([]models.Task, error) {
 
 	if userID <= 0 {
@@ -268,7 +334,6 @@ func (s *TaskService) List(
 	return s.repo.ListByUserID(
 		ctx,
 		userID,
-		limit,
-		offset,
+		query,
 	)
 }

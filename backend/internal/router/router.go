@@ -15,75 +15,80 @@ func NewRouter(
 
 	mux := http.NewServeMux()
 
-	registerUserRoutes(
-		mux,
-		userHandler,
+	// =========================
+	// health
+	// =========================
+
+	mux.HandleFunc(
+		"GET /health",
+		func(
+			w http.ResponseWriter,
+			r *http.Request,
+		) {
+
+			w.WriteHeader(
+				http.StatusOK,
+			)
+
+			_, _ = w.Write(
+				[]byte("ok"),
+			)
+		},
 	)
 
-	registerTaskRoutes(
-		mux,
-		taskHandler,
-	)
-
-	return mux
-}
-
-// =========================
-// user routes
-// =========================
-
-func registerUserRoutes(
-	mux *http.ServeMux,
-	h *handlers.UserHandler,
-) {
+	// =========================
+	// users
+	// =========================
 
 	mux.HandleFunc(
 		"GET /api/v1/users/me",
-		h.Me,
+		userHandler.Me,
 	)
 
 	mux.HandleFunc(
 		"DELETE /api/v1/users/me",
-		h.Delete,
+		userHandler.Delete,
 	)
-}
 
-// =========================
-// task routes
-// =========================
+	// =========================
+	// tasks
+	// =========================
 
-func registerTaskRoutes(
-	mux *http.ServeMux,
-	h *handlers.TaskHandler,
-) {
-
-	// list tasks
+	// list
 	mux.HandleFunc(
 		"GET /api/v1/tasks",
-		h.List,
+		taskHandler.List,
 	)
 
-	// create task
+	// create
 	mux.HandleFunc(
 		"POST /api/v1/tasks",
-		h.Create,
+		taskHandler.Create,
 	)
 
-	// get task
+	// get
 	mux.HandleFunc(
 		"GET /api/v1/tasks/{id}",
-		h.Get,
+		taskHandler.Get,
 	)
 
-	// update task
+	// full update
 	mux.HandleFunc(
 		"PUT /api/v1/tasks/{id}",
-		h.Update,
+		taskHandler.Update,
 	)
 
-	// delete task
+	// partial update (status)
+	mux.HandleFunc(
+		"PATCH /api/v1/tasks/{id}/status",
+		taskHandler.UpdateStatus,
+	)
+
+	// delete
 	mux.HandleFunc(
 		"DELETE /api/v1/tasks/{id}",
-		h.Delete,
+		taskHandler.Delete,
 	)
+
+	return mux
 }
