@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"portfolio/backend/internal/auth"
+	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/httpx"
+	"portfolio/backend/internal/models"
 	"portfolio/backend/internal/validator"
 )
 
@@ -21,12 +23,14 @@ func parseID(
 	id, err := httpx.PathID(r)
 
 	if err != nil {
+
 		httpx.WriteError(
 			w,
 			http.StatusBadRequest,
 			httpx.CodeInvalidID,
 			"invalid id",
 		)
+
 		return 0, false
 	}
 
@@ -43,7 +47,11 @@ func decodeAndValidate(
 	dst any,
 ) bool {
 
-	if err := httpx.DecodeJSON(w, r, dst); err != nil {
+	if err := httpx.DecodeJSON(
+		w,
+		r,
+		dst,
+	); err != nil {
 
 		httpx.WriteError(
 			w,
@@ -57,7 +65,11 @@ func decodeAndValidate(
 
 	if errs := validator.ValidateStruct(dst); errs != nil {
 
-		httpx.WriteValidationErrors(w, errs)
+		httpx.WriteValidationErrors(
+			w,
+			errs,
+		)
+
 		return false
 	}
 
@@ -65,7 +77,7 @@ func decodeAndValidate(
 }
 
 // =========================
-// requireAuthUserID (FIXED)
+// requireAuthUserID
 // =========================
 
 func requireAuthUserID(
@@ -73,7 +85,9 @@ func requireAuthUserID(
 	r *http.Request,
 ) (int64, bool) {
 
-	userID, ok := auth.GetUserID(r.Context())
+	userID, ok := auth.GetUserID(
+		r.Context(),
+	)
 
 	if !ok || userID <= 0 {
 
@@ -99,7 +113,9 @@ func parseOptionalDueDate(
 	value string,
 ) (*time.Time, bool) {
 
-	t, err := httpx.ParseOptionalTime(value)
+	t, err := httpx.ParseOptionalTime(
+		value,
+	)
 
 	if err != nil {
 
@@ -114,4 +130,30 @@ func parseOptionalDueDate(
 	}
 
 	return t, true
+}
+
+// =========================
+// buildTaskFromRequest
+// =========================
+
+func buildTaskFromRequest(
+	w http.ResponseWriter,
+	req *dto.UpdateTaskRequest,
+) (*models.Task, bool) {
+
+	dueDate, ok := parseOptionalDueDate(
+		w,
+		req.DueDate,
+	)
+
+	if !ok {
+		return nil, false
+	}
+
+	return &models.Task{
+		Title:       req.Title,
+		Description: req.Description,
+		Status:      models.TaskStatus(req.Status),
+		DueDate:     dueDate,
+	}, true
 }

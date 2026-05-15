@@ -1,3 +1,5 @@
+// internal/router/router.go
+
 package router
 
 import (
@@ -13,53 +15,75 @@ func NewRouter(
 
 	mux := http.NewServeMux()
 
-	// =========================
-	// USER
-	// =========================
+	registerUserRoutes(
+		mux,
+		userHandler,
+	)
+
+	registerTaskRoutes(
+		mux,
+		taskHandler,
+	)
+
+	return mux
+}
+
+// =========================
+// user routes
+// =========================
+
+func registerUserRoutes(
+	mux *http.ServeMux,
+	h *handlers.UserHandler,
+) {
 
 	mux.HandleFunc(
 		"GET /api/v1/users/me",
-		userHandler.Me,
+		h.Me,
 	)
 
 	mux.HandleFunc(
 		"DELETE /api/v1/users/me",
-		userHandler.Delete,
+		h.Delete,
 	)
+}
 
-	// =========================
-	// TASKS
-	// =========================
+// =========================
+// task routes
+// =========================
 
-	// list my tasks
+func registerTaskRoutes(
+	mux *http.ServeMux,
+	h *handlers.TaskHandler,
+) {
+
+	// list tasks
 	mux.HandleFunc(
 		"GET /api/v1/tasks",
-		taskHandler.List,
+		h.List,
 	)
 
 	// create task
 	mux.HandleFunc(
 		"POST /api/v1/tasks",
-		taskHandler.Create,
+		h.Create,
 	)
 
 	// get task
 	mux.HandleFunc(
 		"GET /api/v1/tasks/{id}",
-		taskHandler.Get,
+		h.Get,
 	)
 
 	// update task
 	mux.HandleFunc(
 		"PUT /api/v1/tasks/{id}",
-		taskHandler.Update,
+		h.Update,
 	)
 
 	// delete task
 	mux.HandleFunc(
 		"DELETE /api/v1/tasks/{id}",
-		taskHandler.Delete,
+		h.Delete,
 	)
-
-	return mux
 }

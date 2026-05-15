@@ -4,8 +4,10 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"portfolio/backend/internal/models"
+	"portfolio/backend/internal/repository"
 )
 
 type TaskService struct {
@@ -70,14 +72,37 @@ func (s *TaskService) Create(
 		t,
 	); err != nil {
 
+		if errors.Is(
+			err,
+			repository.ErrForeignKeyViolation,
+		) {
+
+			return nil, ErrForeignKeyViolation
+		}
+
 		return nil, err
 	}
 
-	return s.repo.Get(
+	res, err := s.repo.Get(
 		ctx,
 		t.ID,
 		userID,
 	)
+
+	if err != nil {
+
+		if errors.Is(
+			err,
+			repository.ErrTaskNotFound,
+		) {
+
+			return nil, ErrTaskNotFound
+		}
+
+		return nil, err
+	}
+
+	return res, nil
 }
 
 // =========================
@@ -98,11 +123,26 @@ func (s *TaskService) Get(
 		return nil, ErrInvalidUserID
 	}
 
-	return s.repo.Get(
+	res, err := s.repo.Get(
 		ctx,
 		id,
 		userID,
 	)
+
+	if err != nil {
+
+		if errors.Is(
+			err,
+			repository.ErrTaskNotFound,
+		) {
+
+			return nil, ErrTaskNotFound
+		}
+
+		return nil, err
+	}
+
+	return res, nil
 }
 
 // =========================
@@ -137,14 +177,37 @@ func (s *TaskService) Update(
 		t,
 	); err != nil {
 
+		if errors.Is(
+			err,
+			repository.ErrTaskNotFound,
+		) {
+
+			return nil, ErrTaskNotFound
+		}
+
 		return nil, err
 	}
 
-	return s.repo.Get(
+	res, err := s.repo.Get(
 		ctx,
 		t.ID,
 		userID,
 	)
+
+	if err != nil {
+
+		if errors.Is(
+			err,
+			repository.ErrTaskNotFound,
+		) {
+
+			return nil, ErrTaskNotFound
+		}
+
+		return nil, err
+	}
+
+	return res, nil
 }
 
 // =========================
@@ -165,11 +228,26 @@ func (s *TaskService) Delete(
 		return ErrInvalidUserID
 	}
 
-	return s.repo.Delete(
+	err := s.repo.Delete(
 		ctx,
 		id,
 		userID,
 	)
+
+	if err != nil {
+
+		if errors.Is(
+			err,
+			repository.ErrTaskNotFound,
+		) {
+
+			return ErrTaskNotFound
+		}
+
+		return err
+	}
+
+	return nil
 }
 
 // =========================
