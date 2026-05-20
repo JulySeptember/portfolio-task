@@ -32,17 +32,19 @@ backend/*.out
 # ============================
 # Terraform
 # ============================
-infra/.terraform/
-infra/.terraform.lock.hcl
+**/.terraform/*
 *.tfstate
 *.tfstate.*
+*.tfplan
+crash.log
+
+# tfvars
 envs/*.tfvars
-# Terraform plan artifacts
+
+# plan artifacts
 infra/plan.tfplan
 infra/plan.json
 infra/plan.txt
-*.tfplan
-
 # ============================
 # Logs
 # ============================
