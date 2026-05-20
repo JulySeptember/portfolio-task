@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"portfolio/backend/internal/auth"
+	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/httpx"
 	"portfolio/backend/internal/service"
 )
@@ -77,7 +78,7 @@ func (h *UserHandler) Bootstrap(
 	httpx.WriteJSON(
 		w,
 		http.StatusOK,
-		user,
+		dto.ToUserResponse(user),
 	)
 }
 
@@ -134,7 +135,7 @@ func (h *UserHandler) Me(
 	httpx.WriteJSON(
 		w,
 		http.StatusOK,
-		user,
+		dto.ToUserResponse(user),
 	)
 }
 

@@ -227,6 +227,18 @@ func (h *TaskHandler) List(
 		),
 	}
 
+	query.Normalize()
+
+	if err := query.Validate(); err != nil {
+
+		httpx.HandleError(
+			w,
+			err,
+		)
+
+		return
+	}
+
 	result, err := h.taskSvc.ListTasks(
 		r.Context(),
 		userID,
@@ -258,7 +270,10 @@ func (h *TaskHandler) List(
 	}
 
 	resp := dto.TaskListResponse{
-		Items: items,
+		Items:  items,
+		Count:  result.Total,
+		Limit:  query.Limit,
+		Offset: query.Offset,
 	}
 
 	httpx.WriteJSON(

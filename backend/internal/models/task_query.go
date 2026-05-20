@@ -2,6 +2,12 @@
 
 package models
 
+import (
+	"strings"
+
+	"portfolio/backend/internal/apperr"
+)
+
 // =========================
 // sort enum
 // =========================
@@ -105,4 +111,80 @@ type TaskListQuery struct {
 type TaskListResult struct {
 	Items []Task `json:"items"`
 	Total int64  `json:"total"`
+}
+
+// =========================
+// normalize
+// =========================
+
+func (q *TaskListQuery) Normalize() {
+
+	sortValue := strings.TrimSpace(
+		strings.ToLower(string(q.Sort)),
+	)
+
+	orderValue := strings.TrimSpace(
+		strings.ToUpper(string(q.Order)),
+	)
+
+	// =========================
+	// defaults
+	// =========================
+
+	if sortValue == "" {
+		q.Sort = TaskSortCreatedAt
+	} else {
+		q.Sort = TaskSort(sortValue)
+	}
+
+	if orderValue == "" {
+		q.Order = TaskOrderDESC
+	} else {
+		q.Order = TaskOrder(orderValue)
+	}
+
+	if q.Limit <= 0 {
+		q.Limit = 20
+	}
+
+	if q.Limit > 100 {
+		q.Limit = 100
+	}
+
+	if q.Offset < 0 {
+		q.Offset = 0
+	}
+}
+
+// =========================
+// validate
+// =========================
+
+func (q TaskListQuery) Validate() error {
+
+	if !q.Sort.IsValid() {
+		return apperr.ErrInvalidSort
+	}
+
+	if !q.Order.IsValid() {
+		return apperr.ErrInvalidOrder
+	}
+
+	if q.Status != "" &&
+		!q.Status.IsValid() {
+
+		return apperr.ErrInvalidStatus
+	}
+
+	if q.Limit <= 0 ||
+		q.Limit > 100 {
+
+		return apperr.ErrInvalidLimit
+	}
+
+	if q.Offset < 0 {
+		return apperr.ErrInvalidOffset
+	}
+
+	return nil
 }
