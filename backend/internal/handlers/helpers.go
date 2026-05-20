@@ -7,10 +7,8 @@ import (
 	"time"
 
 	"portfolio/backend/internal/auth"
-	"portfolio/backend/internal/dto"
 	"portfolio/backend/internal/httpx"
-	"portfolio/backend/internal/models"
-	"portfolio/backend/internal/validator"
+	"portfolio/backend/internal/service"
 )
 
 // =========================
@@ -59,13 +57,13 @@ func decodeAndValidate(
 			w,
 			http.StatusBadRequest,
 			httpx.CodeInvalidJSON,
-			err.Error(),
+			"invalid request body",
 		)
 
 		return false
 	}
 
-	if errs := validator.ValidateStruct(
+	if errs := httpx.ValidateStruct(
 		dst,
 	); errs != nil {
 
@@ -81,31 +79,47 @@ func decodeAndValidate(
 }
 
 // =========================
-// requireAuthUserID
+// requireUserID
 // =========================
 
-func requireAuthUserID(
+func requireUserID(
 	w http.ResponseWriter,
 	r *http.Request,
+	userSvc *service.UserService,
 ) (int64, bool) {
 
-	userID, ok := auth.GetUserID(
+	authUser, ok := auth.GetAuthUser(
 		r.Context(),
 	)
 
-	if !ok || userID <= 0 {
+	if !ok || authUser.Sub == "" {
 
 		httpx.WriteError(
 			w,
 			http.StatusUnauthorized,
 			httpx.CodeUnauthorized,
-			"missing user context",
+			"missing auth context",
 		)
 
 		return 0, false
 	}
 
-	return userID, true
+	user, err := userSvc.GetByAuthUserID(
+		r.Context(),
+		authUser.Sub,
+	)
+
+	if err != nil {
+
+		httpx.HandleError(
+			w,
+			err,
+		)
+
+		return 0, false
+	}
+
+	return user.ID, true
 }
 
 // =========================
@@ -134,52 +148,4 @@ func parseOptionalDueDate(
 	}
 
 	return t, true
-}
-
-// =========================
-// mapper
-// =========================
-
-func buildTaskFromCreateRequest(
-	w http.ResponseWriter,
-	req *dto.CreateTaskRequest,
-) (*models.Task, bool) {
-
-	dueDate, ok := parseOptionalDueDate(
-		w,
-		req.DueDate,
-	)
-
-	if !ok {
-		return nil, false
-	}
-
-	return &models.Task{
-		Title:       req.Title,
-		Description: req.Description,
-		Status:      req.Status,
-		DueDate:     dueDate,
-	}, true
-}
-
-func buildTaskFromUpdateRequest(
-	w http.ResponseWriter,
-	req *dto.UpdateTaskRequest,
-) (*models.Task, bool) {
-
-	dueDate, ok := parseOptionalDueDate(
-		w,
-		req.DueDate,
-	)
-
-	if !ok {
-		return nil, false
-	}
-
-	return &models.Task{
-		Title:       req.Title,
-		Description: req.Description,
-		Status:      req.Status,
-		DueDate:     dueDate,
-	}, true
 }

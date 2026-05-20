@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/http"
 
-	"portfolio/backend/internal/service"
+	"portfolio/backend/internal/apperr"
 )
 
 func HandleError(
@@ -20,7 +20,10 @@ func HandleError(
 	// common
 	// =========================
 
-	case errors.Is(err, service.ErrInvalidID):
+	case errors.Is(
+		err,
+		apperr.ErrInvalidID,
+	):
 
 		WriteError(
 			w,
@@ -29,11 +32,26 @@ func HandleError(
 			"invalid id",
 		)
 
+	case errors.Is(
+		err,
+		apperr.ErrValidation,
+	):
+
+		WriteError(
+			w,
+			http.StatusBadRequest,
+			CodeValidationError,
+			"validation error",
+		)
+
 	// =========================
 	// user
 	// =========================
 
-	case errors.Is(err, service.ErrUserNotFound):
+	case errors.Is(
+		err,
+		apperr.ErrUserNotFound,
+	):
 
 		WriteError(
 			w,
@@ -42,7 +60,10 @@ func HandleError(
 			"user not found",
 		)
 
-	case errors.Is(err, service.ErrDuplicateEmail):
+	case errors.Is(
+		err,
+		apperr.ErrDuplicateEmail,
+	):
 
 		WriteError(
 			w,
@@ -55,7 +76,10 @@ func HandleError(
 	// task
 	// =========================
 
-	case errors.Is(err, service.ErrTaskNotFound):
+	case errors.Is(
+		err,
+		apperr.ErrTaskNotFound,
+	):
 
 		WriteError(
 			w,
@@ -64,7 +88,10 @@ func HandleError(
 			"task not found",
 		)
 
-	case errors.Is(err, service.ErrInvalidUserID):
+	case errors.Is(
+		err,
+		apperr.ErrInvalidUserID,
+	):
 
 		WriteError(
 			w,
@@ -73,7 +100,10 @@ func HandleError(
 			"invalid user_id",
 		)
 
-	case errors.Is(err, service.ErrInvalidStatus):
+	case errors.Is(
+		err,
+		apperr.ErrInvalidStatus,
+	):
 
 		WriteError(
 			w,
@@ -82,7 +112,46 @@ func HandleError(
 			"invalid status",
 		)
 
-	case errors.Is(err, service.ErrForeignKeyViolation):
+	case errors.Is(
+		err,
+		apperr.ErrInvalidSort,
+	):
+
+		WriteError(
+			w,
+			http.StatusBadRequest,
+			CodeValidationError,
+			"invalid sort",
+		)
+
+	case errors.Is(
+		err,
+		apperr.ErrInvalidOrder,
+	):
+
+		WriteError(
+			w,
+			http.StatusBadRequest,
+			CodeValidationError,
+			"invalid order",
+		)
+
+	case errors.Is(
+		err,
+		apperr.ErrInvalidTaskTitle,
+	):
+
+		WriteError(
+			w,
+			http.StatusBadRequest,
+			CodeValidationError,
+			"title is required",
+		)
+
+	case errors.Is(
+		err,
+		apperr.ErrForeignKeyViolation,
+	):
 
 		WriteError(
 			w,

@@ -1,18 +1,41 @@
+// internal/auth/context.go
+
 package auth
 
 import "context"
 
-type contextKey struct{}
+type contextKey string
 
-var userIDKey = contextKey{}
+const authUserKey contextKey = "auth_user"
 
-// internal DB userID
-func SetUserID(ctx context.Context, userID int64) context.Context {
-	return context.WithValue(ctx, userIDKey, userID)
+// =========================
+// auth user
+// =========================
+
+type AuthUser struct {
+	Sub   string
+	Email string
 }
 
-func GetUserID(ctx context.Context) (int64, bool) {
-	v := ctx.Value(userIDKey)
-	id, ok := v.(int64)
-	return id, ok
+func SetAuthUser(
+	ctx context.Context,
+	user AuthUser,
+) context.Context {
+
+	return context.WithValue(
+		ctx,
+		authUserKey,
+		user,
+	)
+}
+
+func GetAuthUser(
+	ctx context.Context,
+) (AuthUser, bool) {
+
+	user, ok := ctx.Value(
+		authUserKey,
+	).(AuthUser)
+
+	return user, ok
 }

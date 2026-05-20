@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -11,12 +10,10 @@ import (
 	"time"
 
 	"portfolio/backend/internal/config"
-	"portfolio/backend/internal/handlers"
+	"portfolio/backend/internal/container"
 	"portfolio/backend/internal/httpx"
 	"portfolio/backend/internal/middleware"
-	"portfolio/backend/internal/repository"
 	"portfolio/backend/internal/router"
-	"portfolio/backend/internal/service"
 	"portfolio/backend/swagger"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -24,66 +21,31 @@ import (
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
 )
 
-var (
-	globalDB      *sql.DB
-	globalHandler *httpadapter.HandlerAdapter
-)
-
 type App struct {
-	DB   *sql.DB
-	HTTP http.Handler
+	Container *container.Container
+	HTTP      http.Handler
 }
 
-func NewApp(db *sql.DB) *App {
+func NewApp(
+	c *container.Container,
+) *App {
 
 	// =========================
-	// repository
-	// =========================
-
-	userRepo := repository.NewUserRepository(db)
-	taskRepo := repository.NewTaskRepository(db)
-
-	// =========================
-	// service
-	// =========================
-
-	userSvc := service.NewUserService(userRepo)
-	taskSvc := service.NewTaskService(taskRepo)
-
-	// =========================
-	// handler
-	// =========================
-
-	userHandler := handlers.NewUserHandler(userSvc)
-	taskHandler := handlers.NewTaskHandler(taskSvc)
-
-	// =========================
-	// router
+	// api router
 	// =========================
 
 	apiRouter := router.NewRouter(
-		userHandler,
-		taskHandler,
+		c.UserHandler,
+		c.TaskHandler,
 	)
 
 	// =========================
-	// middleware execution order
-	// =========================
-	//
-	// Recovery
-	// -> CORS
-	// -> Auth
-	// -> Logging
-	// -> Router
-	//
-	// Logging can access user_id because
-	// AuthMiddleware injects user context
-	// before calling the next handler.
+	// protected api middleware
 	// =========================
 
 	apiHandler := middleware.Chain(
 		apiRouter,
-		middleware.AuthMiddleware(userSvc),
+		middleware.AuthMiddleware,
 		middleware.Logging,
 	)
 
@@ -94,7 +56,7 @@ func NewApp(db *sql.DB) *App {
 	mux := http.NewServeMux()
 
 	// =========================
-	// public endpoints
+	// health
 	// =========================
 
 	mux.HandleFunc(
@@ -143,46 +105,56 @@ func NewApp(db *sql.DB) *App {
 
 	handler := middleware.Chain(
 		mux,
-		middleware.Recovery,
 		middleware.CORS,
+		middleware.Recovery,
 	)
 
 	return &App{
-		DB:   db,
-		HTTP: handler,
+		Container: c,
+		HTTP:      handler,
 	}
 }
 
 // =========================
-// lambda singleton
+// lambda cache
 // =========================
 
-func lambdaHandler() *httpadapter.HandlerAdapter {
+var cachedLambdaAdapter *httpadapter.HandlerAdapterV2
 
-	if globalHandler != nil {
-		return globalHandler
+func lambdaAdapter() *httpadapter.HandlerAdapterV2 {
+
+	if cachedLambdaAdapter != nil {
+		return cachedLambdaAdapter
 	}
 
-	if globalDB == nil {
+	db, err := config.ConnectDBFromEnv()
 
-		db, err := config.ConnectDBFromEnv()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		globalDB = db
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	app := NewApp(globalDB)
+	c, err := container.New(
+		db,
+	)
 
-	globalHandler = httpadapter.New(
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	app := NewApp(c)
+
+	cachedLambdaAdapter = httpadapter.NewV2(
 		app.HTTP,
 	)
 
-	return globalHandler
+	return cachedLambdaAdapter
 }
 
 func main() {
+
+	if err := config.ValidateEnv(); err != nil {
+		log.Fatal(err)
+	}
 
 	// =========================
 	// local mode
@@ -191,11 +163,20 @@ func main() {
 	if os.Getenv("RUN_MODE") == "local" {
 
 		db, err := config.ConnectDBFromEnv()
+
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		app := NewApp(db)
+		c, err := container.New(
+			db,
+		)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		app := NewApp(c)
 
 		runLocal(app)
 
@@ -209,14 +190,46 @@ func main() {
 	lambda.Start(
 		func(
 			ctx context.Context,
-			req events.APIGatewayProxyRequest,
+			req events.APIGatewayV2HTTPRequest,
 		) (
-			events.APIGatewayProxyResponse,
+			events.APIGatewayV2HTTPResponse,
 			error,
 		) {
 
-			return lambdaHandler().
-				ProxyWithContext(ctx, req)
+			// =========================
+			// jwt claims
+			// =========================
+
+			claims := req.RequestContext.
+				Authorizer.
+				JWT.
+				Claims
+
+			// =========================
+			// inject headers
+			// =========================
+
+			if req.Headers == nil {
+				req.Headers = map[string]string{}
+			}
+
+			if sub, ok := claims["sub"]; ok {
+				req.Headers["X-Auth-Sub"] = sub
+			}
+
+			if email, ok := claims["email"]; ok {
+				req.Headers["X-Auth-Email"] = email
+			}
+
+			// =========================
+			// proxy
+			// =========================
+
+			return lambdaAdapter().
+				ProxyWithContext(
+					ctx,
+					req,
+				)
 		},
 	)
 }
@@ -225,7 +238,9 @@ func main() {
 // local server
 // =========================
 
-func runLocal(app *App) {
+func runLocal(
+	app *App,
+) {
 
 	port := os.Getenv("PORT")
 
@@ -274,13 +289,14 @@ func runLocal(app *App) {
 			)
 		}
 
-		if app.DB != nil {
+		if app.Container != nil &&
+			app.Container.DB != nil {
 
 			log.Println(
 				"closing database connection...",
 			)
 
-			if err := app.DB.Close(); err != nil {
+			if err := app.Container.DB.Close(); err != nil {
 
 				log.Printf(
 					"db close error: %v",

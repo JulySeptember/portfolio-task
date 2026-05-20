@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -22,7 +23,13 @@ func WriteJSON(
 
 	w.WriteHeader(status)
 
-	_ = json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+
+		log.Printf(
+			"failed to encode json response: %v",
+			err,
+		)
+	}
 }
 
 // =========================

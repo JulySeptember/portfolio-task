@@ -3,15 +3,6 @@
 setopt PIPE_FAIL ERR_EXIT NO_UNSET
 
 # =========================
-# base environment
-# =========================
-
-export RUN_MODE=local
-
-# dev auth by default (local only)
-export AUTH_MODE=${AUTH_MODE:-dev}
-
-# =========================
 # cleanup
 # =========================
 
@@ -34,27 +25,38 @@ if [ -f .env ]; then
 fi
 
 # =========================
-# defaults
+# runtime defaults
 # =========================
 
+export RUN_MODE=${RUN_MODE:-local}
+export APP_ENV=${APP_ENV:-development}
+
+# local dev auth bypass
+export ENABLE_DEV_AUTH_BYPASS=${ENABLE_DEV_AUTH_BYPASS:-true}
+
+# server
 export PORT=${PORT:-8080}
 
 # =========================
-# start docker
+# docker
 # =========================
 
 echo "Starting Docker MySQL..."
 docker compose up -d
 
-# wait mysql
 echo "Waiting for MySQL..."
 sleep 5
 
 # =========================
-# DB DSN build
+# DB_DSN validation
 # =========================
 
-export DB_DSN="${DB_USER}:${DB_PASSWORD}@tcp(${DB_HOST}:${DB_PORT})/${DB_NAME}?charset=utf8mb4&parseTime=True&loc=Local"
+if [ -z "${DB_DSN:-}" ]; then
+  echo ""
+  echo "ERROR: DB_DSN is not set"
+  echo ""
+  exit 1
+fi
 
 # =========================
 # debug info
@@ -62,9 +64,10 @@ export DB_DSN="${DB_USER}:${DB_PASSWORD}@tcp(${DB_HOST}:${DB_PORT})/${DB_NAME}?c
 
 echo ""
 echo "=============================="
-echo "RUN_MODE   = ${RUN_MODE}"
-echo "AUTH_MODE  = ${AUTH_MODE}"
-echo "PORT       = ${PORT}"
+echo "RUN_MODE                 = ${RUN_MODE}"
+echo "APP_ENV                  = ${APP_ENV}"
+echo "ENABLE_DEV_AUTH_BYPASS   = ${ENABLE_DEV_AUTH_BYPASS}"
+echo "PORT                     = ${PORT}"
 echo "=============================="
 echo ""
 
@@ -78,25 +81,3 @@ echo "Swagger YAML: http://localhost:${PORT}/api/v1/spec/swagger.yml"
 echo ""
 
 go run ./cmd/api
-
-# ローカル用
-# #!/usr/bin/env zsh
-# setopt PIPE_FAIL ERR_EXIT NO_UNSET
-
-# export RUN_MODE=local
-
-# if [ -f .env ]; then
-#   setopt allexport
-#   source .env
-#   unsetopt allexport
-# fi
-
-# echo "Starting MySQL (WSL)..."
-# sudo service mysql start
-
-# sleep 2
-
-# export DB_DSN="${DB_USER}:${DB_PASSWORD}@tcp(${DB_HOST}:${DB_PORT})/${DB_NAME}?charset=utf8mb4&parseTime=True&loc=Local"
-
-# echo "Starting API server..."
-# exec go run ./cmd/api

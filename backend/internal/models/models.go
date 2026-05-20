@@ -15,6 +15,25 @@ const (
 )
 
 // =========================
+// validation
+// =========================
+
+func (s TaskStatus) IsValid() bool {
+
+	switch s {
+
+	case TaskStatusTODO,
+		TaskStatusDOING,
+		TaskStatusDONE:
+
+		return true
+
+	default:
+		return false
+	}
+}
+
+// =========================
 // User
 // =========================
 

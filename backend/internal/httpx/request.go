@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -33,13 +34,53 @@ func DecodeJSON(
 	dst any,
 ) error {
 
+	// =========================
+	// Content-Type validation
+	// =========================
+
+	contentType := r.Header.Get(
+		"Content-Type",
+	)
+
+	if contentType == "" {
+
+		return errors.New(
+			"missing Content-Type",
+		)
+	}
+
+	mediaType, _, err := mime.ParseMediaType(
+		contentType,
+	)
+
+	if err != nil {
+
+		return errors.New(
+			"invalid Content-Type",
+		)
+	}
+
+	if mediaType != "application/json" {
+
+		return errors.New(
+			"Content-Type must be application/json",
+		)
+	}
+
+	// =========================
+	// body size limit
+	// =========================
+
 	r.Body = http.MaxBytesReader(
 		w,
 		r.Body,
 		maxBodySize,
 	)
 
-	dec := json.NewDecoder(r.Body)
+	dec := json.NewDecoder(
+		r.Body,
+	)
+
 	dec.DisallowUnknownFields()
 
 	if err := dec.Decode(dst); err != nil {
@@ -50,34 +91,86 @@ func DecodeJSON(
 		switch {
 
 		case errors.As(err, &syntaxErr):
-			return fmt.Errorf("malformed JSON at position %d", syntaxErr.Offset)
+
+			return fmt.Errorf(
+				"malformed JSON at position %d",
+				syntaxErr.Offset,
+			)
 
 		case errors.Is(err, io.ErrUnexpectedEOF):
-			return errors.New("malformed JSON")
+
+			return errors.New(
+				"malformed JSON",
+			)
 
 		case errors.As(err, &typeErr):
+
 			if typeErr.Field != "" {
-				return fmt.Errorf("invalid value for field %q", typeErr.Field)
+
+				return fmt.Errorf(
+					"invalid value for field %q",
+					typeErr.Field,
+				)
 			}
-			return errors.New("invalid JSON type")
+
+			return errors.New(
+				"invalid JSON type",
+			)
 
 		case errors.Is(err, io.EOF):
-			return errors.New("empty request body")
 
-		case strings.Contains(err.Error(), "http: request body too large"):
-			return errors.New("request body too large")
+			return errors.New(
+				"empty request body",
+			)
 
-		case strings.HasPrefix(err.Error(), "json: unknown field "):
-			field := strings.TrimPrefix(err.Error(), "json: unknown field ")
-			return fmt.Errorf("unknown field %s", field)
+		case strings.Contains(
+			err.Error(),
+			"http: request body too large",
+		):
+
+			return errors.New(
+				"request body too large",
+			)
+
+		case strings.HasPrefix(
+			err.Error(),
+			"json: unknown field ",
+		):
+
+			field := strings.TrimPrefix(
+				err.Error(),
+				"json: unknown field ",
+			)
+
+			field = strings.Trim(
+				field,
+				`"`,
+			)
+
+			return fmt.Errorf(
+				"unknown field %s",
+				field,
+			)
 
 		default:
-			return errors.New("invalid JSON")
+
+			return errors.New(
+				"invalid JSON",
+			)
 		}
 	}
 
-	if err := dec.Decode(&struct{}{}); err != io.EOF {
-		return errors.New("body must contain only one JSON object")
+	// =========================
+	// single JSON object only
+	// =========================
+
+	if err := dec.Decode(
+		&struct{}{},
+	); err != io.EOF {
+
+		return errors.New(
+			"body must contain only one JSON object",
+		)
 	}
 
 	return nil
@@ -139,7 +232,49 @@ func QueryInt(
 	return n
 }
 
-// ★追加：string query
+// =========================
+// Query int64
+// =========================
+
+func QueryInt64(
+	r *http.Request,
+	key string,
+	def int64,
+	min int64,
+	max int64,
+) int64 {
+
+	v := r.URL.Query().Get(key)
+
+	if v == "" {
+		return def
+	}
+
+	n, err := strconv.ParseInt(
+		v,
+		10,
+		64,
+	)
+
+	if err != nil {
+		return def
+	}
+
+	if n < min {
+		return min
+	}
+
+	if max > 0 && n > max {
+		return max
+	}
+
+	return n
+}
+
+// =========================
+// Query string
+// =========================
+
 func QueryString(
 	r *http.Request,
 	key string,

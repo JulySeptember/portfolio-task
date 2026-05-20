@@ -1,5 +1,3 @@
-// internal/router/router.go
-
 package router
 
 import (
@@ -11,13 +9,18 @@ import (
 func NewRouter(
 	userHandler *handlers.UserHandler,
 	taskHandler *handlers.TaskHandler,
-) http.Handler {
+) *http.ServeMux {
 
 	mux := http.NewServeMux()
 
 	// =========================
 	// users
 	// =========================
+
+	mux.HandleFunc(
+		"POST /api/v1/auth/bootstrap",
+		userHandler.Bootstrap,
+	)
 
 	mux.HandleFunc(
 		"GET /api/v1/users/me",
@@ -33,37 +36,31 @@ func NewRouter(
 	// tasks
 	// =========================
 
-	// list
 	mux.HandleFunc(
 		"GET /api/v1/tasks",
 		taskHandler.List,
 	)
 
-	// create
 	mux.HandleFunc(
 		"POST /api/v1/tasks",
 		taskHandler.Create,
 	)
 
-	// get
 	mux.HandleFunc(
 		"GET /api/v1/tasks/{id}",
 		taskHandler.Get,
 	)
 
-	// full update
 	mux.HandleFunc(
 		"PUT /api/v1/tasks/{id}",
 		taskHandler.Update,
 	)
 
-	// partial update (status)
 	mux.HandleFunc(
 		"PATCH /api/v1/tasks/{id}/status",
 		taskHandler.UpdateStatus,
 	)
 
-	// delete
 	mux.HandleFunc(
 		"DELETE /api/v1/tasks/{id}",
 		taskHandler.Delete,

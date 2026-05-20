@@ -1,111 +1,115 @@
+// internal/middleware/auth.go
+
 package middleware
 
 import (
 	"net/http"
 
 	"portfolio/backend/internal/auth"
+	"portfolio/backend/internal/config"
 	"portfolio/backend/internal/httpx"
-	"portfolio/backend/internal/service"
 )
 
 func AuthMiddleware(
-	userSvc *service.UserService,
-) Middleware {
+	next http.Handler,
+) http.Handler {
 
-	return func(
-		next http.Handler,
-	) http.Handler {
+	return http.HandlerFunc(func(
+		w http.ResponseWriter,
+		r *http.Request,
+	) {
 
-		return http.HandlerFunc(func(
-			w http.ResponseWriter,
-			r *http.Request,
-		) {
+		// =========================
+		// local dev bypass
+		// =========================
 
-			// =========================
-			// local bypass
-			// =========================
+		if isLocalDevAuthEnabled() {
 
-			if isLocalDevAuthEnabled() {
-
-				handleLocalDevAuth(
-					w,
-					r,
-					next,
-					userSvc,
-				)
-
-				return
-			}
-
-			// =========================
-			// bearer token
-			// =========================
-
-			tokenString, ok := extractBearerToken(
+			handleLocalDevAuth(
 				w,
 				r,
+				next,
 			)
 
-			if !ok {
-				return
-			}
+			return
+		}
 
-			// =========================
-			// jwt validate
-			// =========================
+		// =========================
+		// claims from api gateway
+		// =========================
 
-			token, err := auth.Validate(
-				tokenString,
-			)
+		sub := r.Header.Get(
+			"X-Auth-Sub",
+		)
 
-			if err != nil {
+		if sub == "" {
 
-				httpx.WriteError(
-					w,
-					http.StatusUnauthorized,
-					httpx.CodeInvalidToken,
-					"invalid token",
-				)
-
-				return
-			}
-
-			// =========================
-			// ensure user
-			// =========================
-
-			user, err := ensureAuthenticatedUser(
-				r,
-				userSvc,
-				token.Sub,
-				token.Email,
-			)
-
-			if err != nil {
-
-				httpx.WriteError(
-					w,
-					http.StatusInternalServerError,
-					httpx.CodeInternalServerError,
-					"failed to ensure user",
-				)
-
-				return
-			}
-
-			// =========================
-			// inject context
-			// =========================
-
-			ctx := auth.SetUserID(
-				r.Context(),
-				user.ID,
-			)
-
-			next.ServeHTTP(
+			httpx.WriteError(
 				w,
-				r.WithContext(ctx),
+				http.StatusUnauthorized,
+				httpx.CodeUnauthorized,
+				"missing auth subject",
 			)
-		})
+
+			return
+		}
+
+		email := r.Header.Get(
+			"X-Auth-Email",
+		)
+
+		// =========================
+		// auth context
+		// =========================
+
+		ctx := auth.SetAuthUser(
+			r.Context(),
+			auth.AuthUser{
+				Sub:   sub,
+				Email: email,
+			},
+		)
+
+		next.ServeHTTP(
+			w,
+			r.WithContext(ctx),
+		)
+	})
+}
+
+// =========================
+// local dev auth
+// =========================
+
+func isLocalDevAuthEnabled() bool {
+
+	if config.RunMode() != "local" {
+		return false
 	}
+
+	if !config.DevAuthBypassEnabled() {
+		return false
+	}
+
+	return true
+}
+
+func handleLocalDevAuth(
+	w http.ResponseWriter,
+	r *http.Request,
+	next http.Handler,
+) {
+
+	ctx := auth.SetAuthUser(
+		r.Context(),
+		auth.AuthUser{
+			Sub:   "dev-user",
+			Email: "dev@example.com",
+		},
+	)
+
+	next.ServeHTTP(
+		w,
+		r.WithContext(ctx),
+	)
 }

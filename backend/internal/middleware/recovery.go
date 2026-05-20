@@ -1,11 +1,8 @@
-// internal/middleware/recovery.go
-
 package middleware
 
 import (
 	"errors"
 	"log"
-	"net"
 	"net/http"
 	"runtime/debug"
 	"strings"
@@ -47,23 +44,45 @@ func Recovery(
 
 			if err != nil {
 
-				// net.Error
-				var netErr net.Error
-
-				if errors.As(err, &netErr) &&
-					!netErr.Timeout() {
-
-					return
-				}
-
+				// =========================
 				// broken pipe
-				msg := strings.ToLower(err.Error())
+				// =========================
 
-				if strings.Contains(msg, "broken pipe") ||
-					strings.Contains(msg, "connection reset by peer") {
+				msg := strings.ToLower(
+					err.Error(),
+				)
+
+				if strings.Contains(
+					msg,
+					"broken pipe",
+				) ||
+					strings.Contains(
+						msg,
+						"connection reset by peer",
+					) {
 
 					return
 				}
+			}
+
+			// =========================
+			// request id
+			// =========================
+
+			requestID := GetRequestID(
+				r.Context(),
+			)
+
+			// =========================
+			// response header
+			// =========================
+
+			if requestID != "" {
+
+				w.Header().Set(
+					"X-Request-ID",
+					requestID,
+				)
 			}
 
 			// =========================
@@ -71,7 +90,8 @@ func Recovery(
 			// =========================
 
 			log.Printf(
-				"[PANIC] %v\n%s",
+				"[PANIC] request_id=%s panic=%v\n%s",
+				requestID,
 				rec,
 				debug.Stack(),
 			)
@@ -83,11 +103,14 @@ func Recovery(
 			httpx.WriteError(
 				w,
 				http.StatusInternalServerError,
-				"INTERNAL_SERVER_ERROR",
+				httpx.CodeInternalServerError,
 				"internal server error",
 			)
 		}()
 
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(
+			w,
+			r,
+		)
 	})
 }
