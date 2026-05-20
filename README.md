@@ -50,6 +50,7 @@ RDS MySQL
 - AWS サーバレス前提設計
 - JWT 検証を API Gateway 側へ分離
 - Context timeout によるリクエスト制御
+
 ---
 
 # 🔐 認証設計
@@ -71,18 +72,63 @@ Lambda 側では検証済み claims を利用します。
 7. users テーブルへ自動同期
 ```
 
-## ユーザー同期
+---
+
+## ユーザー同期（Bootstrap）
 
 ユーザー作成 API は持たず、
-ログイン時に自動同期します。
+認証後に bootstrap API を通して
+users テーブルを自動同期します。
+
+```text
+Frontend
+  ↓
+POST /api/v1/users/bootstrap
+  ↓
+EnsureUser()
+  ↓
+users table sync
+```
+
+同期仕様:
 
 - Cognito sub を auth_user_id として利用
 - 初回ログイン時に INSERT
 - 既存ユーザーは UPDATE
+- Cognito user と App user を同期
 
 ---
 
 # 📝 API
+
+## Bootstrap User
+
+```http
+POST /api/v1/users/bootstrap
+```
+
+認証済みユーザーを
+users テーブルへ同期します。
+
+---
+
+## Get Current User
+
+```http
+GET /api/v1/users/me
+```
+
+---
+
+## Delete Current User
+
+```http
+DELETE /api/v1/users/me
+```
+
+関連 task は cascade delete されます。
+
+---
 
 ## Create Task
 
@@ -95,11 +141,15 @@ POST /api/v1/tasks
 - ステータス
 - 期限日
 
+---
+
 ## List Tasks
 
 ```http
 GET /api/v1/tasks
 ```
+
+対応:
 
 - pagination
 - sorting
@@ -112,6 +162,17 @@ GET /api/v1/tasks
 created_at DESC
 ```
 
+query:
+
+```text
+?limit=20
+&status=TODO
+&sort=created_at
+&order=DESC
+```
+
+---
+
 ## Get Task
 
 ```http
@@ -120,6 +181,8 @@ GET /api/v1/tasks/{id}
 
 - task_id + user_id で取得
 - 他ユーザーアクセス不可
+
+---
 
 ## Update Task
 
@@ -130,17 +193,23 @@ PUT /api/v1/tasks/{id}
 - 完全更新
 - 所有者チェックあり
 
+---
+
 ## Update Status
 
 ```http
 PATCH /api/v1/tasks/{id}/status
 ```
 
+---
+
 ## Delete Task
 
 ```http
 DELETE /api/v1/tasks/{id}
 ```
+
+---
 
 ## Task Status
 
@@ -163,6 +232,8 @@ DONE
 | email | varchar |
 | created_at | datetime |
 | updated_at | datetime |
+
+---
 
 ## tasks
 
@@ -217,6 +288,8 @@ API の日時は RFC3339 UTC を使用します。
 }
 ```
 
+仕様:
+
 - Backend は UTC で保存
 - Frontend 側でローカルタイムへ変換
 - timezone 差異による日付ズレを防止
@@ -245,10 +318,86 @@ Router
 
 - API Gateway JWT Authorizer
 - Cognito 認証
-- request / SQL timeout
+- request timeout
+- SQL timeout
 - strict JSON decode
 - unknown field reject
 - body size limit
+- panic recovery
+- owner isolation
+- RDS private subnet
+
+---
+
+# 🏗 Terraform 構成
+
+```text
+infra/
+├── bootstrap/
+│   ├── tfstate S3
+│   ├── DynamoDB lock
+│   └── Lambda artifact S3
+│
+└── main/
+    ├── vpc
+    ├── security_group
+    ├── rds
+    ├── lambda
+    ├── apigw
+    ├── cognito
+    ├── s3
+    └── cloudfront
+```
+
+---
+
+# 🚀 Infrastructure Provisioning
+
+## Bootstrap Infrastructure
+
+最初に Terraform backend / deploy 用リソースを作成します。
+
+```bash
+cd infra/bootstrap
+
+terraform init
+terraform apply -var-file=envs/dev.tfvars
+```
+
+作成対象:
+
+- Terraform state S3
+- Terraform lock DynamoDB
+- Lambda artifact S3
+
+---
+
+## Lambda Build
+
+```bash
+make build-lambda
+```
+
+---
+
+## Lambda Artifact Upload
+
+```bash
+aws s3 cp lambda.zip \
+s3://<artifact-bucket>/lambda/<project>-dev.zip
+```
+
+---
+
+## Main Infrastructure Apply
+
+```bash
+cd infra/main
+
+terraform init
+terraform apply -var-file=envs/dev.tfvars
+```
+
 ---
 
 # ⚙️ ローカル開発
@@ -259,17 +408,23 @@ Router
 make run
 ```
 
+---
+
 ## Migration
 
 ```bash
 make migrate-up
 ```
 
+---
+
 ## Swagger
 
 ```text
 http://localhost:8080/api/v1/docs/
 ```
+
+---
 
 ## ローカル認証バイパス
 
@@ -280,7 +435,8 @@ RUN_MODE=local
 ENABLE_DEV_AUTH_BYPASS=true
 ```
 
-production では利用不可
+production では無効です。
+
 ---
 
 # 📄 OpenAPI
@@ -316,6 +472,7 @@ internal/
 - RBAC 未実装
 - 全 API 認証必須（/health 除く）
 - WebSocket 未対応
+
 ---
 
 # 📚 技術スタック
