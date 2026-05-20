@@ -196,12 +196,6 @@ func (s *TaskService) ListTasks(
 		return nil, apperr.ErrInvalidUserID
 	}
 
-	query = NormalizeTaskListQuery(query)
-
-	if err := ValidateTaskListQuery(query); err != nil {
-		return nil, err
-	}
-
 	return s.repo.ListByUserID(
 		ctx,
 		userID,
