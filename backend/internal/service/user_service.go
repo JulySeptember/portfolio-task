@@ -1,45 +1,134 @@
+// internal/service/user_service.go
+
 package service
 
 import (
 	"context"
 
+	"portfolio/backend/internal/apperr"
 	"portfolio/backend/internal/models"
-	"portfolio/backend/internal/repository"
 )
 
-// UserService is a thin wrapper around BaseService[models.User].
-// It exposes the unified CRUD API: Create, Get, List, Update, Delete.
-type UserService struct {
-	*BaseService[models.User]
+type UserRepository interface {
+
+	// =========================
+	// upsert
+	// =========================
+
+	Upsert(
+		ctx context.Context,
+		u *models.User,
+	) (*models.User, error)
+
+	// =========================
+	// lookup by auth user id
+	// =========================
+
+	GetByAuthUserID(
+		ctx context.Context,
+		authUserID string,
+	) (*models.User, error)
+
+	Get(
+		ctx context.Context,
+		id int64,
+	) (*models.User, error)
+
+	Delete(
+		ctx context.Context,
+		id int64,
+	) error
 }
 
-// NewUserService constructs a UserService. The provided repository must
-// implement repository.Repository[models.User] (repository.UserRepository typically does).
-func NewUserService(repo repository.UserRepository) *UserService {
+type UserService struct {
+	repo UserRepository
+}
+
+func NewUserService(
+	r UserRepository,
+) *UserService {
+
 	return &UserService{
-		BaseService: NewBaseService(repo),
+		repo: r,
 	}
 }
 
-// The following methods are provided to make the public API explicit.
-// They simply delegate to the embedded BaseService methods.
+// =========================
+// EnsureUser
+// =========================
 
-func (s *UserService) Create(ctx context.Context, u *models.User) (*models.User, error) {
-	return s.BaseService.Create(ctx, u)
+func (s *UserService) EnsureUser(
+	ctx context.Context,
+	authUserID string,
+	email string,
+) (*models.User, error) {
+
+	if authUserID == "" {
+		return nil, apperr.ErrInvalidUserID
+	}
+
+	return s.repo.Upsert(
+		ctx,
+		&models.User{
+			AuthUserID: authUserID,
+			Email:      email,
+		},
+	)
 }
 
-func (s *UserService) Get(ctx context.Context, id int64) (*models.User, error) {
-	return s.BaseService.Get(ctx, id)
+// =========================
+// GetByAuthUserID
+// =========================
+
+func (s *UserService) GetByAuthUserID(
+	ctx context.Context,
+	authUserID string,
+) (*models.User, error) {
+
+	if authUserID == "" {
+		return nil, apperr.ErrInvalidUserID
+	}
+
+	return s.repo.GetByAuthUserID(
+		ctx,
+		authUserID,
+	)
 }
 
-func (s *UserService) List(ctx context.Context, limit, offset int) ([]*models.User, error) {
-	return s.BaseService.List(ctx, limit, offset)
+// =========================
+// Get
+// =========================
+
+func (s *UserService) Get(
+	ctx context.Context,
+	id int64,
+) (*models.User, error) {
+
+	if id <= 0 {
+		return nil, apperr.ErrInvalidID
+	}
+
+	return s.repo.Get(
+		ctx,
+		id,
+	)
 }
 
-func (s *UserService) Update(ctx context.Context, u *models.User) (*models.User, error) {
-	return s.BaseService.Update(ctx, u)
-}
+// =========================
+// Delete
+// =========================
 
-func (s *UserService) Delete(ctx context.Context, id int64) error {
-	return s.BaseService.Delete(ctx, id)
+func (s *UserService) Delete(
+	ctx context.Context,
+	userID int64,
+) error {
+
+	if userID <= 0 {
+		return apperr.ErrInvalidUserID
+	}
+
+	return s.repo.Delete(
+		ctx,
+		userID,
+	)
 }
