@@ -4,11 +4,41 @@ package service
 
 import (
 	"context"
-	"errors"
 
+	"portfolio/backend/internal/apperr"
 	"portfolio/backend/internal/models"
-	"portfolio/backend/internal/repository"
 )
+
+type UserRepository interface {
+
+	// =========================
+	// upsert
+	// =========================
+
+	Upsert(
+		ctx context.Context,
+		u *models.User,
+	) (*models.User, error)
+
+	// =========================
+	// lookup by auth user id
+	// =========================
+
+	GetByAuthUserID(
+		ctx context.Context,
+		authUserID string,
+	) (*models.User, error)
+
+	Get(
+		ctx context.Context,
+		id int64,
+	) (*models.User, error)
+
+	Delete(
+		ctx context.Context,
+		id int64,
+	) error
+}
 
 type UserService struct {
 	repo UserRepository
@@ -24,41 +54,45 @@ func NewUserService(
 }
 
 // =========================
-// ENSURE (middleware only)
-// =========================
-// Cognito user sync entrypoint
+// EnsureUser
 // =========================
 
-func (s *UserService) Ensure(
+func (s *UserService) EnsureUser(
 	ctx context.Context,
 	authUserID string,
 	email string,
 ) (*models.User, error) {
 
-	u := &models.User{
-		AuthUserID: authUserID,
-		Email:      email,
+	if authUserID == "" {
+		return nil, apperr.ErrInvalidUserID
 	}
 
-	res, err := s.repo.Ensure(
+	return s.repo.Upsert(
 		ctx,
-		u,
+		&models.User{
+			AuthUserID: authUserID,
+			Email:      email,
+		},
 	)
+}
 
-	if err != nil {
+// =========================
+// GetByAuthUserID
+// =========================
 
-		if errors.Is(
-			err,
-			repository.ErrDuplicateEmail,
-		) {
+func (s *UserService) GetByAuthUserID(
+	ctx context.Context,
+	authUserID string,
+) (*models.User, error) {
 
-			return nil, ErrDuplicateEmail
-		}
-
-		return nil, err
+	if authUserID == "" {
+		return nil, apperr.ErrInvalidUserID
 	}
 
-	return res, nil
+	return s.repo.GetByAuthUserID(
+		ctx,
+		authUserID,
+	)
 }
 
 // =========================
@@ -71,28 +105,13 @@ func (s *UserService) Get(
 ) (*models.User, error) {
 
 	if id <= 0 {
-		return nil, ErrInvalidID
+		return nil, apperr.ErrInvalidID
 	}
 
-	res, err := s.repo.Get(
+	return s.repo.Get(
 		ctx,
 		id,
 	)
-
-	if err != nil {
-
-		if errors.Is(
-			err,
-			repository.ErrUserNotFound,
-		) {
-
-			return nil, ErrUserNotFound
-		}
-
-		return nil, err
-	}
-
-	return res, nil
 }
 
 // =========================
@@ -105,26 +124,11 @@ func (s *UserService) Delete(
 ) error {
 
 	if userID <= 0 {
-		return ErrInvalidUserID
+		return apperr.ErrInvalidUserID
 	}
 
-	err := s.repo.Delete(
+	return s.repo.Delete(
 		ctx,
 		userID,
 	)
-
-	if err != nil {
-
-		if errors.Is(
-			err,
-			repository.ErrUserNotFound,
-		) {
-
-			return ErrUserNotFound
-		}
-
-		return err
-	}
-
-	return nil
 }

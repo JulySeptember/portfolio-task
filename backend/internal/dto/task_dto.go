@@ -12,20 +12,20 @@ import (
 
 type CreateTaskRequest struct {
 	Title       string            `json:"title" validate:"required,min=1,max=255"`
-	Description string            `json:"description" validate:"max=1000"`
-	Status      models.TaskStatus `json:"status" validate:"required,oneof=TODO DOING DONE"`
+	Description string            `json:"description" validate:"max=5000"`
+	Status      models.TaskStatus `json:"status" validate:"required,task_status"`
 	DueDate     string            `json:"due_date"`
 }
 
 type UpdateTaskRequest struct {
 	Title       string            `json:"title" validate:"required,min=1,max=255"`
-	Description string            `json:"description" validate:"max=1000"`
-	Status      models.TaskStatus `json:"status" validate:"required,oneof=TODO DOING DONE"`
+	Description string            `json:"description" validate:"max=5000"`
+	Status      models.TaskStatus `json:"status" validate:"required,task_status"`
 	DueDate     string            `json:"due_date"`
 }
 
 type UpdateTaskStatusRequest struct {
-	Status models.TaskStatus `json:"status" validate:"required,oneof=TODO DOING DONE"`
+	Status models.TaskStatus `json:"status" validate:"required,task_status"`
 }
 
 // =========================
@@ -43,8 +43,12 @@ type TaskResponse struct {
 	UpdatedAt   time.Time         `json:"updated_at"`
 }
 
+// =========================
+// list response
+// =========================
+
 type TaskListResponse struct {
-	Count  int            `json:"count"`
+	Count  int64          `json:"count"`
 	Items  []TaskResponse `json:"items"`
 	Limit  int            `json:"limit"`
 	Offset int            `json:"offset"`
@@ -54,7 +58,10 @@ type TaskListResponse struct {
 // mapper
 // =========================
 
-func ToTaskResponse(t *models.Task) TaskResponse {
+func ToTaskResponse(
+	t *models.Task,
+) TaskResponse {
+
 	return TaskResponse{
 		ID:          t.ID,
 		UserID:      t.UserID,

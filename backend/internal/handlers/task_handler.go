@@ -1,3 +1,5 @@
+// internal/handlers/task_handler.go
+
 package handlers
 
 import (
@@ -11,11 +13,17 @@ import (
 
 type TaskHandler struct {
 	taskSvc *service.TaskService
+	userSvc *service.UserService
 }
 
-func NewTaskHandler(taskSvc *service.TaskService) *TaskHandler {
+func NewTaskHandler(
+	taskSvc *service.TaskService,
+	userSvc *service.UserService,
+) *TaskHandler {
+
 	return &TaskHandler{
 		taskSvc: taskSvc,
+		userSvc: userSvc,
 	}
 }
 
@@ -23,180 +31,225 @@ func NewTaskHandler(taskSvc *service.TaskService) *TaskHandler {
 // Create
 // =========================
 
-func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
+func (h *TaskHandler) Create(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	ctx, cancel := withTimeout(
+		r,
+		defaultHandlerTimeout,
+	)
+	defer cancel()
+
+	r = r.WithContext(ctx)
+
 	var req dto.CreateTaskRequest
 
-	if !decodeAndValidate(w, r, &req) {
+	if !decodeAndValidate(
+		w,
+		r,
+		&req,
+	) {
 		return
 	}
 
-	userID, ok := requireAuthUserID(w, r)
+	userID, ok := requireUserID(
+		w,
+		r,
+		h.userSvc,
+	)
+
 	if !ok {
 		return
 	}
 
-	task, ok := buildTaskFromCreateRequest(w, &req)
+	dueDate, ok := parseOptionalDueDate(
+		w,
+		req.DueDate,
+	)
+
 	if !ok {
 		return
 	}
 
-	res, err := h.taskSvc.Create(r.Context(), userID, task)
+	task, err := h.taskSvc.CreateTask(
+		r.Context(),
+		userID,
+		req.Title,
+		req.Description,
+		req.Status,
+		dueDate,
+	)
+
 	if err != nil {
-		httpx.HandleError(w, err)
+
+		httpx.HandleError(
+			w,
+			err,
+		)
+
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusCreated, dto.ToTaskResponse(res))
+	httpx.WriteJSON(
+		w,
+		http.StatusCreated,
+		dto.ToTaskResponse(task),
+	)
 }
 
 // =========================
 // Get
 // =========================
 
-func (h *TaskHandler) Get(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseID(w, r)
+func (h *TaskHandler) Get(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	ctx, cancel := withTimeout(
+		r,
+		defaultHandlerTimeout,
+	)
+	defer cancel()
+
+	r = r.WithContext(ctx)
+
+	id, ok := parseID(
+		w,
+		r,
+	)
+
 	if !ok {
 		return
 	}
 
-	userID, ok := requireAuthUserID(w, r)
+	userID, ok := requireUserID(
+		w,
+		r,
+		h.userSvc,
+	)
+
 	if !ok {
 		return
 	}
 
-	res, err := h.taskSvc.Get(r.Context(), id, userID)
+	task, err := h.taskSvc.GetTask(
+		r.Context(),
+		id,
+		userID,
+	)
+
 	if err != nil {
-		httpx.HandleError(w, err)
+
+		httpx.HandleError(
+			w,
+			err,
+		)
+
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, dto.ToTaskResponse(res))
-}
-
-// =========================
-// Update
-// =========================
-
-func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseID(w, r)
-	if !ok {
-		return
-	}
-
-	userID, ok := requireAuthUserID(w, r)
-	if !ok {
-		return
-	}
-
-	var req dto.UpdateTaskRequest
-	if !decodeAndValidate(w, r, &req) {
-		return
-	}
-
-	task, ok := buildTaskFromUpdateRequest(w, &req)
-	if !ok {
-		return
-	}
-
-	task.ID = id
-
-	res, err := h.taskSvc.Update(r.Context(), task, userID)
-	if err != nil {
-		httpx.HandleError(w, err)
-		return
-	}
-
-	httpx.WriteJSON(w, http.StatusOK, dto.ToTaskResponse(res))
-}
-
-// =========================
-// Update Status
-// =========================
-
-func (h *TaskHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseID(w, r)
-	if !ok {
-		return
-	}
-
-	userID, ok := requireAuthUserID(w, r)
-	if !ok {
-		return
-	}
-
-	var req dto.UpdateTaskStatusRequest
-	if !decodeAndValidate(w, r, &req) {
-		return
-	}
-
-	res, err := h.taskSvc.UpdateStatus(r.Context(), id, userID, req.Status)
-	if err != nil {
-		httpx.HandleError(w, err)
-		return
-	}
-
-	httpx.WriteJSON(w, http.StatusOK, dto.ToTaskResponse(res))
-}
-
-// =========================
-// Delete
-// =========================
-
-func (h *TaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseID(w, r)
-	if !ok {
-		return
-	}
-
-	userID, ok := requireAuthUserID(w, r)
-	if !ok {
-		return
-	}
-
-	if err := h.taskSvc.Delete(r.Context(), id, userID); err != nil {
-		httpx.HandleError(w, err)
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
+	httpx.WriteJSON(
+		w,
+		http.StatusOK,
+		dto.ToTaskResponse(task),
+	)
 }
 
 // =========================
 // List
 // =========================
 
-func (h *TaskHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID, ok := requireAuthUserID(w, r)
+func (h *TaskHandler) List(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	ctx, cancel := withTimeout(
+		r,
+		listHandlerTimeout,
+	)
+	defer cancel()
+
+	r = r.WithContext(ctx)
+
+	userID, ok := requireUserID(
+		w,
+		r,
+		h.userSvc,
+	)
+
 	if !ok {
 		return
 	}
 
 	query := models.TaskListQuery{
-		Status: httpx.QueryString(r, "status", ""),
-		Sort:   httpx.QueryString(r, "sort", ""),
-		Order:  httpx.QueryString(r, "order", ""),
-		Limit:  httpx.QueryInt(r, "limit", 20, 1, 100),
-		Offset: httpx.QueryInt(r, "offset", 0, 0, 0),
-	}.Normalize()
+		Status: models.TaskStatus(
+			httpx.QueryString(
+				r,
+				"status",
+				"",
+			),
+		),
 
-	res, err := h.taskSvc.List(
+		Sort: models.TaskSort(
+			httpx.QueryString(
+				r,
+				"sort",
+				"",
+			),
+		),
+
+		Order: models.TaskOrder(
+			httpx.QueryString(
+				r,
+				"order",
+				"",
+			),
+		),
+
+		Limit: httpx.QueryInt(
+			r,
+			"limit",
+			20,
+			1,
+			100,
+		),
+
+		Offset: httpx.QueryInt(
+			r,
+			"offset",
+			0,
+			0,
+			0,
+		),
+	}
+
+	result, err := h.taskSvc.ListTasks(
 		r.Context(),
 		userID,
 		query,
 	)
 
 	if err != nil {
-		httpx.HandleError(w, err)
+
+		httpx.HandleError(
+			w,
+			err,
+		)
+
 		return
 	}
 
 	items := make(
 		[]dto.TaskResponse,
 		0,
-		len(res),
+		len(result.Items),
 	)
 
-	for _, t := range res {
+	for _, t := range result.Items {
 
 		items = append(
 			items,
@@ -204,14 +257,222 @@ func (h *TaskHandler) List(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
+	resp := dto.TaskListResponse{
+		Items: items,
+	}
+
 	httpx.WriteJSON(
 		w,
 		http.StatusOK,
-		dto.TaskListResponse{
-			Count:  len(items),
-			Items:  items,
-			Limit:  query.Limit,
-			Offset: query.Offset,
-		},
+		resp,
+	)
+}
+
+// =========================
+// Update
+// =========================
+
+func (h *TaskHandler) Update(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	ctx, cancel := withTimeout(
+		r,
+		defaultHandlerTimeout,
+	)
+	defer cancel()
+
+	r = r.WithContext(ctx)
+
+	id, ok := parseID(
+		w,
+		r,
+	)
+
+	if !ok {
+		return
+	}
+
+	userID, ok := requireUserID(
+		w,
+		r,
+		h.userSvc,
+	)
+
+	if !ok {
+		return
+	}
+
+	var req dto.UpdateTaskRequest
+
+	if !decodeAndValidate(
+		w,
+		r,
+		&req,
+	) {
+		return
+	}
+
+	dueDate, ok := parseOptionalDueDate(
+		w,
+		req.DueDate,
+	)
+
+	if !ok {
+		return
+	}
+
+	task, err := h.taskSvc.UpdateTask(
+		r.Context(),
+		id,
+		userID,
+		req.Title,
+		req.Description,
+		req.Status,
+		dueDate,
+	)
+
+	if err != nil {
+
+		httpx.HandleError(
+			w,
+			err,
+		)
+
+		return
+	}
+
+	httpx.WriteJSON(
+		w,
+		http.StatusOK,
+		dto.ToTaskResponse(task),
+	)
+}
+
+// =========================
+// Update Status
+// =========================
+
+func (h *TaskHandler) UpdateStatus(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	ctx, cancel := withTimeout(
+		r,
+		defaultHandlerTimeout,
+	)
+	defer cancel()
+
+	r = r.WithContext(ctx)
+
+	id, ok := parseID(
+		w,
+		r,
+	)
+
+	if !ok {
+		return
+	}
+
+	userID, ok := requireUserID(
+		w,
+		r,
+		h.userSvc,
+	)
+
+	if !ok {
+		return
+	}
+
+	var req dto.UpdateTaskStatusRequest
+
+	if !decodeAndValidate(
+		w,
+		r,
+		&req,
+	) {
+		return
+	}
+
+	task, err := h.taskSvc.UpdateStatus(
+		r.Context(),
+		id,
+		userID,
+		req.Status,
+	)
+
+	if err != nil {
+
+		httpx.HandleError(
+			w,
+			err,
+		)
+
+		return
+	}
+
+	httpx.WriteJSON(
+		w,
+		http.StatusOK,
+		dto.ToTaskResponse(task),
+	)
+}
+
+// =========================
+// Delete
+// =========================
+
+func (h *TaskHandler) Delete(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	ctx, cancel := withTimeout(
+		r,
+		defaultHandlerTimeout,
+	)
+	defer cancel()
+
+	r = r.WithContext(ctx)
+
+	id, ok := parseID(
+		w,
+		r,
+	)
+
+	if !ok {
+		return
+	}
+
+	userID, ok := requireUserID(
+		w,
+		r,
+		h.userSvc,
+	)
+
+	if !ok {
+		return
+	}
+
+	err := h.taskSvc.DeleteTask(
+		r.Context(),
+		id,
+		userID,
+	)
+
+	if err != nil {
+
+		httpx.HandleError(
+			w,
+			err,
+		)
+
+		return
+	}
+
+	w.WriteHeader(
+		http.StatusNoContent,
 	)
 }

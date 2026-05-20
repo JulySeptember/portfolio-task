@@ -9,8 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	mysqlDriver "github.com/go-sql-driver/mysql"
-
+	"portfolio/backend/internal/apperr"
 	"portfolio/backend/internal/models"
 )
 
@@ -27,213 +26,35 @@ func NewTaskRepository(
 	}
 }
 
-// =========================
-// Create
-// =========================
-
-func (r *TaskRepository) Create(
-	ctx context.Context,
-	task *models.Task,
-) error {
-
-	ctx, cancel := withTimeout(ctx)
-	defer cancel()
-
-	query := `
-INSERT INTO tasks (
-	user_id,
-	title,
-	description,
-	status,
-	due_date
-) VALUES (?, ?, ?, ?, ?)
-`
-
-	result, err := r.db.ExecContext(
-		ctx,
-		query,
-		task.UserID,
-		task.Title,
-		task.Description,
-		task.Status,
-		task.DueDate,
-	)
-
-	if err != nil {
-
-		var mysqlErr *mysqlDriver.MySQLError
-
-		if errors.As(err, &mysqlErr) {
-
-			// ER_NO_REFERENCED_ROW_2
-			if mysqlErr.Number == 1452 {
-				return ErrForeignKeyViolation
-			}
-		}
-
-		return err
-	}
-
-	id, err := result.LastInsertId()
-
-	if err != nil {
-		return err
-	}
-
-	task.ID = id
-
-	return nil
-}
+var taskColumns = strings.Join([]string{
+	"id",
+	"user_id",
+	"title",
+	"description",
+	"status",
+	"due_date",
+	"created_at",
+	"updated_at",
+}, ", ")
 
 // =========================
-// ListByUserID
+// get helper
 // =========================
 
-func (r *TaskRepository) ListByUserID(
-	ctx context.Context,
-	userID int64,
-	query models.TaskListQuery,
-) ([]models.Task, error) {
-
-	ctx, cancel := withTimeout(ctx)
-	defer cancel()
-
-	sortColumn := "created_at"
-
-	switch query.Sort {
-
-	case "due_date":
-		sortColumn = "due_date"
-
-	case "created_at":
-		sortColumn = "created_at"
-	}
-
-	order := "DESC"
-
-	if strings.ToUpper(query.Order) == "ASC" {
-		order = "ASC"
-	}
-
-	orderBy := "created_at DESC, id DESC"
-
-	if sortColumn == "due_date" {
-
-		orderBy = fmt.Sprintf(
-			"due_date IS NULL, due_date %s, id DESC",
-			order,
-		)
-
-	} else {
-
-		orderBy = fmt.Sprintf(
-			"%s %s, id DESC",
-			sortColumn,
-			order,
-		)
-	}
-
-	queryStr := fmt.Sprintf(`
-SELECT
-	id,
-	user_id,
-	title,
-	description,
-	status,
-	due_date,
-	created_at,
-	updated_at
-FROM tasks
-WHERE user_id = ?
-AND (? = '' OR status = ?)
-ORDER BY %s
-LIMIT ?
-OFFSET ?
-`,
-		orderBy,
-	)
-
-	rows, err := r.db.QueryContext(
-		ctx,
-		queryStr,
-		userID,
-		query.Status,
-		query.Status,
-		query.Limit,
-		query.Offset,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows.Close()
-
-	tasks := make(
-		[]models.Task,
-		0,
-		query.Limit,
-	)
-
-	for rows.Next() {
-
-		var task models.Task
-
-		err := rows.Scan(
-			&task.ID,
-			&task.UserID,
-			&task.Title,
-			&task.Description,
-			&task.Status,
-			&task.DueDate,
-			&task.CreatedAt,
-			&task.UpdatedAt,
-		)
-
-		if err != nil {
-			return nil, err
-		}
-
-		tasks = append(
-			tasks,
-			task,
-		)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return tasks, nil
-}
-
-// =========================
-// Get
-// =========================
-
-func (r *TaskRepository) Get(
+func (r *TaskRepository) get(
 	ctx context.Context,
 	taskID int64,
 	userID int64,
 ) (*models.Task, error) {
 
-	ctx, cancel := withTimeout(ctx)
-	defer cancel()
-
-	query := `
-SELECT
-	id,
-	user_id,
-	title,
-	description,
-	status,
-	due_date,
-	created_at,
-	updated_at
+	query := fmt.Sprintf(`
+SELECT %s
 FROM tasks
 WHERE id = ?
 AND user_id = ?
-`
+`,
+		taskColumns,
+	)
 
 	var task models.Task
 
@@ -255,18 +76,233 @@ AND user_id = ?
 
 	if err != nil {
 
-		if errors.Is(
-			err,
-			sql.ErrNoRows,
-		) {
-
-			return nil, ErrTaskNotFound
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperr.ErrTaskNotFound
 		}
 
-		return nil, err
+		return nil, parseMySQLError(err)
 	}
 
 	return &task, nil
+}
+
+// =========================
+// Create
+// =========================
+
+func (r *TaskRepository) Create(
+	ctx context.Context,
+	task *models.Task,
+) (*models.Task, error) {
+
+	query := `
+INSERT INTO tasks (
+	user_id,
+	title,
+	description,
+	status,
+	due_date
+) VALUES (?, ?, ?, ?, ?)
+`
+
+	res, err := r.db.ExecContext(
+		ctx,
+		query,
+		task.UserID,
+		task.Title,
+		task.Description,
+		task.Status,
+		task.DueDate,
+	)
+
+	if err != nil {
+		return nil, parseMySQLError(err)
+	}
+
+	id, err := res.LastInsertId()
+
+	if err != nil {
+		return nil, parseMySQLError(err)
+	}
+
+	return r.get(
+		ctx,
+		id,
+		task.UserID,
+	)
+}
+
+func (r *TaskRepository) ListByUserID(
+	ctx context.Context,
+	userID int64,
+	q models.TaskListQuery,
+) (*models.TaskListResult, error) {
+
+	sortColumn := q.Sort.Column()
+	orderSQL := q.Order.SQL()
+
+	var (
+		args  []any
+		where []string
+	)
+
+	where = append(
+		where,
+		"user_id = ?",
+	)
+
+	args = append(
+		args,
+		userID,
+	)
+
+	if q.Status != "" {
+
+		where = append(
+			where,
+			"status = ?",
+		)
+
+		args = append(
+			args,
+			q.Status,
+		)
+	}
+
+	whereClause := strings.Join(
+		where,
+		" AND ",
+	)
+
+	// =========================
+	// total count
+	// =========================
+
+	countQuery := fmt.Sprintf(`
+SELECT COUNT(*)
+FROM tasks
+WHERE %s
+`,
+		whereClause,
+	)
+
+	var total int64
+
+	if err := r.db.QueryRowContext(
+		ctx,
+		countQuery,
+		args...,
+	).Scan(&total); err != nil {
+
+		return nil, parseMySQLError(err)
+	}
+
+	// =========================
+	// order by
+	// =========================
+
+	var orderBy string
+
+	if q.Sort == models.TaskSortDueDate {
+
+		orderBy = fmt.Sprintf(
+			"due_date IS NULL ASC, due_date %s, id %s",
+			orderSQL,
+			orderSQL,
+		)
+
+	} else {
+
+		orderBy = fmt.Sprintf(
+			"%s %s, id %s",
+			sortColumn,
+			orderSQL,
+			orderSQL,
+		)
+	}
+
+	query := fmt.Sprintf(`
+SELECT %s
+FROM tasks
+WHERE %s
+ORDER BY %s
+LIMIT ?
+OFFSET ?
+`,
+		taskColumns,
+		whereClause,
+		orderBy,
+	)
+
+	listArgs := append(
+		append([]any{}, args...),
+		q.Limit,
+		q.Offset,
+	)
+
+	rows, err := r.db.QueryContext(
+		ctx,
+		query,
+		listArgs...,
+	)
+
+	if err != nil {
+		return nil, parseMySQLError(err)
+	}
+
+	defer rows.Close()
+
+	var tasks []models.Task
+
+	for rows.Next() {
+
+		var t models.Task
+
+		if err := rows.Scan(
+			&t.ID,
+			&t.UserID,
+			&t.Title,
+			&t.Description,
+			&t.Status,
+			&t.DueDate,
+			&t.CreatedAt,
+			&t.UpdatedAt,
+		); err != nil {
+
+			return nil, parseMySQLError(err)
+		}
+
+		tasks = append(
+			tasks,
+			t,
+		)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, parseMySQLError(err)
+	}
+
+	return &models.TaskListResult{
+		Items: tasks,
+		Total: total,
+	}, nil
+}
+
+// =========================
+// Get
+// =========================
+
+func (r *TaskRepository) Get(
+	ctx context.Context,
+	taskID int64,
+	userID int64,
+) (*models.Task, error) {
+
+	return r.get(
+		ctx,
+		taskID,
+		userID,
+	)
 }
 
 // =========================
@@ -276,10 +312,7 @@ AND user_id = ?
 func (r *TaskRepository) Update(
 	ctx context.Context,
 	task *models.Task,
-) error {
-
-	ctx, cancel := withTimeout(ctx)
-	defer cancel()
+) (*models.Task, error) {
 
 	query := `
 UPDATE tasks
@@ -293,7 +326,7 @@ WHERE id = ?
 AND user_id = ?
 `
 
-	result, err := r.db.ExecContext(
+	res, err := r.db.ExecContext(
 		ctx,
 		query,
 		task.Title,
@@ -305,20 +338,24 @@ AND user_id = ?
 	)
 
 	if err != nil {
-		return err
+		return nil, parseMySQLError(err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
+	aff, err := res.RowsAffected()
 
 	if err != nil {
-		return err
+		return nil, parseMySQLError(err)
 	}
 
-	if rowsAffected == 0 {
-		return ErrTaskNotFound
+	if aff == 0 {
+		return nil, apperr.ErrTaskNotFound
 	}
 
-	return nil
+	return r.get(
+		ctx,
+		task.ID,
+		task.UserID,
+	)
 }
 
 // =========================
@@ -330,10 +367,7 @@ func (r *TaskRepository) UpdateStatus(
 	taskID int64,
 	userID int64,
 	status models.TaskStatus,
-) error {
-
-	ctx, cancel := withTimeout(ctx)
-	defer cancel()
+) (*models.Task, error) {
 
 	query := `
 UPDATE tasks
@@ -344,7 +378,7 @@ WHERE id = ?
 AND user_id = ?
 `
 
-	result, err := r.db.ExecContext(
+	res, err := r.db.ExecContext(
 		ctx,
 		query,
 		status,
@@ -353,20 +387,24 @@ AND user_id = ?
 	)
 
 	if err != nil {
-		return err
+		return nil, parseMySQLError(err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
+	aff, err := res.RowsAffected()
 
 	if err != nil {
-		return err
+		return nil, parseMySQLError(err)
 	}
 
-	if rowsAffected == 0 {
-		return ErrTaskNotFound
+	if aff == 0 {
+		return nil, apperr.ErrTaskNotFound
 	}
 
-	return nil
+	return r.get(
+		ctx,
+		taskID,
+		userID,
+	)
 }
 
 // =========================
@@ -379,34 +417,29 @@ func (r *TaskRepository) Delete(
 	userID int64,
 ) error {
 
-	ctx, cancel := withTimeout(ctx)
-	defer cancel()
-
-	query := `
+	res, err := r.db.ExecContext(
+		ctx,
+		`
 DELETE FROM tasks
 WHERE id = ?
 AND user_id = ?
-`
-
-	result, err := r.db.ExecContext(
-		ctx,
-		query,
+`,
 		taskID,
 		userID,
 	)
 
 	if err != nil {
-		return err
+		return parseMySQLError(err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
+	aff, err := res.RowsAffected()
 
 	if err != nil {
-		return err
+		return parseMySQLError(err)
 	}
 
-	if rowsAffected == 0 {
-		return ErrTaskNotFound
+	if aff == 0 {
+		return apperr.ErrTaskNotFound
 	}
 
 	return nil

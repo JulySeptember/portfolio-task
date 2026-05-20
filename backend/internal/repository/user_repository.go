@@ -1,10 +1,15 @@
+// internal/repository/user_repository.go
+
 package repository
 
 import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 
+	"portfolio/backend/internal/apperr"
 	"portfolio/backend/internal/models"
 )
 
@@ -22,52 +27,116 @@ func NewUserRepository(
 }
 
 // =========================
-// Ensure
-// =========================
-// atomic upsert + fetch
+// columns
 // =========================
 
-func (r *UserRepository) Ensure(
+var userColumns = strings.Join([]string{
+	"id",
+	"auth_user_id",
+	"email",
+	"created_at",
+	"updated_at",
+}, ", ")
+
+// =========================
+// private get helper
+// =========================
+
+func (r *UserRepository) getByQuery(
+	ctx context.Context,
+	query string,
+	args ...any,
+) (*models.User, error) {
+
+	user := &models.User{}
+
+	err := r.db.QueryRowContext(
+		ctx,
+		query,
+		args...,
+	).Scan(
+		&user.ID,
+		&user.AuthUserID,
+		&user.Email,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+
+	if err != nil {
+
+		if errors.Is(
+			err,
+			sql.ErrNoRows,
+		) {
+
+			return nil, apperr.ErrUserNotFound
+		}
+
+		return nil, parseMySQLError(err)
+	}
+
+	return user, nil
+}
+
+// =========================
+// Upsert
+// =========================
+
+func (r *UserRepository) Upsert(
 	ctx context.Context,
 	u *models.User,
 ) (*models.User, error) {
 
-	ctxWithTimeout, cancel := withTimeout(ctx)
-	defer cancel()
-
 	q := `
-		INSERT INTO users (
-			auth_user_id,
-			email
-		)
-		VALUES (?, ?)
-		ON DUPLICATE KEY UPDATE
-			email = VALUES(email),
-			id = LAST_INSERT_ID(id)
-	`
+INSERT INTO users (
+	auth_user_id,
+	email
+)
+VALUES (?, ?)
+ON DUPLICATE KEY UPDATE
+	email = VALUES(email),
+	updated_at = CURRENT_TIMESTAMP
+`
 
-	res, err := r.db.ExecContext(
-		ctxWithTimeout,
+	_, err := r.db.ExecContext(
+		ctx,
 		q,
 		u.AuthUserID,
 		u.Email,
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, parseMySQLError(err)
 	}
 
-	id, err := res.LastInsertId()
-
-	if err != nil {
-		return nil, err
-	}
-
-	// IMPORTANT:
-	// pass original ctx
-	return r.Get(
+	return r.GetByAuthUserID(
 		ctx,
-		id,
+		u.AuthUserID,
+	)
+}
+
+// =========================
+// GetByAuthUserID
+// =========================
+
+func (r *UserRepository) GetByAuthUserID(
+	ctx context.Context,
+	authUserID string,
+) (*models.User, error) {
+
+	q := fmt.Sprintf(`
+SELECT
+	%s
+FROM users
+WHERE auth_user_id = ?
+`,
+		userColumns,
+	)
+
+	return r.getByQuery(
+		ctx,
+		q,
+		authUserID,
 	)
 }
 
@@ -80,44 +149,20 @@ func (r *UserRepository) Get(
 	id int64,
 ) (*models.User, error) {
 
-	ctx, cancel := withTimeout(ctx)
-	defer cancel()
+	q := fmt.Sprintf(`
+SELECT
+	%s
+FROM users
+WHERE id = ?
+`,
+		userColumns,
+	)
 
-	q := `
-		SELECT
-			id,
-			auth_user_id,
-			email,
-			created_at,
-			updated_at
-		FROM users
-		WHERE id = ?
-	`
-
-	u := &models.User{}
-
-	err := r.db.QueryRowContext(
+	return r.getByQuery(
 		ctx,
 		q,
 		id,
-	).Scan(
-		&u.ID,
-		&u.AuthUserID,
-		&u.Email,
-		&u.CreatedAt,
-		&u.UpdatedAt,
 	)
-
-	if err != nil {
-
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrUserNotFound
-		}
-
-		return nil, err
-	}
-
-	return u, nil
 }
 
 // =========================
@@ -129,23 +174,29 @@ func (r *UserRepository) Delete(
 	id int64,
 ) error {
 
-	ctx, cancel := withTimeout(ctx)
-	defer cancel()
+	q := `
+DELETE FROM users
+WHERE id = ?
+`
 
 	res, err := r.db.ExecContext(
 		ctx,
-		`DELETE FROM users WHERE id = ?`,
+		q,
 		id,
 	)
 
 	if err != nil {
-		return err
+		return parseMySQLError(err)
 	}
 
-	aff, _ := res.RowsAffected()
+	aff, err := res.RowsAffected()
+
+	if err != nil {
+		return parseMySQLError(err)
+	}
 
 	if aff == 0 {
-		return ErrUserNotFound
+		return apperr.ErrUserNotFound
 	}
 
 	return nil

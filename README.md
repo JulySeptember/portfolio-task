@@ -2,131 +2,153 @@
 
 Next.js × Go × AWS × Terraform × MySQL を用いたフルスタックWebアプリです。
 
----
-
-## アーキテクチャ図 & ER 図
-<img src="./docs/architecture_and_erd_v1.png" width="500">
+<img src="./docs/architecture_and_erd_v1.png" width="700">
 
 ---
 
 # 🌐 システム構成
 
-- Frontend: Next.js（S3 + CloudFront）
-- Backend: Go（AWS Lambda）
-- API Gateway（HTTP API）
-- Database: RDS MySQL（Private Subnet）
-- Auth: AWS Cognito（JWT / RS256）
+- Frontend: Next.js + S3 + CloudFront
+- Backend: Go + AWS Lambda
+- API: API Gateway HTTP API
+- Database: RDS MySQL
+- Auth: AWS Cognito + JWT Authorizer
+- IaC: Terraform
 
 ---
 
 # 🏗 アーキテクチャ
 
+```text
 Client
   ↓
 CloudFront
   ↓
-API Gateway
+S3 (Next.js Hosting)
+
+Client
   ↓
-Lambda（Go）
+API Gateway (JWT Authorizer)
   ↓
-Service → Repository → MySQL
+Lambda (Go)
+  ↓
+Handler
+  ↓
+Service
+  ↓
+Repository
+  ↓
+RDS MySQL
+```
 
 ---
 
-# 🧠 アーキテクチャ設計思想
+# 🧠 設計方針
 
-- レイヤードアーキテクチャ採用
+- レイヤードアーキテクチャ
 - Handler / Service / Repository 分離
-- AWSサーバレス前提設計
-- テスト容易性を重視した構造
-
+- AWS サーバレス前提設計
+- JWT 検証を API Gateway 側へ分離
+- Context timeout によるリクエスト制御
 ---
 
 # 🔐 認証設計
 
-- AWS Cognitoを利用
-- JWT（ID Token）による認証
-- RS256 + JWKS検証
-- Middlewareで認証処理を一元化
+本システムは AWS Cognito + API Gateway JWT Authorizer を利用します。
 
-### 認証フロー
+JWT 検証は API Gateway 側で実施し、
+Lambda 側では検証済み claims を利用します。
 
-1. Cognitoでログイン
-2. ID Token取得
-3. APIリクエストにBearer付与
-4. LambdaでJWT検証
-5. usersテーブルへ自動同期（Ensure）
+## 認証フロー
 
----
+```text
+1. Cognito Login
+2. JWT 発行
+3. Authorization: Bearer <JWT>
+4. API Gateway JWT Authorizer が JWT を検証
+5. claims を Lambda に転送
+6. Middleware が AuthUser を Context に格納
+7. users テーブルへ自動同期
+```
 
-# 👤 ユーザー管理
+## ユーザー同期
 
-本システムは**ユーザー作成APIを持たない設計**です。
+ユーザー作成 API は持たず、
+ログイン時に自動同期します。
 
-ログイン時に自動でユーザーが作成されます。
-
-### Ensure方式
-
-- Cognito sub（auth_user_id）をキーに管理
-- 初回ログイン時にINSERT
-- 既存ユーザーはUPSERTで更新
-
-👉 ユーザー登録 = ログイン処理
+- Cognito sub を auth_user_id として利用
+- 初回ログイン時に INSERT
+- 既存ユーザーは UPDATE
 
 ---
 
-# 📝 タスク管理機能
+# 📝 API
 
-本アプリの中核機能であり、
-ユーザーごとにタスクを完全分離して管理します（マルチテナント設計）。
+## Create Task
 
----
+```http
+POST /api/v1/tasks
+```
 
-## 機能一覧
+- タイトル
+- 説明
+- ステータス
+- 期限日
 
-### ■ タスク作成（Create）
-- タイトル / 説明 / ステータス / 期限を登録
-- user_idは認証コンテキストから自動付与
+## List Tasks
 
----
+```http
+GET /api/v1/tasks
+```
 
-### ■ タスク一覧取得（List）
-- 自分のタスクのみ取得
-- ページネーション対応（limit / offset）
-- created_at降順
+- pagination
+- sorting
+- status filtering
+- owner isolation
 
----
+デフォルトソート:
 
-### ■ タスク詳細取得（Get）
-- task_id + user_idで取得
-- 他ユーザーのデータはアクセス不可
+```text
+created_at DESC
+```
 
----
+## Get Task
 
-### ■ タスク更新（Update）
-- タイトル / 説明 / ステータス / 期限更新
-- 所有者チェックあり（user_id制御）
+```http
+GET /api/v1/tasks/{id}
+```
 
----
+- task_id + user_id で取得
+- 他ユーザーアクセス不可
 
-### ■ タスク削除（Delete）
-- 物理削除
-- user_idによる厳密制御
+## Update Task
 
----
+```http
+PUT /api/v1/tasks/{id}
+```
 
-### ■ ステータス管理
-- TODO / DOING / DONE
-- シンプルな3状態管理で進捗を可視化
+- 完全更新
+- 所有者チェックあり
 
----
+## Update Status
 
-## 技術的ポイント
+```http
+PATCH /api/v1/tasks/{id}/status
+```
 
-- RepositoryパターンでDB層を分離
-- Service層でビジネスロジック制御
-- SQLレベルで user_id 制約を強制
-- マルチテナント設計
+## Delete Task
+
+```http
+DELETE /api/v1/tasks/{id}
+```
+
+## Task Status
+
+```text
+TODO
+DOING
+DONE
+```
 
 ---
 
@@ -134,115 +156,177 @@ Service → Repository → MySQL
 
 ## users
 
-- id (PK)
-- auth_user_id (Cognito sub)
-- email
-- created_at
-- updated_at
+| column | type |
+|---|---|
+| id | bigint |
+| auth_user_id | varchar |
+| email | varchar |
+| created_at | datetime |
+| updated_at | datetime |
 
 ## tasks
 
-- id (PK)
-- user_id (FK)
-- title
-- description
-- status
-- due_date
-- created_at
-- updated_at
+| column | type |
+|---|---|
+| id | bigint |
+| user_id | bigint |
+| title | varchar |
+| description | text |
+| status | varchar |
+| due_date | datetime |
+| created_at | datetime |
+| updated_at | datetime |
 
 ---
 
 # 📊 インデックス設計
 
-CREATE INDEX idx_tasks_user_id ON tasks(user_id);
-CREATE INDEX idx_tasks_status ON tasks(status);
-CREATE INDEX idx_tasks_user_status ON tasks(user_id, status);
-CREATE INDEX idx_tasks_user_created_at ON tasks(user_id, created_at DESC, id DESC);
+```sql
+CREATE INDEX idx_tasks_user_id
+    ON tasks(user_id);
+
+CREATE INDEX idx_tasks_user_created_at
+    ON tasks(user_id, created_at DESC, id DESC);
+
+CREATE INDEX idx_tasks_user_status_created
+    ON tasks(user_id, status, created_at DESC, id DESC);
+
+CREATE INDEX idx_tasks_user_due_date
+    ON tasks(user_id, due_date, id DESC);
+```
+
+対応用途:
+
+- ユーザー単位取得
+- ステータス絞り込み
+- created_at ソート
+- due_date ソート
+- pagination 最適化
 
 ---
 
-# 🔌 Middleware構成
+# ⏰ due_date / Timezone
 
-- CORS
-- Recovery（panic制御）
-- Logging（リクエスト追跡）
-- Auth（JWT検証 + ユーザー同期）
+API の日時は RFC3339 UTC を使用します。
 
-実行順：
+例:
 
-CORS → Recovery → Logging → Auth → Router
+```json
+{
+  "due_date": "2026-05-20T00:00:00Z"
+}
+```
 
----
-
-# 📡 API一覧
-
-## Users
-
-- GET /api/v1/users/me
-- DELETE /api/v1/users/me
-
-## Tasks
-
-- GET /api/v1/tasks
-- POST /api/v1/tasks
-- GET /api/v1/tasks/{id}
-- PUT /api/v1/tasks/{id}
-- DELETE /api/v1/tasks/{id}
+- Backend は UTC で保存
+- Frontend 側でローカルタイムへ変換
+- timezone 差異による日付ズレを防止
 
 ---
 
-# 📄 API仕様（Swagger / OpenAPI）
+# 🔌 Middleware
 
-本プロジェクトではAPI仕様管理に **Swagger（OpenAPI 3.0）** を採用しています。
+```text
+CORS
+  ↓
+Recovery
+  ↓
+RequestID
+  ↓
+Logging
+  ↓
+Auth
+  ↓
+Router
+```
 
-## 🌐 Swagger UI
+---
 
-http://localhost:8080/api/v1/docs/
+# 🔒 セキュリティ
 
-
-# 🔒 セキュリティ設計
-
-- RDSはPrivate Subnet配置
-- Lambdaのみアクセス許可
-- IAM最小権限
-- JWT検証（RS256 + JWKS）
-- request size制限（1MB）
-- unknown field拒否
-- SQL timeout / context timeout
-
+- API Gateway JWT Authorizer
+- Cognito 認証
+- request / SQL timeout
+- strict JSON decode
+- unknown field reject
+- body size limit
 ---
 
 # ⚙️ ローカル開発
 
+## 起動
+
+```bash
 make run
+```
+
+## Migration
+
+```bash
 make migrate-up
+```
+
+## Swagger
+
+```text
+http://localhost:8080/api/v1/docs/
+```
+
+## ローカル認証バイパス
+
+ローカル開発時のみ利用可能です。
+
+```env
+RUN_MODE=local
+ENABLE_DEV_AUTH_BYPASS=true
+```
+
+production では利用不可
+---
+
+# 📄 OpenAPI
+
+```text
+/swagger/swagger.yml
+```
 
 ---
 
-# 🚀 CI/CD
+# 📁 ディレクトリ構成
 
-## Frontend
-- S3 deploy
-- CloudFront invalidation
-
-## Backend
-- Lambda deploy
-
-## Infrastructure
-- Terraform apply
+```text
+internal/
+├── apperr/
+├── auth/
+├── config/
+├── container/
+├── dto/
+├── handlers/
+├── httpx/
+├── middleware/
+├── models/
+├── repository/
+├── router/
+└── service/
+```
 
 ---
 
-# 🧠 このプロジェクトの特徴
+# ⚠️ 制約
 
-- AWSサーバレス構成
-- TerraformによるIaC
-
+- RBAC 未実装
+- 全 API 認証必須（/health 除く）
+- WebSocket 未対応
 ---
 
-# ⚠️ 現状の制約
+# 📚 技術スタック
 
-- Access Tokenベース認可は未実装（ID Tokenのみ）
-- ユーザー登録APIなし（ログイン時自動作成）
-- 全APIは認証必須（/health除く）
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js |
+| Backend | Go |
+| Infra | Terraform |
+| API | API Gateway HTTP API |
+| Auth | AWS Cognito |
+| Runtime | AWS Lambda |
+| DB | MySQL (RDS) |
+| Hosting | CloudFront + S3 |

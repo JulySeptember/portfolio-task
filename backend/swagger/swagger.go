@@ -1,22 +1,17 @@
+// swagger/swagger.go
+
 package swagger
 
 import (
 	"bytes"
 	"embed"
-	"fmt"
 	"html/template"
 	"net/http"
+	"sync"
 )
 
 // =========================
 // Embed static assets
-// =========================
-//
-// swagger.yml
-// template/index.html.tmpl
-//
-// をバイナリへ埋め込む
-// Lambda deploy 時も単一バイナリで完結
 // =========================
 
 //go:embed swagger.yml template/*
@@ -27,48 +22,65 @@ type config struct {
 	DomID     string
 }
 
+var (
+	indexTemplate *template.Template
+	swaggerYAML   []byte
+
+	loadOnce sync.Once
+	loadErr  error
+)
+
 // =========================
-// Load swagger.yml
+// init cache
 // =========================
 
-func SwaggerYAML() []byte {
+func initAssets() {
 
-	data, err := StaticAssets.ReadFile(
-		"swagger.yml",
-	)
+	loadOnce.Do(func() {
 
-	if err != nil {
+		// =========================
+		// template
+		// =========================
 
-		panic(
-			fmt.Errorf(
-				"failed to read swagger.yml: %w",
-				err,
-			),
+		t, err := template.ParseFS(
+			StaticAssets,
+			"template/index.html.tmpl",
 		)
-	}
 
-	return data
+		if err != nil {
+			loadErr = err
+			return
+		}
+
+		indexTemplate = t
+
+		// =========================
+		// swagger yaml
+		// =========================
+
+		data, err := StaticAssets.ReadFile(
+			"swagger.yml",
+		)
+
+		if err != nil {
+			loadErr = err
+			return
+		}
+
+		swaggerYAML = data
+	})
 }
 
 // =========================
 // Render Swagger UI HTML
 // =========================
 
-func IndexHTML() []byte {
+func renderIndexHTML() ([]byte, error) {
 
-	t, err := template.ParseFS(
-		StaticAssets,
-		"template/index.html.tmpl",
-	)
+	initAssets()
 
-	if err != nil {
-
-		panic(
-			fmt.Errorf(
-				"failed to parse swagger template: %w",
-				err,
-			),
-		)
+	if loadErr != nil {
+		return nil, loadErr
 	}
 
 	c := config{
@@ -78,20 +90,15 @@ func IndexHTML() []byte {
 
 	var buf bytes.Buffer
 
-	if err := t.Execute(
+	if err := indexTemplate.Execute(
 		&buf,
 		c,
 	); err != nil {
 
-		panic(
-			fmt.Errorf(
-				"failed to execute swagger template: %w",
-				err,
-			),
-		)
+		return nil, err
 	}
 
-	return buf.Bytes()
+	return buf.Bytes(), nil
 }
 
 // =========================
@@ -103,16 +110,38 @@ func DocsHandler(
 	r *http.Request,
 ) {
 
+	if r.Method != http.MethodGet {
+
+		w.WriteHeader(
+			http.StatusMethodNotAllowed,
+		)
+
+		return
+	}
+
+	html, err := renderIndexHTML()
+
+	if err != nil {
+
+		http.Error(
+			w,
+			"swagger ui unavailable",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
 	w.Header().Set(
 		"Content-Type",
 		"text/html; charset=utf-8",
 	)
 
-	w.WriteHeader(http.StatusOK)
-
-	_, _ = w.Write(
-		IndexHTML(),
+	w.WriteHeader(
+		http.StatusOK,
 	)
+
+	_, _ = w.Write(html)
 }
 
 // =========================
@@ -124,14 +153,36 @@ func SpecHandler(
 	r *http.Request,
 ) {
 
+	if r.Method != http.MethodGet {
+
+		w.WriteHeader(
+			http.StatusMethodNotAllowed,
+		)
+
+		return
+	}
+
+	initAssets()
+
+	if loadErr != nil {
+
+		http.Error(
+			w,
+			"swagger spec unavailable",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
 	w.Header().Set(
 		"Content-Type",
-		"application/yaml",
+		"text/yaml; charset=utf-8",
 	)
 
-	w.WriteHeader(http.StatusOK)
-
-	_, _ = w.Write(
-		SwaggerYAML(),
+	w.WriteHeader(
+		http.StatusOK,
 	)
+
+	_, _ = w.Write(swaggerYAML)
 }

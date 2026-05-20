@@ -7,6 +7,7 @@ package httpx
 const (
 
 	// common
+	CodeBadRequest          = "BAD_REQUEST"
 	CodeInternalServerError = "INTERNAL_SERVER_ERROR"
 	CodeValidationError     = "VALIDATION_ERROR"
 	CodeInvalidJSON         = "INVALID_JSON"
@@ -25,8 +26,10 @@ const (
 	CodeTaskNotFound   = "TASK_NOT_FOUND"
 	CodeInvalidUserID  = "INVALID_USER_ID"
 	CodeInvalidDueDate = "INVALID_DUE_DATE"
-	CodeInvalidSort    = "INVALID_SORT"
-	CodeInvalidOrder   = "INVALID_ORDER"
+
+	CodeInvalidSort   = "INVALID_SORT"
+	CodeInvalidOrder  = "INVALID_ORDER"
+	CodeInvalidOffset = "INVALID_OFFSET"
 )
 
 // =========================

@@ -7,11 +7,9 @@ CREATE TABLE tasks (
 
     description TEXT NULL,
 
-    status ENUM(
-        'TODO',
-        'DOING',
-        'DONE'
-    ) NOT NULL DEFAULT 'TODO',
+    status VARCHAR(16)
+        NOT NULL
+        DEFAULT 'TODO',
 
     due_date DATETIME NULL,
 
@@ -32,25 +30,27 @@ CREATE TABLE tasks (
 -- indexes
 -- =========================
 
--- user task lookup
 CREATE INDEX idx_tasks_user_id
     ON tasks(user_id);
 
--- status filtering
-CREATE INDEX idx_tasks_status
-    ON tasks(status);
-
--- user + status filtering
-CREATE INDEX idx_tasks_user_status
-    ON tasks(user_id, status);
-
--- due date filtering/sorting
-CREATE INDEX idx_tasks_due_date
-    ON tasks(due_date);
-
--- task list ordering
--- supports:
--- WHERE user_id = ?
--- ORDER BY created_at DESC, id DESC
 CREATE INDEX idx_tasks_user_created_at
-    ON tasks(user_id, created_at DESC, id DESC);
+    ON tasks(
+        user_id,
+        created_at DESC,
+        id DESC
+    );
+
+CREATE INDEX idx_tasks_user_status_created
+    ON tasks(
+        user_id,
+        status,
+        created_at DESC,
+        id DESC
+    );
+
+CREATE INDEX idx_tasks_user_due_date
+    ON tasks(
+        user_id,
+        due_date,
+        id DESC
+    );
