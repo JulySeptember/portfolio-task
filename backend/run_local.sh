@@ -1,7 +1,22 @@
 #!/usr/bin/env zsh
+
 setopt PIPE_FAIL ERR_EXIT NO_UNSET
 
-export RUN_MODE=local
+# =========================
+# cleanup
+# =========================
+
+cleanup() {
+  echo ""
+  echo "Stopping Docker containers..."
+  docker compose stop
+}
+
+trap cleanup EXIT INT TERM
+
+# =========================
+# load .env
+# =========================
 
 if [ -f .env ]; then
   setopt allexport
@@ -9,12 +24,60 @@ if [ -f .env ]; then
   unsetopt allexport
 fi
 
-echo "Starting MySQL (WSL)..."
-sudo service mysql start
+# =========================
+# runtime defaults
+# =========================
 
-sleep 2
+export RUN_MODE=${RUN_MODE:-local}
+export APP_ENV=${APP_ENV:-development}
 
-export DB_DSN="${DB_USER}:${DB_PASSWORD}@tcp(${DB_HOST}:${DB_PORT})/${DB_NAME}?charset=utf8mb4&parseTime=True&loc=Local"
+# local dev auth bypass
+export ENABLE_DEV_AUTH_BYPASS=${ENABLE_DEV_AUTH_BYPASS:-true}
+
+# server
+export PORT=${PORT:-8080}
+
+# =========================
+# docker
+# =========================
+
+echo "Starting Docker MySQL..."
+docker compose up -d
+
+echo "Waiting for MySQL..."
+sleep 5
+
+# =========================
+# DB_DSN validation
+# =========================
+
+if [ -z "${DB_DSN:-}" ]; then
+  echo ""
+  echo "ERROR: DB_DSN is not set"
+  echo ""
+  exit 1
+fi
+
+# =========================
+# debug info
+# =========================
+
+echo ""
+echo "=============================="
+echo "RUN_MODE                 = ${RUN_MODE}"
+echo "APP_ENV                  = ${APP_ENV}"
+echo "ENABLE_DEV_AUTH_BYPASS   = ${ENABLE_DEV_AUTH_BYPASS}"
+echo "PORT                     = ${PORT}"
+echo "=============================="
+echo ""
+
+# =========================
+# start api
+# =========================
 
 echo "Starting API server..."
-exec go run ./cmd/api
+echo "Swagger Docs: http://localhost:${PORT}/api/v1/docs/"
+echo "Swagger YAML: http://localhost:${PORT}/api/v1/spec/swagger.yml"
+echo ""
+
+go run ./cmd/api

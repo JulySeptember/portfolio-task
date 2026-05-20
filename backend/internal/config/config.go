@@ -1,3 +1,5 @@
+// internal/config/config.go
+
 package config
 
 import (
@@ -12,75 +14,288 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// ConnectDBFromEnv reads DSN and pool settings from environment and returns *sql.DB.
-// Environment variables:
-//   - DB_DSN (required)
-//   - DB_MAX_OPEN_CONNS (optional, default 10)
-//   - DB_MAX_IDLE_CONNS (optional, default = DB_MAX_OPEN_CONNS)
-//   - DB_CONN_MAX_LIFETIME (optional, duration string like "5m", default 5m)
-//   - DB_PING_TIMEOUT (optional, duration string like "3s", default 3s)
-func ConnectDBFromEnv() (*sql.DB, error) {
-	dsn := os.Getenv("DB_DSN")
-	if dsn == "" {
-		return nil, fmt.Errorf("DB_DSN not set")
+// =========================
+// env helpers
+// =========================
+
+func getEnvInt(
+	key string,
+	def int,
+) int {
+
+	v := os.Getenv(key)
+
+	if v == "" {
+		return def
 	}
 
-	db, err := sql.Open("mysql", dsn)
+	n, err := strconv.Atoi(v)
+
+	if err != nil || n < 0 {
+
+		log.Printf(
+			"invalid %s=%q, using default=%d",
+			key,
+			v,
+			def,
+		)
+
+		return def
+	}
+
+	return n
+}
+
+func getEnvDuration(
+	key string,
+	def time.Duration,
+) time.Duration {
+
+	v := os.Getenv(key)
+
+	if v == "" {
+		return def
+	}
+
+	d, err := time.ParseDuration(v)
+
+	if err != nil {
+
+		log.Printf(
+			"invalid %s=%q, using default=%v",
+			key,
+			v,
+			def,
+		)
+
+		return def
+	}
+
+	return d
+}
+
+// =========================
+// safety validation
+// =========================
+
+func validateEnvironment() {
+
+	appEnv := os.Getenv(
+		"APP_ENV",
+	)
+
+	enableDevAuthBypass :=
+		os.Getenv(
+			"ENABLE_DEV_AUTH_BYPASS",
+		) == "true"
+
+	// =========================
+	// prevent prod auth bypass
+	// =========================
+
+	if enableDevAuthBypass &&
+		appEnv != "development" {
+
+		panic(
+			"ENABLE_DEV_AUTH_BYPASS is only allowed in development",
+		)
+	}
+}
+
+// =========================
+// ConnectDBFromEnv
+// =========================
+
+func ConnectDBFromEnv() (*sql.DB, error) {
+
+	// =========================
+	// environment validation
+	// =========================
+
+	validateEnvironment()
+
+	dsn := os.Getenv(
+		"DB_DSN",
+	)
+
+	if dsn == "" {
+
+		return nil, fmt.Errorf(
+			"DB_DSN not set",
+		)
+	}
+
+	db, err := sql.Open(
+		"mysql",
+		dsn,
+	)
+
 	if err != nil {
 		return nil, err
 	}
 
-	// parse max open conns
-	maxOpen := 10
-	if v := os.Getenv("DB_MAX_OPEN_CONNS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			maxOpen = n
-		} else {
-			log.Printf("invalid DB_MAX_OPEN_CONNS=%q, using default %d", v, maxOpen)
-		}
-	}
-	db.SetMaxOpenConns(maxOpen)
+	// =========================
+	// runtime mode
+	// =========================
 
-	// parse max idle conns (default = maxOpen)
-	maxIdle := maxOpen
-	if v := os.Getenv("DB_MAX_IDLE_CONNS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
-			maxIdle = n
-		} else {
-			log.Printf("invalid DB_MAX_IDLE_CONNS=%q, using default %d", v, maxIdle)
-		}
-	}
-	db.SetMaxIdleConns(maxIdle)
+	runMode := os.Getenv(
+		"RUN_MODE",
+	)
 
-	// parse conn max lifetime (duration string)
-	connMaxLifetime := 5 * time.Minute
-	if v := os.Getenv("DB_CONN_MAX_LIFETIME"); v != "" {
-		if d, err := time.ParseDuration(v); err == nil {
-			connMaxLifetime = d
-		} else {
-			log.Printf("invalid DB_CONN_MAX_LIFETIME=%q, using default %v", v, connMaxLifetime)
-		}
-	}
-	db.SetConnMaxLifetime(connMaxLifetime)
+	isLambda := runMode == "lambda"
 
-	// ping timeout (duration string)
-	pingTimeout := 3 * time.Second
-	if v := os.Getenv("DB_PING_TIMEOUT"); v != "" {
-		if d, err := time.ParseDuration(v); err == nil {
-			pingTimeout = d
-		} else {
-			log.Printf("invalid DB_PING_TIMEOUT=%q, using default %v", v, pingTimeout)
-		}
+	// =========================
+	// defaults
+	// =========================
+
+	var (
+		maxOpen         int
+		maxIdle         int
+		connMaxLifetime time.Duration
+		connMaxIdleTime time.Duration
+		pingTimeout     time.Duration
+	)
+
+	// =========================
+	// lambda optimized
+	// =========================
+
+	if isLambda {
+
+		// Lambda:
+		// keep pool VERY small
+
+		maxOpen = 2
+		maxIdle = 1
+
+		// recycle frozen connections
+
+		connMaxLifetime =
+			2 * time.Minute
+
+		connMaxIdleTime =
+			1 * time.Minute
+
+		pingTimeout =
+			3 * time.Second
+
+	} else {
+
+		// local/dev defaults
+
+		maxOpen = 10
+		maxIdle = 10
+
+		connMaxLifetime =
+			5 * time.Minute
+
+		connMaxIdleTime =
+			3 * time.Minute
+
+		pingTimeout =
+			3 * time.Second
 	}
 
-	// Ping with timeout and close db on failure to avoid leaks
-	ctx, cancel := context.WithTimeout(context.Background(), pingTimeout)
+	// =========================
+	// env override
+	// =========================
+
+	maxOpen = getEnvInt(
+		"DB_MAX_OPEN_CONNS",
+		maxOpen,
+	)
+
+	maxIdle = getEnvInt(
+		"DB_MAX_IDLE_CONNS",
+		maxIdle,
+	)
+
+	connMaxLifetime =
+		getEnvDuration(
+			"DB_CONN_MAX_LIFETIME",
+			connMaxLifetime,
+		)
+
+	connMaxIdleTime =
+		getEnvDuration(
+			"DB_CONN_MAX_IDLE_TIME",
+			connMaxIdleTime,
+		)
+
+	pingTimeout =
+		getEnvDuration(
+			"DB_PING_TIMEOUT",
+			pingTimeout,
+		)
+
+	// =========================
+	// safety guards
+	// =========================
+
+	if maxOpen <= 0 {
+		maxOpen = 1
+	}
+
+	if maxIdle < 0 {
+		maxIdle = 0
+	}
+
+	if maxIdle > maxOpen {
+		maxIdle = maxOpen
+	}
+
+	// =========================
+	// pool settings
+	// =========================
+
+	db.SetMaxOpenConns(
+		maxOpen,
+	)
+
+	db.SetMaxIdleConns(
+		maxIdle,
+	)
+
+	db.SetConnMaxLifetime(
+		connMaxLifetime,
+	)
+
+	db.SetConnMaxIdleTime(
+		connMaxIdleTime,
+	)
+
+	// =========================
+	// ping
+	// =========================
+
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		pingTimeout,
+	)
+
 	defer cancel()
-	if err := db.PingContext(ctx); err != nil {
+
+	if err := db.PingContext(
+		ctx,
+	); err != nil {
+
 		_ = db.Close()
-		return nil, fmt.Errorf("db ping failed: %w", err)
+
+		return nil, fmt.Errorf(
+			"db ping failed: %w",
+			err,
+		)
 	}
 
-	log.Printf("connected to db, maxOpen=%d, maxIdle=%d, connMaxLifetime=%v", maxOpen, maxIdle, connMaxLifetime)
+	log.Printf(
+		"connected to db "+
+			"(mode=%s maxOpen=%d maxIdle=%d lifetime=%v idleTime=%v)",
+		runMode,
+		maxOpen,
+		maxIdle,
+		connMaxLifetime,
+		connMaxIdleTime,
+	)
+
 	return db, nil
 }

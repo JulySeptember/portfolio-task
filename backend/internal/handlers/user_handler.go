@@ -1,65 +1,212 @@
+// internal/handlers/user_handler.go
+
 package handlers
 
 import (
-	"errors"
 	"net/http"
 
+	"portfolio/backend/internal/auth"
 	"portfolio/backend/internal/dto"
-	"portfolio/backend/internal/models"
+	"portfolio/backend/internal/httpx"
 	"portfolio/backend/internal/service"
 )
 
-func DecodeCreateUser(w http.ResponseWriter, r *http.Request) (*models.User, int, error) {
-	var req dto.CreateUserRequest
-	if err := DecodeJSON(w, r, &req); err != nil {
-		return nil, http.StatusBadRequest, errors.New("invalid body")
+type UserHandler struct {
+	userSvc *service.UserService
+}
+
+func NewUserHandler(
+	userSvc *service.UserService,
+) *UserHandler {
+
+	return &UserHandler{
+		userSvc: userSvc,
 	}
-	if req.Email == "" {
-		return nil, http.StatusBadRequest, errors.New("email is required")
+}
+
+// =========================
+// bootstrap
+// =========================
+
+func (h *UserHandler) Bootstrap(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	ctx, cancel := withTimeout(
+		r,
+		defaultHandlerTimeout,
+	)
+	defer cancel()
+
+	r = r.WithContext(ctx)
+
+	authUser, ok := auth.GetAuthUser(
+		r.Context(),
+	)
+
+	if !ok {
+
+		httpx.WriteError(
+			w,
+			http.StatusUnauthorized,
+			httpx.CodeUnauthorized,
+			"unauthorized",
+		)
+
+		return
 	}
 
-	u := &models.User{
-		Email:       req.Email,
-		DisplayName: req.DisplayName,
+	user, err := h.userSvc.EnsureUser(
+		r.Context(),
+		authUser.Sub,
+		authUser.Email,
+	)
+
+	if err != nil {
+
+		httpx.WriteError(
+			w,
+			http.StatusInternalServerError,
+			httpx.CodeInternalServerError,
+			"failed to bootstrap user",
+		)
+
+		return
 	}
-	return u, 0, nil
+
+	httpx.WriteJSON(
+		w,
+		http.StatusOK,
+		dto.ToUserResponse(user),
+	)
 }
 
-func MergeUpdateUser(w http.ResponseWriter, r *http.Request, existing *models.User) (int, error) {
-	var req dto.UpdateUserRequest
-	if err := DecodeJSON(w, r, &req); err != nil {
-		return http.StatusBadRequest, errors.New("invalid body")
+// =========================
+// me
+// =========================
+
+func (h *UserHandler) Me(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	ctx, cancel := withTimeout(
+		r,
+		defaultHandlerTimeout,
+	)
+	defer cancel()
+
+	r = r.WithContext(ctx)
+
+	authUser, ok := auth.GetAuthUser(
+		r.Context(),
+	)
+
+	if !ok {
+
+		httpx.WriteError(
+			w,
+			http.StatusUnauthorized,
+			httpx.CodeUnauthorized,
+			"unauthorized",
+		)
+
+		return
 	}
-	if req.DisplayName != "" {
-		existing.DisplayName = req.DisplayName
+
+	user, err := h.userSvc.GetByAuthUserID(
+		r.Context(),
+		authUser.Sub,
+	)
+
+	if err != nil {
+
+		httpx.WriteError(
+			w,
+			http.StatusNotFound,
+			httpx.CodeUserNotFound,
+			"user not found",
+		)
+
+		return
 	}
-	return 0, nil
+
+	httpx.WriteJSON(
+		w,
+		http.StatusOK,
+		dto.ToUserResponse(user),
+	)
 }
 
-func NewUserHandler(svc *service.UserService) *BaseHandler[models.User] {
-	return NewBaseHandlerWithDTO(svc, DecodeCreateUser, MergeUpdateUser)
-}
+// =========================
+// delete me
+// =========================
 
-type UserHandlerWrapper struct {
-	base *BaseHandler[models.User]
-}
+func (h *UserHandler) Delete(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 
-func NewUserHandlerWrapper(svc *service.UserService) *UserHandlerWrapper {
-	return &UserHandlerWrapper{base: NewUserHandler(svc)}
-}
+	ctx, cancel := withTimeout(
+		r,
+		defaultHandlerTimeout,
+	)
+	defer cancel()
 
-func (w *UserHandlerWrapper) Create(rw http.ResponseWriter, r *http.Request) {
-	w.base.Create(rw, r)
-}
-func (w *UserHandlerWrapper) List(rw http.ResponseWriter, r *http.Request) {
-	w.base.List(rw, r)
-}
-func (w *UserHandlerWrapper) Get(rw http.ResponseWriter, r *http.Request, id int64) {
-	w.base.Get(rw, r, id)
-}
-func (w *UserHandlerWrapper) HandleUpdate(rw http.ResponseWriter, r *http.Request, id int64) {
-	w.base.HandleUpdate(rw, r, id)
-}
-func (w *UserHandlerWrapper) Delete(rw http.ResponseWriter, r *http.Request, id int64) {
-	w.base.Delete(rw, r, id)
+	r = r.WithContext(ctx)
+
+	authUser, ok := auth.GetAuthUser(
+		r.Context(),
+	)
+
+	if !ok {
+
+		httpx.WriteError(
+			w,
+			http.StatusUnauthorized,
+			httpx.CodeUnauthorized,
+			"unauthorized",
+		)
+
+		return
+	}
+
+	user, err := h.userSvc.GetByAuthUserID(
+		r.Context(),
+		authUser.Sub,
+	)
+
+	if err != nil {
+
+		httpx.WriteError(
+			w,
+			http.StatusNotFound,
+			httpx.CodeUserNotFound,
+			"user not found",
+		)
+
+		return
+	}
+
+	err = h.userSvc.Delete(
+		r.Context(),
+		user.ID,
+	)
+
+	if err != nil {
+
+		httpx.WriteError(
+			w,
+			http.StatusInternalServerError,
+			httpx.CodeInternalServerError,
+			"failed to delete user",
+		)
+
+		return
+	}
+
+	w.WriteHeader(
+		http.StatusNoContent,
+	)
 }

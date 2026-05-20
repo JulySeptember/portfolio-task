@@ -1,60 +1,188 @@
+// swagger/swagger.go
+
 package swagger
 
 import (
 	"bytes"
 	"embed"
-	"fmt"
 	"html/template"
+	"net/http"
+	"sync"
 )
 
-// config はテンプレートに渡すパラメータを定義します。
+// =========================
+// Embed static assets
+// =========================
+
+//go:embed swagger.yml template/*
+var StaticAssets embed.FS
+
 type config struct {
 	SchemaURL string
 	DomID     string
 }
 
-// StaticAssets はディレクトリ全体を保持します（http.FileServer 用）。
-// ディレクティブの前にスペースを入れず、説明コメントは上の行に配置します。
-//
-//go:embed all:*
-var StaticAssets embed.FS
+var (
+	indexTemplate *template.Template
+	swaggerYAML   []byte
 
-// SwaggerYAML は埋め込まれた swagger.yml の生データを返します。
-func SwaggerYAML() []byte {
-	// ファイル名は embed したルートからの相対パスです
-	data, err := StaticAssets.ReadFile("swagger.yml")
-	if err != nil {
-		// 初期化時にファイルがない場合は致命的なため panic させています
-		panic(fmt.Errorf("failed to read swagger.yml: %w", err))
-	}
-	return data
+	loadOnce sync.Once
+	loadErr  error
+)
+
+// =========================
+// init cache
+// =========================
+
+func initAssets() {
+
+	loadOnce.Do(func() {
+
+		// =========================
+		// template
+		// =========================
+
+		t, err := template.ParseFS(
+			StaticAssets,
+			"template/index.html.tmpl",
+		)
+
+		if err != nil {
+			loadErr = err
+			return
+		}
+
+		indexTemplate = t
+
+		// =========================
+		// swagger yaml
+		// =========================
+
+		data, err := StaticAssets.ReadFile(
+			"swagger.yml",
+		)
+
+		if err != nil {
+			loadErr = err
+			return
+		}
+
+		swaggerYAML = data
+	})
 }
 
-// IndexHTML はテンプレートをパースし、指定されたホスト情報を埋め込んだ HTML を返します。
-// host が空の場合は相対パスを使用します。
-func IndexHTML(host string) []byte {
-	// StaticAssets からテンプレートファイルを読み込みます
-	// 第2引数は embed されたルートからの相対パスを指定します
-	t, err := template.ParseFS(StaticAssets, "template/index.html.tmpl")
-	if err != nil {
-		panic(fmt.Errorf("failed to parse swagger template: %w", err))
-	}
+// =========================
+// Render Swagger UI HTML
+// =========================
 
-	schemaURL := "/api/v1/spec/swagger.yml"
-	if host != "" {
-		schemaURL = fmt.Sprintf("%s%s", host, schemaURL)
+func renderIndexHTML() ([]byte, error) {
+
+	initAssets()
+
+	if loadErr != nil {
+		return nil, loadErr
 	}
 
 	c := config{
-		SchemaURL: schemaURL,
+		SchemaURL: "/api/v1/spec/swagger.yml",
 		DomID:     "#root",
 	}
 
-	var buffer bytes.Buffer
-	// テンプレート実行時はファイル名（ベース名）を指定します
-	if err := t.ExecuteTemplate(&buffer, "index.html.tmpl", c); err != nil {
-		panic(fmt.Errorf("failed to execute swagger template: %w", err))
+	var buf bytes.Buffer
+
+	if err := indexTemplate.Execute(
+		&buf,
+		c,
+	); err != nil {
+
+		return nil, err
 	}
 
-	return buffer.Bytes()
+	return buf.Bytes(), nil
+}
+
+// =========================
+// Swagger UI Handler
+// =========================
+
+func DocsHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	if r.Method != http.MethodGet {
+
+		w.WriteHeader(
+			http.StatusMethodNotAllowed,
+		)
+
+		return
+	}
+
+	html, err := renderIndexHTML()
+
+	if err != nil {
+
+		http.Error(
+			w,
+			"swagger ui unavailable",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	w.Header().Set(
+		"Content-Type",
+		"text/html; charset=utf-8",
+	)
+
+	w.WriteHeader(
+		http.StatusOK,
+	)
+
+	_, _ = w.Write(html)
+}
+
+// =========================
+// OpenAPI YAML Handler
+// =========================
+
+func SpecHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	if r.Method != http.MethodGet {
+
+		w.WriteHeader(
+			http.StatusMethodNotAllowed,
+		)
+
+		return
+	}
+
+	initAssets()
+
+	if loadErr != nil {
+
+		http.Error(
+			w,
+			"swagger spec unavailable",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	w.Header().Set(
+		"Content-Type",
+		"text/yaml; charset=utf-8",
+	)
+
+	w.WriteHeader(
+		http.StatusOK,
+	)
+
+	_, _ = w.Write(swaggerYAML)
 }
