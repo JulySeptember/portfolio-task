@@ -83,33 +83,3 @@ resource "aws_vpc_endpoint" "s3" {
   })
 }
 
-# Attach policy via separate resource when frontend_bucket_name is provided
-resource "aws_vpc_endpoint_policy" "s3_policy" {
-  count           = var.frontend_bucket_name != "" ? 1 : 0
-  vpc_endpoint_id = aws_vpc_endpoint.s3.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "AllowVPCEndpointAccessToSpecificBucket"
-        Effect    = "Allow"
-        Principal = "*"
-        Action = [
-          "s3:GetObject",
-          "s3:ListBucket",
-          "s3:PutObject"
-        ]
-        Resource = [
-          "arn:aws:s3:::${var.frontend_bucket_name}",
-          "arn:aws:s3:::${var.frontend_bucket_name}/*"
-        ]
-        Condition = {
-          StringEquals = {
-            "aws:sourceVpce" = aws_vpc_endpoint.s3.id
-          }
-        }
-      }
-    ]
-  })
-}

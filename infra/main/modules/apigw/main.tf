@@ -39,6 +39,16 @@ resource "aws_apigatewayv2_route" "authenticated" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# ルートパス("/") 用
+resource "aws_apigatewayv2_route" "root" {
+  api_id    = aws_apigatewayv2_api.this.id
+  route_key = "ANY /"
+  target    = "integrations/${aws_apigatewayv2_integration.this.id}"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # Lambdaへの実行許可（API Gateway からの呼び出しを許可）
 resource "aws_lambda_permission" "apigw" {
   statement_id  = "AllowExecutionFromAPIGateway"

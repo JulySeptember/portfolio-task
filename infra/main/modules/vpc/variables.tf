@@ -32,12 +32,6 @@ variable "private_az_count" {
   default     = 2
 }
 
-variable "frontend_bucket_name" {
-  type        = string
-  description = "Optional: frontend bucket name to restrict VPC endpoint policy"
-  default     = ""
-}
-
 variable "tags" {
   type        = map(string)
   default     = {}

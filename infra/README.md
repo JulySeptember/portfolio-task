@@ -81,7 +81,6 @@ terraform apply \
 
 本番環境では以下を利用してください。
 
-- AWS Secrets Manager
 - SSM Parameter Store
 
 ---
