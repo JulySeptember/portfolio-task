@@ -81,12 +81,12 @@ func NewApp(
 	// =========================
 
 	mux.HandleFunc(
-		"/api/v1/docs/",
+		"/api/docs/",
 		swagger.DocsHandler,
 	)
 
 	mux.HandleFunc(
-		"/api/v1/spec/swagger.yml",
+		"/api/spec/swagger.yml",
 		swagger.SpecHandler,
 	)
 
