@@ -47,8 +47,11 @@ resource "aws_cognito_user_pool_client" "this" {
   generate_secret = false
 }
 
-# (任意) Cognitoドメイン：Hosted UIを使いたい場合に必要
+# account id 取得
+data "aws_caller_identity" "current" {}
+
 resource "aws_cognito_user_pool_domain" "this" {
-  domain       = "${var.project_name}-${var.env}-auth"
+  domain = "${var.project_name}-${var.env}-${substr(data.aws_caller_identity.current.account_id, 8, 4)}"
+
   user_pool_id = aws_cognito_user_pool.this.id
 }

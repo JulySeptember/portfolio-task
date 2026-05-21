@@ -26,29 +26,45 @@ Terraform backend 用リソースを作成します。
 cd infra/bootstrap
 
 terraform init
-terraform apply
+terraform apply -var-file=envs/dev.tfvars
 ```
 
 ---
 
-# 2. Lambda Artifact Upload
+# 2. Lambda Build
+
+Go custom runtime (`provided.al2023`) 用の
+Lambda binary を build します。
+
+```bash
+GOOS=linux GOARCH=arm64 go build \
+-o bootstrap \
+../../backend/cmd/api
+
+zip lambda.zip bootstrap
+```
+
+---
+
+# 3. Lambda Artifact Upload
 
 Lambda 用 ZIP を S3 にアップロードします。
 
 ```bash
-aws s3 cp build.zip s3://<artifact-bucket>/lambda/app.zip
+aws s3 cp lambda.zip \
+s3://<artifact-bucket>/lambda/<project>-dev.zip
 ```
 
 例:
 
 ```bash
-aws s3 cp build.zip \
-s3://portfolio-task-july-dev-backend-artifacts/lambda/app.zip
+aws s3 cp lambda.zip \
+s3://portfolio-task-july-dev-backend-artifacts/lambda/portfolio-dev.zip
 ```
 
 ---
 
-# 3. main
+# 4. main
 
 アプリケーション本体の AWS リソースを作成します。
 
@@ -75,13 +91,62 @@ terraform apply \
 
 ---
 
-# 注意
+# 🔐 API Gateway 認証設計
+
+以下は public route です。
+
+```text
+GET /health
+GET /docs/*
+GET /docs/swagger.yml
+```
+
+以下は JWT 認証必須です。
+
+```text
+/api/v1/*
+```
+
+認証は Cognito JWT Authorizer により実施されます。
+
+---
+
+# 🔑 Cognito Domain
+
+Cognito domain は AWS グローバルで一意である必要があります。
+
+本プロジェクトでは AWS Account ID を suffix に付与しています。
+
+例:
+
+```text
+portfolio-dev-123456789012-auth
+```
+
+---
+
+# 👤 terraform_user_arn
+
+`dev.tfvars` の IAM ARN はサンプル値です。
+
+実際の AWS IAM User / Role ARN に変更してください。
+
+例:
+
+```tfvars
+terraform_user_arn = "arn:aws:iam::123456789012:user/terraform-user"
+```
+
+---
+
+# ⚠️ 注意
 
 ## tfvars に Secrets を直接書かない
 
 本番環境では以下を利用してください。
 
 - SSM Parameter Store
+- Secrets Manager
 
 ---
 
@@ -102,3 +167,22 @@ Lambda ZIP が S3 に存在している必要があります。
 - DB password
 - IAM permissions
 - CloudWatch retention
+- Security Group egress rules
+
+---
+
+# 📦 Lambda Runtime
+
+Lambda runtime:
+
+```text
+provided.al2023
+```
+
+handler:
+
+```text
+bootstrap
+```
+
+Go custom runtime を前提としています。

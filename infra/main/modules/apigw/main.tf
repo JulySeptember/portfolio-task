@@ -30,23 +30,36 @@ resource "aws_apigatewayv2_integration" "this" {
 }
 
 # 認証が必要なルート（任意のパスを Lambda にプロキシ）
+# protected api
 resource "aws_apigatewayv2_route" "authenticated" {
   api_id    = aws_apigatewayv2_api.this.id
-  route_key = "ANY /{proxy+}"
+  route_key = "ANY /api/v1/{proxy+}"
   target    = "integrations/${aws_apigatewayv2_integration.this.id}"
 
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
-# ルートパス("/") 用
-resource "aws_apigatewayv2_route" "root" {
-  api_id    = aws_apigatewayv2_api.this.id
-  route_key = "ANY /"
-  target    = "integrations/${aws_apigatewayv2_integration.this.id}"
+# =========================
+# public routes
+# =========================
 
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+resource "aws_apigatewayv2_route" "health" {
+  api_id    = aws_apigatewayv2_api.this.id
+  route_key = "GET /health"
+  target    = "integrations/${aws_apigatewayv2_integration.this.id}"
+}
+
+resource "aws_apigatewayv2_route" "swagger_docs" {
+  api_id    = aws_apigatewayv2_api.this.id
+  route_key = "GET /docs/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.this.id}"
+}
+
+resource "aws_apigatewayv2_route" "swagger_spec" {
+  api_id    = aws_apigatewayv2_api.this.id
+  route_key = "GET /spec/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.this.id}"
 }
 
 # Lambdaへの実行許可（API Gateway からの呼び出しを許可）
