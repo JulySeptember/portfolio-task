@@ -78,12 +78,12 @@ variable "lambda_runtime" {
 
 variable "memory_size" {
   type    = number
-  default = 128
+  default = 256
 }
 
 variable "timeout_seconds" {
   type    = number
-  default = 10
+  default = 30
 }
 
 variable "log_retention_days" {

@@ -58,9 +58,8 @@ variable "db_password" {
 variable "db_instance_class" {
   type        = string
   description = "RDS instance class"
-  default     = "db.t3.micro"
+  default     = "db.t4g.micro"
 }
-
 # =========================
 # Common Tags
 # =========================

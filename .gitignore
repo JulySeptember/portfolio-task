@@ -29,6 +29,9 @@ backend/tmp/
 backend/*.exe
 backend/*.out
 
+bootstrap
+lambda.zip
+
 # ============================
 # Terraform
 # ============================
@@ -38,13 +41,16 @@ backend/*.out
 *.tfplan
 crash.log
 
-# tfvars
-envs/*.tfvars
+*.tfvars
 
 # plan artifacts
 infra/plan.tfplan
 infra/plan.json
 infra/plan.txt
+
+# terraform lock
+.terraform.lock.hcl
+
 # ============================
 # Logs
 # ============================
@@ -52,7 +58,6 @@ infra/plan.txt
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
-
 
 # ============================
 # Misc
