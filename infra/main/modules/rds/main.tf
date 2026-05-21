@@ -9,24 +9,41 @@ resource "aws_db_subnet_group" "this" {
   })
 }
 
-# 既存の aws_db_instance の該当箇所（db_subnet_group_name を追加）
+# RDS MySQL
 resource "aws_db_instance" "this" {
-  identifier        = "${var.project_name}-${var.env}-db"
-  engine            = "mysql"
-  engine_version    = "8.0"
-  instance_class    = var.db_instance_class
+  identifier = "${var.project_name}-${var.env}-db"
+
+  engine         = "mysql"
+  engine_version = "8.0"
+
+  # free tier
+  instance_class = var.db_instance_class
+
+  # free tier storage
   allocated_storage = 20
+  storage_type      = "gp2"
 
-  max_allocated_storage   = 20
-  publicly_accessible     = false
-  backup_retention_period = 1
+  # private only
+  publicly_accessible = false
 
-  db_name                = "taskdb"
-  username               = var.db_username
-  password               = var.db_password
-  vpc_security_group_ids = [var.rds_sg_id]
-  db_subnet_group_name   = aws_db_subnet_group.this.name
-  skip_final_snapshot    = true
+  # disable backup for lowest cost
+  backup_retention_period = 0
+
+  db_name  = "taskdb"
+  username = var.db_username
+  password = var.db_password
+
+  vpc_security_group_ids = [
+    var.rds_sg_id
+  ]
+
+  # place RDS in private subnets
+  db_subnet_group_name = aws_db_subnet_group.this.name
+
+  # dev / portfolio settings
+  skip_final_snapshot = true
+  deletion_protection = false
+  apply_immediately   = true
 
   tags = merge(var.tags, {
     Name = "${var.project_name}-${var.env}-db"

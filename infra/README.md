@@ -97,8 +97,11 @@ terraform apply \
 
 ```text
 GET /health
-GET /docs/*
-GET /docs/swagger.yml
+
+GET /api/docs/
+ANY /api/docs/{proxy+}
+
+GET /api/spec/swagger.yml
 ```
 
 以下は JWT 認証必須です。
@@ -115,12 +118,14 @@ GET /docs/swagger.yml
 
 Cognito domain は AWS グローバルで一意である必要があります。
 
-本プロジェクトでは AWS Account ID を suffix に付与しています。
+本プロジェクトでは
+`${project}-${env}-${substr(account_id, 8, 4)}`
+形式を利用しています。
 
 例:
 
 ```text
-portfolio-dev-123456789012-auth
+portfolio-dev-9012
 ```
 
 ---

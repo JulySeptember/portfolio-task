@@ -1,13 +1,22 @@
 resource "aws_apigatewayv2_api" "this" {
   name          = "${var.project_name}-gw-${var.env}"
   protocol_type = "HTTP"
+
   tags = merge(var.tags, {
     Name = "${var.project_name}-gw-${var.env}"
   })
-
 }
 
-# CognitoをJWT Authorizerとして登録
+resource "aws_apigatewayv2_stage" "this" {
+  api_id      = aws_apigatewayv2_api.this.id
+  name        = "$default"
+  auto_deploy = true
+}
+
+# =========================
+# authorizer
+# =========================
+
 resource "aws_apigatewayv2_authorizer" "cognito" {
   api_id           = aws_apigatewayv2_api.this.id
   authorizer_type  = "JWT"
@@ -20,24 +29,18 @@ resource "aws_apigatewayv2_authorizer" "cognito" {
   }
 }
 
-# Lambda 統合（HTTP API 用の正しい integration_uri 形式）
+# =========================
+# lambda integration
+# =========================
+
 resource "aws_apigatewayv2_integration" "this" {
-  api_id                 = aws_apigatewayv2_api.this.id
-  integration_type       = "AWS_PROXY"
-  integration_uri        = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${var.lambda_arn}/invocations"
+  api_id           = aws_apigatewayv2_api.this.id
+  integration_type = "AWS_PROXY"
+
+  integration_uri = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${var.lambda_arn}/invocations"
+
   payload_format_version = "2.0"
   timeout_milliseconds   = 30000
-}
-
-# 認証が必要なルート（任意のパスを Lambda にプロキシ）
-# protected api
-resource "aws_apigatewayv2_route" "authenticated" {
-  api_id    = aws_apigatewayv2_api.this.id
-  route_key = "ANY /api/v1/{proxy+}"
-  target    = "integrations/${aws_apigatewayv2_integration.this.id}"
-
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 # =========================
@@ -47,26 +50,55 @@ resource "aws_apigatewayv2_route" "authenticated" {
 resource "aws_apigatewayv2_route" "health" {
   api_id    = aws_apigatewayv2_api.this.id
   route_key = "GET /health"
-  target    = "integrations/${aws_apigatewayv2_integration.this.id}"
+
+  target = "integrations/${aws_apigatewayv2_integration.this.id}"
 }
 
-resource "aws_apigatewayv2_route" "swagger_docs" {
+resource "aws_apigatewayv2_route" "swagger_docs_root" {
   api_id    = aws_apigatewayv2_api.this.id
-  route_key = "GET /docs/{proxy+}"
-  target    = "integrations/${aws_apigatewayv2_integration.this.id}"
+  route_key = "GET /api/docs/"
+
+  target = "integrations/${aws_apigatewayv2_integration.this.id}"
+}
+
+resource "aws_apigatewayv2_route" "swagger_docs_proxy" {
+  api_id    = aws_apigatewayv2_api.this.id
+  route_key = "ANY /api/docs/{proxy+}"
+
+  target = "integrations/${aws_apigatewayv2_integration.this.id}"
 }
 
 resource "aws_apigatewayv2_route" "swagger_spec" {
   api_id    = aws_apigatewayv2_api.this.id
-  route_key = "GET /spec/{proxy+}"
-  target    = "integrations/${aws_apigatewayv2_integration.this.id}"
+  route_key = "GET /api/spec/swagger.yml"
+
+  target = "integrations/${aws_apigatewayv2_integration.this.id}"
 }
 
-# Lambdaへの実行許可（API Gateway からの呼び出しを許可）
+# =========================
+# protected routes
+# =========================
+
+resource "aws_apigatewayv2_route" "authenticated" {
+  api_id    = aws_apigatewayv2_api.this.id
+  route_key = "ANY /api/v1/{proxy+}"
+
+  target = "integrations/${aws_apigatewayv2_integration.this.id}"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# =========================
+# lambda permission
+# =========================
+
 resource "aws_lambda_permission" "apigw" {
-  statement_id  = "AllowExecutionFromAPIGateway"
+  statement_id = "AllowExecutionFromAPIGateway"
+
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.this.execution_arn}/*/*"
+
+  source_arn = "${aws_apigatewayv2_api.this.execution_arn}/*/*"
 }

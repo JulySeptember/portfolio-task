@@ -1,6 +1,6 @@
 # 📌 タスク管理アプリ（Portfolio）
 
-Next.js × Go × AWS × Terraform × MySQL を用いたフルスタックWebアプリです。
+Next.js × Go × AWS × Terraform × MySQL を用いたフルスタック Web アプリです。
 
 <img src="./docs/architecture_and_erd_v1.png" width="700">
 
@@ -29,8 +29,16 @@ https://xxxxx.cloudfront.net
 
 API:
 https://xxxxx.execute-api.ap-northeast-1.amazonaws.com
+```
 
 そのため CORS を有効化しています。
+
+CORS ヘッダーは Lambda アプリケーション側で返却します。
+
+Terraform の API Gateway 側では
+`cors_configuration` は利用していません。
+
+---
 
 # 🏗 アーキテクチャ
 
@@ -348,11 +356,24 @@ Router
 
 ```text
 GET /health
-GET /docs/*
-GET /docs/swagger.yml
+GET /api/docs/
+ANY /api/docs/{proxy+}
+GET /api/spec/swagger.yml
 ```
 
 `/api/v1/*` は JWT 認証必須です。
+
+---
+
+# 📄 Swagger / OpenAPI
+
+Local:
+
+```text
+http://localhost:8080/api/docs/
+
+http://localhost:8080/api/spec/swagger.yml
+```
 
 ---
 
@@ -459,10 +480,11 @@ make migrate-up
 
 ---
 
-## Swagger
+## Swagger / OpenAPI
 
 ```text
-http://localhost:8080/docs/
+/spec/
+/spec/swagger.yml
 ```
 
 ---
@@ -477,15 +499,6 @@ ENABLE_DEV_AUTH_BYPASS=true
 ```
 
 production では無効です。
-
----
-
-# 📄 OpenAPI
-
-```text
-/docs/
-/docs/swagger.yml
-```
 
 ---
 
