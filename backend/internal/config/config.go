@@ -114,17 +114,36 @@ func ConnectDBFromEnv() (*sql.DB, error) {
 
 	validateEnvironment()
 
-	dsn := os.Getenv(
-		"DB_DSN",
-	)
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbName := os.Getenv("DB_NAME")
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
 
-	if dsn == "" {
-
-		return nil, fmt.Errorf(
-			"DB_DSN not set",
-		)
+	if dbHost == "" {
+		return nil, fmt.Errorf("DB_HOST not set")
 	}
 
+	if dbPort == "" {
+		dbPort = "3306"
+	}
+
+	if dbName == "" {
+		return nil, fmt.Errorf("DB_NAME not set")
+	}
+
+	if dbUser == "" {
+		return nil, fmt.Errorf("DB_USER not set")
+	}
+
+	dsn := fmt.Sprintf(
+		"%s:%s@tcp(%s:%s)/%s?parseTime=true&charset=utf8mb4&loc=UTC",
+		dbUser,
+		dbPassword,
+		dbHost,
+		dbPort,
+		dbName,
+	)
 	db, err := sql.Open(
 		"mysql",
 		dsn,
@@ -138,12 +157,13 @@ func ConnectDBFromEnv() (*sql.DB, error) {
 	// runtime mode
 	// =========================
 
-	runMode := os.Getenv(
-		"RUN_MODE",
-	)
+	mode := "local"
 
-	isLambda := runMode == "lambda"
+	isLambda := os.Getenv("AWS_LAMBDA_FUNCTION_NAME") != ""
 
+	if isLambda {
+		mode = "lambda"
+	}
 	// =========================
 	// defaults
 	// =========================
@@ -165,7 +185,7 @@ func ConnectDBFromEnv() (*sql.DB, error) {
 		// Lambda:
 		// keep pool VERY small
 
-		maxOpen = 2
+		maxOpen = 1
 		maxIdle = 1
 
 		// recycle frozen connections
@@ -290,7 +310,7 @@ func ConnectDBFromEnv() (*sql.DB, error) {
 	log.Printf(
 		"connected to db "+
 			"(mode=%s maxOpen=%d maxIdle=%d lifetime=%v idleTime=%v)",
-		runMode,
+		mode,
 		maxOpen,
 		maxIdle,
 		connMaxLifetime,
