@@ -73,6 +73,8 @@ resource "aws_cloudwatch_log_group" "this" {
 resource "aws_lambda_function" "this" {
   function_name = "${var.project_name}-api-${var.env}"
 
+  reserved_concurrent_executions = 20
+
   role    = aws_iam_role.this.arn
   handler = var.lambda_handler
   runtime = var.lambda_runtime
@@ -100,13 +102,22 @@ resource "aws_lambda_function" "this" {
   }
   environment {
     variables = merge({
-      DB_ENDPOINT = var.rds_endpoint
+      DB_HOST = var.rds_endpoint
+      DB_PORT = "3306"
+
+      DB_NAME     = var.db_name
       DB_USER     = var.db_username
       DB_PASSWORD = var.db_password
-      DB_NAME     = var.db_name
+
+      DB_MAX_OPEN_CONNS     = "2"
+      DB_MAX_IDLE_CONNS     = "1"
+      DB_CONN_MAX_LIFETIME  = "2m"
+      DB_CONN_MAX_IDLE_TIME = "1m"
+      DB_PING_TIMEOUT       = "3s"
+
+      APP_ENV = var.env
     }, var.extra_environment)
   }
-
   lifecycle {
     create_before_destroy = true
   }
