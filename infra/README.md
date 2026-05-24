@@ -1,15 +1,19 @@
-# Terraform デプロイ手順
+# Terraform Deployment Guide
 
-## 全体フロー
+## Deployment Flow
 
 ```text
 bootstrap apply
   ↓
 Lambda build
   ↓
+Lambda package
+  ↓
 Lambda upload
   ↓
 main apply
+  ↓
+SSM bastion connect
   ↓
 migration
   ↓
@@ -22,22 +26,21 @@ JWT auth test
 
 # 1. Bootstrap Infrastructure
 
-Terraform backend 用リソースを作成します。
+Terraform backend resources を作成します。
 
 ```bash
 cd infra/bootstrap
 
 terraform init
 
-terraform apply \
-  -var-file=envs/dev.tfvars
+terraform apply
 ```
 
-作成:
+作成されるリソース:
 
 ```text
-- tfstate S3 bucket
-- terraform lock DynamoDB
+- Terraform state S3 bucket
+- Terraform lock DynamoDB table
 - Lambda artifact S3 bucket
 ```
 
@@ -46,10 +49,17 @@ terraform apply \
 # 2. Lambda Build
 
 ```bash
-GOOS=linux GOARCH=arm64 go build \
+cd backend
+
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
+go build \
   -o bootstrap \
-  ../../backend/cmd/api
+  ./cmd/api
 ```
+
+---
+
+# 3. Lambda Package
 
 ```bash
 zip lambda.zip bootstrap
@@ -57,7 +67,7 @@ zip lambda.zip bootstrap
 
 ---
 
-# 3. Lambda Upload
+# 4. Lambda Upload
 
 ```bash
 aws s3 cp lambda.zip \
@@ -73,7 +83,7 @@ aws s3 ls \
 
 ---
 
-# 4. Main Infrastructure Apply
+# 5. Main Infrastructure Apply
 
 ```bash
 cd infra/main
@@ -88,40 +98,41 @@ terraform apply \
 
 ```text
 - VPC
-- Security Group
+- Public / Private Subnets
+- Security Groups
 - RDS MySQL
 - Lambda
-- API Gateway
-- Cognito
+- API Gateway HTTP API
+- Cognito User Pool
 - S3
 - CloudFront
-- Bastion
+- Bastion EC2
 ```
 
 ---
 
-# 5. Migration
+# 6. Bastion SSM Connection
 
-Bastion に SSM 接続:
+Bastion instance ID を取得:
+
+```bash
+cd infra/main
+
+terraform output bastion_instance_id
+```
+
+SSM 接続:
 
 ```bash
 aws ssm start-session \
   --target <bastion-instance-id>
 ```
 
-instance id:
+---
 
-```bash
-terraform output bastion_instance_id
-```
+# 7. Database Migration
 
-migration 実行:
-
-```bash
-make migrate-up-prod
-```
-
-`.env.production`
+migration 実行前に `.env.production` を設定します。
 
 ```env
 DB_HOST=<rds-endpoint>
@@ -131,9 +142,21 @@ DB_USER=admin
 DB_PASSWORD=xxxxxxxx
 ```
 
+補足:
+
+```text
+13306 is local forwarded port via SSM tunnel
+```
+
+migration 実行:
+
+```bash
+make migrate-up-prod
+```
+
 ---
 
-# 6. Health Check
+# 8. Health Check
 
 ```bash
 curl https://<api-domain>/health
@@ -149,19 +172,19 @@ curl https://<api-domain>/health
 
 ---
 
-# 7. Cognito Login Test
+# 9. Cognito Authentication Test
 
 ```text
 signup
   ↓
 login
   ↓
-JWT token取得
+JWT token acquisition
   ↓
 authenticated API call
 ```
 
-例:
+example:
 
 ```bash
 curl \
@@ -181,11 +204,13 @@ architecture = arm64
 
 ---
 
-# 注意
+# Notes
 
 ```text
-- Lambda ZIP は main apply 前に S3 upload 必須
-- migration 未実行だと API は正常動作しない
-- /api/v1/* は JWT 必須
-- production では Secrets Manager / SSM 推奨
+- Lambda ZIP upload is required before terraform apply
+- Database migration is required before API usage
+- /api/v1/* requires JWT authentication
+- JWT validation is handled by API Gateway
+- Lambda only trusts validated claims
+- Production environments should use Secrets Manager or SSM Parameter Store
 ```
