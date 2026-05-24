@@ -76,8 +76,8 @@ echo ""
 # =========================
 
 echo "Starting API server..."
-echo "Swagger Docs: http://localhost:${PORT}/api/v1/docs/"
-echo "Swagger YAML: http://localhost:${PORT}/api/v1/spec/swagger.yml"
+echo "Swagger Docs: http://localhost:${PORT}/api/docs"
+echo "Swagger YAML: http://localhost:${PORT}/api/spec/swagger.yml"
 echo ""
 
 go run ./cmd/api

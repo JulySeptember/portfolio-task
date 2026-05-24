@@ -3,6 +3,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"portfolio/backend/internal/auth"
@@ -64,6 +65,13 @@ func (h *UserHandler) Bootstrap(
 	)
 
 	if err != nil {
+
+		log.Printf(
+			"bootstrap ensure user failed: sub=%s email=%s err=%v",
+			authUser.Sub,
+			authUser.Email,
+			err,
+		)
 
 		httpx.WriteError(
 			w,
@@ -196,11 +204,12 @@ func (h *UserHandler) Delete(
 
 	if err != nil {
 
-		httpx.WriteError(
+		httpx.WriteJSON(
 			w,
-			http.StatusInternalServerError,
-			httpx.CodeInternalServerError,
-			"failed to delete user",
+			http.StatusOK,
+			map[string]string{
+				"message": "user deleted",
+			},
 		)
 
 		return

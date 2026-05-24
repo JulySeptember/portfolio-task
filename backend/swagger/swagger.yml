@@ -22,7 +22,7 @@ servers:
   - url: http://localhost:8080
     description: Local development
 
-  - url: https://your-api.execute-api.ap-northeast-1.amazonaws.com
+  - url: https://qubcxamcr1.execute-api.ap-northeast-1.amazonaws.com
     description: AWS production
 
 tags:

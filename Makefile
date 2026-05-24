@@ -1,15 +1,25 @@
 # ============================
 # Global variables
 # ============================
-FRONTEND_DIR=frontend
-BACKEND_DIR=backend
-INFRA_DIR=infra
 
-AWS_REGION=ap-northeast-1
-S3_BUCKET=your-frontend-bucket
-CLOUDFRONT_ID=YOUR_CLOUDFRONT_DISTRIBUTION_ID
+FRONTEND_DIR := frontend
+BACKEND_DIR := backend
 
-LAMBDA_FUNCTION_NAME=portfolio-task-backend
+BOOTSTRAP_DIR := infra/bootstrap
+INFRA_DIR := infra/main
+
+TF_ENV_FILE := envs/dev.tfvars
+
+AWS_REGION := ap-northeast-1
+
+S3_BUCKET := your-frontend-bucket
+CLOUDFRONT_ID := YOUR_CLOUDFRONT_DISTRIBUTION_ID
+
+LAMBDA_ARTIFACT_BUCKET := portfolio-task-july-dev-backend-artifacts
+LAMBDA_ARTIFACT_KEY := lambda/portfolio-dev.zip
+
+LAMBDA_BINARY := bootstrap
+LAMBDA_ZIP := lambda.zip
 
 
 # ============================
@@ -17,17 +27,17 @@ LAMBDA_FUNCTION_NAME=portfolio-task-backend
 # ============================
 
 frontend-install:
-    cd $(FRONTEND_DIR) && npm install
+	cd $(FRONTEND_DIR) && npm install
 
 frontend-build:
-    cd $(FRONTEND_DIR) && npm run build
+	cd $(FRONTEND_DIR) && npm run build
 
 frontend-deploy: frontend-build
-    aws s3 sync $(FRONTEND_DIR)/out s3://$(S3_BUCKET) --delete
-    aws cloudfront create-invalidation \
-        --distribution-id $(CLOUDFRONT_ID) \
-        --paths "/*"
-    @echo "🚀 Frontend deployed!"
+	aws s3 sync $(FRONTEND_DIR)/out s3://$(S3_BUCKET) --delete
+	aws cloudfront create-invalidation \
+		--distribution-id $(CLOUDFRONT_ID) \
+		--paths "/*"
+	@echo "🚀 Frontend deployed"
 
 
 # ============================
@@ -35,32 +45,83 @@ frontend-deploy: frontend-build
 # ============================
 
 backend-build:
-    cd $(BACKEND_DIR) && \
-    GOOS=linux GOARCH=amd64 go build -o main ./cmd/api && \
-    zip lambda.zip main
+	cd $(BACKEND_DIR) && \
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
+	go build \
+	-o $(LAMBDA_BINARY) \
+	./cmd/api
 
-backend-deploy: backend-build
-    aws lambda update-function-code \
-        --function-name $(LAMBDA_FUNCTION_NAME) \
-        --zip-file fileb://$(BACKEND_DIR)/lambda.zip
-    @echo "🚀 Backend Lambda deployed!"
+backend-package: backend-build
+	cd $(BACKEND_DIR) && \
+	rm -f $(LAMBDA_ZIP) && \
+	zip $(LAMBDA_ZIP) $(LAMBDA_BINARY)
+
+backend-upload: backend-package
+	aws s3 cp \
+		$(BACKEND_DIR)/$(LAMBDA_ZIP) \
+		s3://$(LAMBDA_ARTIFACT_BUCKET)/$(LAMBDA_ARTIFACT_KEY)
+
+backend-deploy: backend-upload
+	@echo "🚀 Lambda artifact uploaded"
 
 
 # ============================
-# Terraform (Infra)
+# Terraform Bootstrap
+# ============================
+
+tf-bootstrap-init:
+	cd $(BOOTSTRAP_DIR) && terraform init
+
+tf-bootstrap-fmt:
+	cd $(BOOTSTRAP_DIR) && terraform fmt -recursive
+
+tf-bootstrap-validate:
+	cd $(BOOTSTRAP_DIR) && terraform validate
+
+tf-bootstrap-plan:
+	cd $(BOOTSTRAP_DIR) && terraform plan
+
+tf-bootstrap-apply:
+	cd $(BOOTSTRAP_DIR) && terraform apply -auto-approve
+
+tf-bootstrap-destroy:
+	cd $(BOOTSTRAP_DIR) && terraform destroy -auto-approve
+
+
+# ============================
+# Terraform Main Infra
 # ============================
 
 tf-init:
-    cd $(INFRA_DIR) && terraform init
+	cd $(INFRA_DIR) && terraform init
+
+tf-fmt:
+	cd $(INFRA_DIR) && terraform fmt -recursive
+
+tf-validate:
+	cd $(INFRA_DIR) && terraform validate
 
 tf-plan:
-    cd $(INFRA_DIR) && terraform plan
+	cd $(INFRA_DIR) && terraform plan \
+		-var-file=$(TF_ENV_FILE)
 
-tf-apply:
-    cd $(INFRA_DIR) && terraform apply -auto-approve
+tf-apply: backend-deploy
+	cd $(INFRA_DIR) && terraform apply \
+		-auto-approve \
+		-var-file=$(TF_ENV_FILE)
 
 tf-destroy:
-    cd $(INFRA_DIR) && terraform destroy -auto-approve
+	cd $(INFRA_DIR) && terraform destroy \
+		-auto-approve \
+		-var-file=$(TF_ENV_FILE)
+
+
+# ============================
+# Full deploy
+# ============================
+
+deploy-all: frontend-deploy tf-apply
+	@echo "🚀 Full deploy complete"
 
 
 # ============================
@@ -68,8 +129,6 @@ tf-destroy:
 # ============================
 
 clean:
-    rm -f $(BACKEND_DIR)/main
-    rm -f $(BACKEND_DIR)/lambda.zip
-    @echo "🧹 Cleaned build artifacts"
-
-all: frontend-deploy backend-deploy
+	rm -f $(BACKEND_DIR)/$(LAMBDA_BINARY)
+	rm -f $(BACKEND_DIR)/$(LAMBDA_ZIP)
+	@echo "🧹 Cleaned build artifacts"

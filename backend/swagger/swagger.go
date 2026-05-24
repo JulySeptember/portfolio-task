@@ -84,7 +84,7 @@ func renderIndexHTML() ([]byte, error) {
 	}
 
 	c := config{
-		SchemaURL: "/api/v1/spec/swagger.yml",
+		SchemaURL: "/api/spec/swagger.yml",
 		DomID:     "#root",
 	}
 

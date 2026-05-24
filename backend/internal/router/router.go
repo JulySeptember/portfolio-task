@@ -14,13 +14,17 @@ func NewRouter(
 	mux := http.NewServeMux()
 
 	// =========================
-	// users
+	// auth
 	// =========================
 
 	mux.HandleFunc(
 		"POST /api/v1/auth/bootstrap",
 		userHandler.Bootstrap,
 	)
+
+	// =========================
+	// users
+	// =========================
 
 	mux.HandleFunc(
 		"GET /api/v1/users/me",
@@ -31,7 +35,6 @@ func NewRouter(
 		"DELETE /api/v1/users/me",
 		userHandler.Delete,
 	)
-
 	// =========================
 	// tasks
 	// =========================
