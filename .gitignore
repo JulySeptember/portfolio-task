@@ -35,7 +35,7 @@ lambda.zip
 # ============================
 # Terraform
 # ============================
-**/.terraform/*
+.terraform/
 *.tfstate
 *.tfstate.*
 *.tfplan
@@ -47,10 +47,6 @@ crash.log
 infra/plan.tfplan
 infra/plan.json
 infra/plan.txt
-
-# terraform lock
-.terraform.lock.hcl
-
 # ============================
 # Logs
 # ============================
