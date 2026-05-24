@@ -4,7 +4,7 @@ locals {
 
 resource "aws_s3_bucket" "tfstate" {
   bucket        = local.tfstate_bucket_name
-  force_destroy = false
+  force_destroy = true
   tags = {
     Project     = var.project_name
     Environment = var.env

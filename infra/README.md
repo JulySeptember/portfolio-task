@@ -1,84 +1,79 @@
 # Terraform デプロイ手順
 
-本プロジェクトの Terraform は以下の 2 段階で構成されています。
+## 全体フロー
 
 ```text
-infra/
-├── bootstrap/
-└── main/
+bootstrap apply
+  ↓
+Lambda build
+  ↓
+Lambda upload
+  ↓
+main apply
+  ↓
+migration
+  ↓
+health check
+  ↓
+JWT auth test
 ```
 
 ---
 
-# 1. bootstrap
+# 1. Bootstrap Infrastructure
 
 Terraform backend 用リソースを作成します。
-
-作成されるもの:
-
-- tfstate 用 S3 バケット
-- terraform lock 用 DynamoDB
-- Lambda artifact 用 S3 バケット
-
-## 実行
 
 ```bash
 cd infra/bootstrap
 
 terraform init
-terraform apply -var-file=envs/dev.tfvars
+
+terraform apply \
+  -var-file=envs/dev.tfvars
+```
+
+作成:
+
+```text
+- tfstate S3 bucket
+- terraform lock DynamoDB
+- Lambda artifact S3 bucket
 ```
 
 ---
 
 # 2. Lambda Build
 
-Go custom runtime (`provided.al2023`) 用の
-Lambda binary を build します。
-
 ```bash
 GOOS=linux GOARCH=arm64 go build \
--o bootstrap \
-../../backend/cmd/api
+  -o bootstrap \
+  ../../backend/cmd/api
+```
 
+```bash
 zip lambda.zip bootstrap
 ```
 
 ---
 
-# 3. Lambda Artifact Upload
-
-Lambda 用 ZIP を S3 にアップロードします。
+# 3. Lambda Upload
 
 ```bash
 aws s3 cp lambda.zip \
-s3://<artifact-bucket>/lambda/<project>-dev.zip
+  s3://portfolio-task-july-dev-backend-artifacts/lambda/portfolio-dev.zip
 ```
 
-例:
+確認:
 
 ```bash
-aws s3 cp lambda.zip \
-s3://portfolio-task-july-dev-backend-artifacts/lambda/portfolio-dev.zip
+aws s3 ls \
+  s3://portfolio-task-july-dev-backend-artifacts/lambda/
 ```
 
 ---
 
-# 4. main
-
-アプリケーション本体の AWS リソースを作成します。
-
-作成されるもの:
-
-- VPC
-- Lambda
-- API Gateway
-- Cognito
-- RDS MySQL
-- CloudFront
-- Frontend S3
-
-## 実行
+# 4. Main Infrastructure Apply
 
 ```bash
 cd infra/main
@@ -86,108 +81,111 @@ cd infra/main
 terraform init
 
 terraform apply \
--var-file=envs/dev.tfvars
+  -var-file=envs/dev.tfvars
+```
+
+作成される主なリソース:
+
+```text
+- VPC
+- Security Group
+- RDS MySQL
+- Lambda
+- API Gateway
+- Cognito
+- S3
+- CloudFront
+- Bastion
 ```
 
 ---
 
-# 🔐 API Gateway 認証設計
+# 5. Migration
 
-以下は public route です。
+Bastion に SSM 接続:
 
-```text
-GET /health
-
-GET /api/docs/
-ANY /api/docs/{proxy+}
-
-GET /api/spec/swagger.yml
+```bash
+aws ssm start-session \
+  --target <bastion-instance-id>
 ```
 
-以下は JWT 認証必須です。
+instance id:
 
-```text
-/api/v1/*
+```bash
+terraform output bastion_instance_id
 ```
 
-認証は Cognito JWT Authorizer により実施されます。
+migration 実行:
+
+```bash
+make migrate-up-prod
+```
+
+`.env.production`
+
+```env
+DB_HOST=<rds-endpoint>
+DB_PORT=13306
+DB_NAME=taskdb
+DB_USER=admin
+DB_PASSWORD=xxxxxxxx
+```
 
 ---
 
-# 🔑 Cognito Domain
+# 6. Health Check
 
-Cognito domain は AWS グローバルで一意である必要があります。
+```bash
+curl https://<api-domain>/health
+```
 
-本プロジェクトでは
-`${project}-${env}-${substr(account_id, 8, 4)}`
-形式を利用しています。
+成功例:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+---
+
+# 7. Cognito Login Test
+
+```text
+signup
+  ↓
+login
+  ↓
+JWT token取得
+  ↓
+authenticated API call
+```
 
 例:
 
-```text
-portfolio-dev-9012
+```bash
+curl \
+  -H "Authorization: Bearer <jwt-token>" \
+  https://<api-domain>/api/v1/users/me
 ```
 
 ---
 
-# 👤 terraform_user_arn
-
-`dev.tfvars` の IAM ARN はサンプル値です。
-
-実際の AWS IAM User / Role ARN に変更してください。
-
-例:
-
-```tfvars
-terraform_user_arn = "arn:aws:iam::123456789012:user/terraform-user"
-```
-
----
-
-# ⚠️ 注意
-
-## tfvars に Secrets を直接書かない
-
-本番環境では以下を利用してください。
-
-- SSM Parameter Store
-- Secrets Manager
-
----
-
-## Lambda ZIP が必要
-
-`terraform apply` 前に
-Lambda ZIP が S3 に存在している必要があります。
-
----
-
-## 開発環境設定
-
-現在の設定は開発用です。
-
-以下は本番で見直してください。
-
-- skip_final_snapshot
-- DB password
-- IAM permissions
-- CloudWatch retention
-- Security Group egress rules
-
----
-
-# 📦 Lambda Runtime
-
-Lambda runtime:
+# Lambda Runtime
 
 ```text
-provided.al2023
+runtime      = provided.al2023
+handler      = bootstrap
+architecture = arm64
 ```
 
-handler:
+---
+
+# 注意
 
 ```text
-bootstrap
+- Lambda ZIP は main apply 前に S3 upload 必須
+- migration 未実行だと API は正常動作しない
+- /api/v1/* は JWT 必須
+- production では Secrets Manager / SSM 推奨
 ```
-
-Go custom runtime を前提としています。

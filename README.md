@@ -1,53 +1,57 @@
-# 📌 タスク管理アプリ（Portfolio）
+# 📌 Serverless Task Management App
 
-Next.js × Go × AWS × Terraform × MySQL を用いたフルスタック Web アプリです。
-
-<img src="./docs/architecture_and_erd_v1.png" width="700">
+Next.js × Go × AWS × Terraform × MySQL を用いた  
+フルスタック タスク管理アプリです。
 
 ---
 
-# 🌐 システム構成
+<img src="./docs/architecture_and_erd_v1.png" width="900">
+
+---
+
+# ✨ Features
+
+- JWT Authentication (AWS Cognito)
+- Serverless Go API on AWS Lambda
+- API Gateway JWT Authorizer
+- Owner-isolated Task APIs
+- Terraform Infrastructure as Code
+- Swagger / OpenAPI documentation
+- Structured logging
+- Layered Architecture
+- Private RDS MySQL
+- CloudFront + S3 Frontend Hosting
+
+---
+
+# 🌍 Live Demo
+
+| Service | URL |
+| --- | --- |
+| Frontend | https://xxxxx.cloudfront.net |
+| Swagger UI | https://xxxxx.execute-api.ap-northeast-1.amazonaws.com/api/docs |
+
+---
+
+# 🌐 System Architecture
 
 - Frontend: Next.js + S3 + CloudFront
 - Backend: Go + AWS Lambda
 - API: API Gateway HTTP API
 - Database: RDS MySQL
-- Auth: AWS Cognito + JWT Authorizer
-- IaC: Terraform
+- Authentication: AWS Cognito
+- Infrastructure: Terraform
 
 ---
 
-# 🌐 Frontend / API Origin
-
-Frontend と API は別 origin 構成です。
-
-例:
-
-```text
-Frontend:
-https://xxxxx.cloudfront.net
-
-API:
-https://xxxxx.execute-api.ap-northeast-1.amazonaws.com
-```
-
-そのため CORS を有効化しています。
-
-CORS ヘッダーは Lambda アプリケーション側で返却します。
-
-Terraform の API Gateway 側では
-`cors_configuration` は利用していません。
-
----
-
-# 🏗 アーキテクチャ
+# 🏗 Architecture
 
 ```text
 Client
   ↓
 CloudFront
   ↓
-S3 (Next.js Hosting)
+S3 (Next.js Frontend)
 
 Client
   ↓
@@ -66,76 +70,120 @@ RDS MySQL
 
 ---
 
-# 🧠 設計方針
+# 🧩 Tech Stack
 
-- レイヤードアーキテクチャ
-- Handler / Service / Repository 分離
-- AWS サーバレス前提設計
-- JWT 検証を API Gateway 側へ分離
-- Context timeout によるリクエスト制御
+| Layer | Technology |
+| --- | --- |
+| Frontend | Next.js |
+| Backend | Go |
+| Infrastructure | Terraform |
+| API | API Gateway HTTP API |
+| Authentication | AWS Cognito |
+| Runtime | AWS Lambda |
+| Database | MySQL (RDS) |
+| Hosting | S3 + CloudFront |
 
 ---
 
-# 🔐 認証設計
+# 🔐 Authentication
 
-本システムは AWS Cognito + API Gateway JWT Authorizer を利用します。
+認証は AWS Cognito + API Gateway JWT Authorizer を利用します。
 
-JWT 検証は API Gateway 側で実施し、
-Lambda 側では検証済み claims を利用します。
-
-## 認証フロー
+JWT の検証は API Gateway 側で実施し、  
+Lambda 側では検証済み claims のみを利用します。
 
 ```text
-1. Cognito Login
-2. JWT 発行
-3. Authorization: Bearer <JWT>
-4. API Gateway JWT Authorizer が JWT を検証
-5. claims を Lambda に転送
-6. Middleware が AuthUser を Context に格納
-7. users テーブルへ自動同期
+Login
+  ↓
+JWT 発行
+  ↓
+Authorization: Bearer <id_token>
+  ↓
+API Gateway JWT validation
+  ↓
+claims → Lambda
 ```
 
 ---
 
-## ユーザー同期（Bootstrap）
+# 👤 User Bootstrap
 
-ユーザー作成 API は持たず、
-認証後に bootstrap API を通して
-users テーブルを自動同期します。
+ログイン後に bootstrap API を呼び出し、  
+Cognito user と users table を同期します。
 
-```text
-Frontend
-  ↓
-POST /api/v1/auth/bootstrap
-  ↓
-EnsureUser()
-  ↓
-users table sync
-```
+仕様:
 
-同期仕様:
-
-- Cognito sub を auth_user_id として利用
 - 初回ログイン時に INSERT
 - 既存ユーザーは UPDATE
-- Cognito user と App user を同期
+- Cognito sub を auth_user_id として利用
 
 ---
 
-# 📝 API
+# 🧱 Backend Design
+
+- Layered Architecture
+- Handler / Service / Repository separation
+- Context timeout
+- Owner isolation
+- Structured logging
+- JWT verification offloaded to API Gateway
+- Private RDS architecture
+
+---
+
+# 🔒 Security
+
+- Cognito Authentication
+- API Gateway JWT Authorizer
+- Request timeout
+- SQL timeout
+- Panic recovery
+- Strict JSON decode
+- Unknown field reject
+- Body size limit
+- Owner isolation
+- Private RDS
+- IMDSv2 required
+- Encrypted EBS
+
+---
+
+# 📡 API
+
+## Public Routes
+
+```http
+GET /health
+
+GET /api/docs
+GET /api/spec/swagger.yml
+```
+
+---
+
+## JWT Required
+
+```text
+/api/v1/*
+```
+
+---
+
+# 👤 User APIs
 
 ## Bootstrap User
+
+認証済みユーザーを users table に同期します。
 
 ```http
 POST /api/v1/auth/bootstrap
 ```
 
-認証済みユーザーを
-users テーブルへ同期します。
-
 ---
 
 ## Get Current User
+
+現在ログイン中ユーザー情報を取得します。
 
 ```http
 GET /api/v1/users/me
@@ -145,32 +193,42 @@ GET /api/v1/users/me
 
 ## Delete Current User
 
+自分自身のアカウントを削除します。
+
+関連 task は cascade delete されます。
+
 ```http
 DELETE /api/v1/users/me
 ```
 
-関連 task は cascade delete されます。
-
 ---
 
+# ✅ Task APIs
+
 ## Create Task
+
+新しい task を作成します。
 
 ```http
 POST /api/v1/tasks
 ```
 
-- タイトル
-- 説明
-- ステータス
-- 期限日
+example:
+
+```json
+{
+  "title": "Buy milk",
+  "description": "Go to supermarket",
+  "status": "TODO",
+  "due_date": "2026-05-30T00:00:00Z"
+}
+```
 
 ---
 
 ## List Tasks
 
-```http
-GET /api/v1/tasks
-```
+自分の task 一覧を取得します。
 
 対応:
 
@@ -179,62 +237,46 @@ GET /api/v1/tasks
 - status filtering
 - owner isolation
 
-デフォルトソート:
-
-```text
-created_at DESC
-```
-
-query:
-
-```text
-?limit=20
-&status=TODO
-&sort=created_at
-&order=DESC
+```http
+GET /api/v1/tasks?limit=20&status=TODO&sort=created_at&order=DESC
 ```
 
 ---
 
 ## Get Task
 
+指定 task を取得します。
+
 ```http
 GET /api/v1/tasks/{id}
 ```
 
+仕様:
+
 - task_id + user_id で取得
-- 他ユーザーアクセス不可
+- 他ユーザー task は取得不可
 
 ---
 
 ## Update Task
 
+task 情報を更新します。
+
 ```http
 PUT /api/v1/tasks/{id}
 ```
 
-- 完全更新
-- 所有者チェックあり
-
 ---
 
-## Update Status
+## Update Task Status
+
+task の status のみ更新します。
 
 ```http
 PATCH /api/v1/tasks/{id}/status
 ```
 
----
-
-## Delete Task
-
-```http
-DELETE /api/v1/tasks/{id}
-```
-
----
-
-## Task Status
+status:
 
 ```text
 TODO
@@ -244,12 +286,22 @@ DONE
 
 ---
 
-# 🗄 データベース設計
+## Delete Task
+
+task を削除します。
+
+```http
+DELETE /api/v1/tasks/{id}
+```
+
+---
+
+# 🗄 Database
 
 ## users
 
 | column | type |
-|---|---|
+| --- | --- |
 | id | bigint |
 | auth_user_id | varchar |
 | email | varchar |
@@ -261,7 +313,7 @@ DONE
 ## tasks
 
 | column | type |
-|---|---|
+| --- | --- |
 | id | bigint |
 | user_id | bigint |
 | title | varchar |
@@ -273,272 +325,88 @@ DONE
 
 ---
 
-# 📊 インデックス設計
-
-```sql
-CREATE INDEX idx_tasks_user_id
-    ON tasks(user_id);
-
-CREATE INDEX idx_tasks_user_created_at
-    ON tasks(user_id, created_at DESC, id DESC);
-
-CREATE INDEX idx_tasks_user_status_created
-    ON tasks(user_id, status, created_at DESC, id DESC);
-
-CREATE INDEX idx_tasks_user_due_date
-    ON tasks(user_id, due_date, id DESC);
-```
-
-対応用途:
-
-- ユーザー単位取得
-- ステータス絞り込み
-- created_at ソート
-- due_date ソート
-- pagination 最適化
-
----
-
-# ⏰ due_date / Timezone
-
-API の日時は RFC3339 UTC を使用します。
-
-例:
-
-```json
-{
-  "due_date": "2026-05-20T00:00:00Z"
-}
-```
-
-仕様:
-
-- Backend は UTC で保存
-- Frontend 側でローカルタイムへ変換
-- timezone 差異による日付ズレを防止
-
----
-
-# 🔌 Middleware
-
-```text
-CORS
-  ↓
-Recovery
-  ↓
-Logging
-  ↓
-Auth
-  ↓
-Router
-```
-
----
-
-# 🔒 セキュリティ
-
-- API Gateway JWT Authorizer
-- Cognito 認証
-- request timeout
-- SQL timeout
-- strict JSON decode
-- unknown field reject
-- body size limit
-- panic recovery
-- owner isolation
-- RDS private subnet
-
----
-
-# 🌍 Public Routes
-
-以下は認証不要です。
-
-```text
-GET /health
-GET /api/docs/
-ANY /api/docs/{proxy+}
-GET /api/spec/swagger.yml
-```
-
-`/api/v1/*` は JWT 認証必須です。
-
----
-
 # 📄 Swagger / OpenAPI
 
-Local:
+local:
 
 ```text
-http://localhost:8080/api/docs/
+http://localhost:8080/api/docs
+```
 
+OpenAPI spec:
+
+```text
 http://localhost:8080/api/spec/swagger.yml
 ```
 
 ---
 
-# 🏗 Terraform 構成
+# 📁 Directory Structure
 
 ```text
-infra/
-├── bootstrap/
-│   ├── tfstate S3
-│   ├── DynamoDB lock
-│   └── Lambda artifact S3
+.
+├── backend
+│   ├── cmd
+│   │   └── api
+│   │
+│   ├── internal
+│   │   ├── apperr
+│   │   ├── auth
+│   │   ├── config
+│   │   ├── container
+│   │   ├── dto
+│   │   ├── handlers
+│   │   ├── httpx
+│   │   ├── middleware
+│   │   ├── models
+│   │   ├── repository
+│   │   ├── router
+│   │   └── service
+│   │
+│   ├── migrations
+│   ├── swagger
+│   └── Makefile
 │
-└── main/
-    ├── vpc
-    ├── security_group
-    ├── rds
-    ├── lambda
-    ├── apigw
-    ├── cognito
-    ├── s3
-    └── cloudfront
+├── frontend
+│   └── src/app
+│
+├── infra
+│   ├── bootstrap
+│   └── main
+│       └── modules
+│
+├── scripts
+│
+└── .github/workflows
 ```
 
 ---
 
-# 🚀 Infrastructure Provisioning
+# 📚 Infrastructure
 
-## Bootstrap Infrastructure
-
-最初に Terraform backend / deploy 用リソースを作成します。
-
-```bash
-cd infra/bootstrap
-
-terraform init
-terraform apply -var-file=envs/dev.tfvars
-```
-
-作成対象:
-
-- Terraform state S3
-- Terraform lock DynamoDB
-- Lambda artifact S3
-
----
-
-## Lambda Build
-
-```bash
-make build-lambda
-```
-
----
-
-## Lambda Artifact Upload
-
-```bash
-aws s3 cp lambda.zip \
-s3://<artifact-bucket>/lambda/<project>-dev.zip
-```
-
----
-
-## Main Infrastructure Apply
-
-```bash
-cd infra/main
-
-terraform init
-terraform apply -var-file=envs/dev.tfvars
-```
-
----
-
-# 🐹 Lambda Runtime
-
-Backend Lambda は Go custom runtime (`provided.al2023`) を使用します。
-
-例:
-
-```bash
-GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/api
-
-zip lambda.zip bootstrap
-```
-
----
-
-# ⚙️ ローカル開発
-
-## 起動
-
-```bash
-make run
-```
-
----
-
-## Migration
-
-```bash
-make migrate-up
-```
-
----
-
-## Swagger / OpenAPI
+Terraform により以下を構築しています。
 
 ```text
-/spec/
-/spec/swagger.yml
+- VPC
+- Public / Private Subnets
+- Security Groups
+- RDS MySQL
+- Lambda
+- API Gateway HTTP API
+- Cognito User Pool
+- S3
+- CloudFront
+- Bastion EC2
 ```
 
 ---
 
-## ローカル認証バイパス
-
-ローカル開発時のみ利用可能です。
-
-```env
-RUN_MODE=local
-ENABLE_DEV_AUTH_BYPASS=true
-```
-
-production では無効です。
-
----
-
-# 📁 ディレクトリ構成
+# 🚀 Future Improvements
 
 ```text
-internal/
-├── apperr/
-├── auth/
-├── config/
-├── container/
-├── dto/
-├── handlers/
-├── httpx/
-├── middleware/
-├── models/
-├── repository/
-├── router/
-└── service/
+- GitHub Actions CI/CD
+- Automated Lambda migration
+- Bastion removal
+- Secrets Manager / SSM Parameter Store
+- Integration tests
 ```
-
----
-
-# ⚠️ 制約
-
-- RBAC 未実装
-- `/api/v1/*` は JWT 認証必須
-- WebSocket 未対応
-
----
-
-# 📚 技術スタック
-
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js |
-| Backend | Go |
-| Infra | Terraform |
-| API | API Gateway HTTP API |
-| Auth | AWS Cognito |
-| Runtime | AWS Lambda |
-| DB | MySQL (RDS) |
-| Hosting | CloudFront + S3 |

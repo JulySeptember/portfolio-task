@@ -6,3 +6,6 @@ variable "tags" {
   default     = {}
   description = "Common tags"
 }
+variable "bastion_sg_id" {
+  type = string
+}

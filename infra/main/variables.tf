@@ -40,6 +40,9 @@ variable "backend_bucket_name" {
   default     = ""
 }
 
+variable "lambda_s3_key" {
+  type = string
+}
 # =========================
 # RDS
 # =========================

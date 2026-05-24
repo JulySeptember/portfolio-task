@@ -66,14 +66,17 @@ resource "aws_cloudwatch_log_group" "this" {
   tags = merge(var.tags, {
     Name = "${var.project_name}-lambda-logs-${var.env}"
   })
-
 }
 
 # Lambda function (deploy from S3)
-resource "aws_lambda_function" "this" {
-  function_name = "${var.project_name}-api-${var.env}"
+data "aws_s3_object" "lambda_zip" {
+  bucket = var.backend_bucket_name
+  key    = var.lambda_s3_key
+}
 
-  reserved_concurrent_executions = 20
+resource "aws_lambda_function" "this" {
+
+  function_name = "${var.project_name}-api-${var.env}"
 
   role    = aws_iam_role.this.arn
   handler = var.lambda_handler
@@ -82,8 +85,9 @@ resource "aws_lambda_function" "this" {
   architectures = ["arm64"]
 
   s3_bucket = var.backend_bucket_name
+  s3_key    = var.lambda_s3_key
 
-  s3_key = var.lambda_s3_key != "" ? var.lambda_s3_key : "lambda/${var.project_name}-${var.env}.zip"
+  source_code_hash = data.aws_s3_object.lambda_zip.etag
 
   memory_size = var.memory_size
   timeout     = var.timeout_seconds

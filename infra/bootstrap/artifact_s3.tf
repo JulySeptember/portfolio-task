@@ -4,7 +4,7 @@ locals {
 
 resource "aws_s3_bucket" "artifact" {
   bucket        = local.artifact_bucket_name
-  force_destroy = false
+  force_destroy = true
 }
 
 resource "aws_s3_bucket_versioning" "artifact" {
