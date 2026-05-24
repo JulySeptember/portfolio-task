@@ -56,7 +56,7 @@ resource "aws_apigatewayv2_route" "health" {
 
 resource "aws_apigatewayv2_route" "swagger_docs_root" {
   api_id    = aws_apigatewayv2_api.this.id
-  route_key = "GET /api/docs/"
+  route_key = "GET /api/docs"
 
   target = "integrations/${aws_apigatewayv2_integration.this.id}"
 }

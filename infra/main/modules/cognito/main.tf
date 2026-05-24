@@ -34,8 +34,11 @@ resource "aws_cognito_user_pool" "this" {
 
 # フロントエンドから接続するためのクライアント設定
 resource "aws_cognito_user_pool_client" "this" {
+
   name         = "${var.project_name}-${var.env}-client"
   user_pool_id = aws_cognito_user_pool.this.id
+
+  generate_secret = false
 
   explicit_auth_flows = [
     "ALLOW_USER_PASSWORD_AUTH",
@@ -43,10 +46,33 @@ resource "aws_cognito_user_pool_client" "this" {
     "ALLOW_USER_SRP_AUTH"
   ]
 
-  # クライアントシークレットはNext.js(フロント)では使わないのでfalse
-  generate_secret = false
-}
+  allowed_oauth_flows_user_pool_client = true
 
+  allowed_oauth_flows = [
+    "code",
+    "implicit" #フロントエンド実装までACCESSTOKEN取得のために追加
+  ]
+
+  allowed_oauth_scopes = [
+    "email",
+    "openid",
+    "profile"
+  ]
+
+  callback_urls = [
+    "http://localhost:3000",
+    "https://d2ixcdmrt7p0nu.cloudfront.net"
+  ]
+
+  logout_urls = [
+    "http://localhost:3000",
+    "https://d2ixcdmrt7p0nu.cloudfront.net"
+  ]
+
+  supported_identity_providers = [
+    "COGNITO"
+  ]
+}
 # account id 取得
 data "aws_caller_identity" "current" {}
 

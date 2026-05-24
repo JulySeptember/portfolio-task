@@ -23,7 +23,6 @@ resource "aws_db_instance" "this" {
   allocated_storage = 20
   storage_type      = "gp2"
 
-  # private only
   publicly_accessible = false
 
   # disable backup for lowest cost

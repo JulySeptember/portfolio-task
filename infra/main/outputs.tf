@@ -27,3 +27,13 @@ output "cloudfront_distribution_arn" {
   description = "CloudFront Distribution ARN"
   value       = module.cloudfront.distribution_arn
 }
+
+output "rds_endpoint" {
+  description = "RDS endpoint"
+  value       = module.rds.rds_endpoint
+}
+
+output "bastion_instance_id" {
+  description = "Bastion EC2 instance id"
+  value       = module.bastion.instance_id
+}

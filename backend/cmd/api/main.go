@@ -81,7 +81,7 @@ func NewApp(
 	// =========================
 
 	mux.HandleFunc(
-		"/api/docs/",
+		"/api/docs",
 		swagger.DocsHandler,
 	)
 
@@ -197,15 +197,6 @@ func main() {
 		) {
 
 			// =========================
-			// jwt claims
-			// =========================
-
-			claims := req.RequestContext.
-				Authorizer.
-				JWT.
-				Claims
-
-			// =========================
 			// inject headers
 			// =========================
 
@@ -213,12 +204,19 @@ func main() {
 				req.Headers = map[string]string{}
 			}
 
-			if sub, ok := claims["sub"]; ok {
-				req.Headers["X-Auth-Sub"] = sub
-			}
+			auth := req.RequestContext.Authorizer
 
-			if email, ok := claims["email"]; ok {
-				req.Headers["X-Auth-Email"] = email
+			if auth != nil && auth.JWT != nil {
+
+				claims := auth.JWT.Claims
+
+				if sub, ok := claims["sub"]; ok {
+					req.Headers["X-Auth-Sub"] = sub
+				}
+
+				if email, ok := claims["email"]; ok {
+					req.Headers["X-Auth-Email"] = email
+				}
 			}
 
 			// =========================

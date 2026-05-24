@@ -14,6 +14,22 @@ module "vpc" {
 }
 
 # =========================
+# Bastion
+# =========================
+
+module "bastion" {
+  source = "./modules/bastion"
+
+  project_name = var.project_name
+  env          = var.env
+
+  vpc_id         = module.vpc.vpc_id
+  public_subnets = module.vpc.public_subnets
+
+  tags = local.common_tags
+}
+
+# =========================
 # Security Groups
 # =========================
 
@@ -24,19 +40,21 @@ module "sg" {
   env          = var.env
   vpc_id       = module.vpc.vpc_id
 
-  tags = local.common_tags
-}
+  bastion_sg_id = module.bastion.bastion_sg_id
 
-# =========================
+  tags = local.common_tags
+} # =========================
 # RDS
 # =========================
 
 module "rds" {
   source = "./modules/rds"
 
-  project_name      = var.project_name
-  env               = var.env
-  private_subnets   = module.vpc.private_subnets
+  project_name = var.project_name
+  env          = var.env
+
+  private_subnets = module.vpc.private_subnets
+
   rds_sg_id         = module.sg.rds_sg_id
   db_username       = var.db_username
   db_password       = var.db_password
@@ -80,7 +98,7 @@ module "lambda" {
   frontend_bucket_name = module.s3.bucket_id
   frontend_bucket_arn  = module.s3.bucket_arn
 
-  lambda_s3_key = "lambda/${var.project_name}-${var.env}.zip"
+  lambda_s3_key = var.lambda_s3_key
 
   use_single_subnet_for_lambda = var.env == "dev"
 

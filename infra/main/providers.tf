@@ -8,13 +8,13 @@ terraform {
     }
   }
 
-  #   backend "s3" {
-  #     bucket         = "portfolio-task-july-tfstate-dev"
-  #     key            = "dev/terraform.tfstate"
-  #     region         = "ap-northeast-1"
-  #     encrypt        = true
-  #     dynamodb_table = "portfolio-task-july-tf-lock-dev"
-  #   }
+  backend "s3" {
+    bucket         = "portfolio-task-july-tfstate-dev"
+    key            = "dev/terraform.tfstate"
+    region         = "ap-northeast-1"
+    encrypt        = true
+    dynamodb_table = "portfolio-task-july-tf-lock-dev"
+  }
 }
 
 provider "aws" {

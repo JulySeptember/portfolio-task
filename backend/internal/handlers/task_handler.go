@@ -487,7 +487,11 @@ func (h *TaskHandler) Delete(
 		return
 	}
 
-	w.WriteHeader(
-		http.StatusNoContent,
+	httpx.WriteJSON(
+		w,
+		http.StatusOK,
+		map[string]string{
+			"message": "task deleted",
+		},
 	)
 }
