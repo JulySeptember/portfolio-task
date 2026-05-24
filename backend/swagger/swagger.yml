@@ -19,11 +19,8 @@ info:
   version: 1.0.0
 
 servers:
-  - url: http://localhost:8080
-    description: Local development
-
-  - url: https://qubcxamcr1.execute-api.ap-northeast-1.amazonaws.com
-    description: AWS production
+  - url: /
+    description: Current environment
 
 tags:
   - name: health
