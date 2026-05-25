@@ -1,36 +1,282 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend
 
-## Getting Started
+Serverless Task Management App の
+Next.js App Router frontend です。
 
-First, run the development server:
+---
+
+# 技術スタック
+
+| Layer | Technology |
+| --- | --- |
+| Framework | Next.js |
+| Language | TypeScript |
+| Styling | Tailwind CSS v4 |
+| UI Components | shadcn/ui |
+| API State Management | React Query |
+| Global State Management | Zustand |
+| Icons | Lucide React |
+
+---
+
+# 開発
+
+依存 package install:
+
+```bash
+npm install
+```
+
+開発 server 起動:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+ブラウザ:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+# 環境変数
 
-To learn more about Next.js, take a look at the following resources:
+`.env.local` を作成。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+例:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```env
+NEXT_PUBLIC_API_URL=https://xxxxxxxx.execute-api.ap-northeast-1.amazonaws.com
 
-## Deploy on Vercel
+NEXT_PUBLIC_COGNITO_DOMAIN=xxxxxxxx.auth.ap-northeast-1.amazoncognito.com
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+NEXT_PUBLIC_COGNITO_CLIENT_ID=xxxxxxxx
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+NEXT_PUBLIC_COGNITO_REDIRECT_URI=http://localhost:3000/auth/callback
+
+NEXT_PUBLIC_COGNITO_LOGOUT_URI=http://localhost:3000/login
+```
+
+---
+
+# Directory Structure
+
+```text
+src/
+├── app
+├── components
+├── features
+├── lib
+├── providers
+└── store
+```
+
+---
+
+# App Structure
+
+```text
+app/
+├── (auth)
+├── (protected)
+├── api
+└── auth
+```
+
+| Directory | Role |
+| --- | --- |
+| (auth) | login page |
+| (protected) | authenticated pages |
+| api | route handlers |
+| auth | Cognito callback handling |
+
+---
+
+# UI
+
+本 project は以下を利用。
+
+```text
+- Tailwind CSS
+- shadcn/ui
+- Radix UI
+```
+
+導入済み base components:
+
+```text
+- button
+- input
+- card
+- dialog
+- dropdown-menu
+- table
+- textarea
+- badge
+- skeleton
+```
+
+---
+
+# State Management
+
+## React Query
+
+API 通信管理に利用。
+
+用途:
+
+```text
+- API fetch
+- cache management
+- loading state
+- mutation
+- refetch
+```
+
+---
+
+## Zustand
+
+frontend global state 管理。
+
+用途:
+
+```text
+- auth state
+```
+
+---
+
+# Authentication
+
+認証は AWS Cognito Hosted UI を利用。
+
+frontend flow:
+
+```text
+Login button
+  ↓
+Cognito Hosted UI
+  ↓
+redirect (/auth/callback)
+  ↓
+token exchange
+  ↓
+localStorage 保存
+  ↓
+Authorization: Bearer <id_token>
+```
+
+---
+
+# JWT Validation
+
+JWT validation は frontend ではなく
+API Gateway JWT Authorizer に委譲。
+
+```text
+Client
+  ↓
+API Gateway JWT Authorizer
+  ↓
+validated claims
+  ↓
+Lambda
+```
+
+---
+
+# User Bootstrap
+
+ログイン後に bootstrap API を呼び出し、
+Cognito user と users table を同期。
+
+仕様:
+
+```text
+- 初回 login 時 INSERT
+- 既存 user は UPDATE
+- Cognito sub を auth_user_id として利用
+```
+
+---
+
+# API
+
+backend API:
+
+```text
+/api/v1/*
+```
+
+health check:
+
+```text
+/health
+```
+
+Swagger:
+
+```text
+/api/docs
+```
+
+---
+
+# Features
+
+## Tasks
+
+対応予定:
+
+```text
+- create task
+- update task
+- update task status
+- delete task
+- pagination
+- filtering
+- sorting
+```
+
+---
+
+# Frontend Architecture
+
+feature based structure を採用。
+
+```text
+features/
+├── auth
+└── tasks
+```
+
+各 feature は:
+
+```text
+- api
+- hooks
+- components
+- schemas
+- types
+- utils
+```
+
+を内部に持つ。
+
+---
+
+# Deployment
+
+frontend は以下構成で deploy:
+
+```text
+CloudFront
+  ↓
+S3
+  ↓
+Next.js static assets
+```
