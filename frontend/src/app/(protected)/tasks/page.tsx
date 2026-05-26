@@ -1,25 +1,62 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { useRouter, useSearchParams } from "next/navigation";
 
-import { TaskForm } from "@/features/tasks/components/task-form";
+import { TasksFilter } from "@/features/tasks/components/tasks-filter";
+
+import { TasksPagination } from "@/features/tasks/components/tasks-pagination";
+
+import { TasksSort } from "@/features/tasks/components/tasks-sort";
 
 import { TasksTable } from "@/features/tasks/components/tasks-table";
 
 import { useTasks } from "@/features/tasks/hooks/use-tasks";
+import { CreateTaskDialog } from "@/features/tasks/components/create-task-dialog";
 
 export default function TasksPage() {
-  const [status, setStatus] = useState<"TODO" | "DOING" | "DONE" | undefined>();
+  const searchParams = useSearchParams();
 
-  const [sort, setSort] = useState<"created_at" | "due_date">("created_at");
-
-  const [order, setOrder] = useState<"ASC" | "DESC">("DESC");
-
-  const [offset, setOffset] = useState(0);
+  const router = useRouter();
 
   const limit = 10;
+
+  const [status, setStatus] = useState<"TODO" | "DOING" | "DONE" | undefined>(
+    (searchParams.get("status") as "TODO" | "DOING" | "DONE" | null) ??
+      undefined,
+  );
+
+  const [sort, setSort] = useState<"created_at" | "due_date">(
+    (searchParams.get("sort") as "created_at" | "due_date" | null) ??
+      "created_at",
+  );
+
+  const [order, setOrder] = useState<"ASC" | "DESC">(
+    (searchParams.get("order") as "ASC" | "DESC" | null) ?? "DESC",
+  );
+
+  const [offset, setOffset] = useState(() => {
+    const page = Number(searchParams.get("page") ?? "1");
+
+    return (page - 1) * limit;
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    if (status) {
+      params.set("status", status);
+    }
+
+    params.set("sort", sort);
+
+    params.set("order", order);
+
+    params.set("page", String(offset / limit + 1));
+
+    router.replace(`/tasks?${params.toString()}`);
+  }, [status, sort, order, offset, limit, router]);
 
   const { data, isPending, isError, error } = useTasks({
     status,
@@ -48,113 +85,44 @@ export default function TasksPage() {
 
         <p className="text-muted-foreground text-sm">Total: {data.count}</p>
       </div>
+      <CreateTaskDialog />
 
-      <TaskForm />
+      <TasksFilter
+        status={status}
+        onChange={(value) => {
+          setStatus(value);
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant={!status ? "default" : "outline"}
-          onClick={() => {
-            setStatus(undefined);
+          setOffset(0);
+        }}
+      />
 
-            setOffset(0);
-          }}
-        >
-          ALL
-        </Button>
+      <TasksSort
+        sort={sort}
+        order={order}
+        onSortChange={(value) => {
+          setSort(value);
 
-        <Button
-          variant={status === "TODO" ? "default" : "outline"}
-          onClick={() => {
-            setStatus("TODO");
+          setOffset(0);
+        }}
+        onOrderChange={(value) => {
+          setOrder(value);
 
-            setOffset(0);
-          }}
-        >
-          TODO
-        </Button>
-
-        <Button
-          variant={status === "DOING" ? "default" : "outline"}
-          onClick={() => {
-            setStatus("DOING");
-
-            setOffset(0);
-          }}
-        >
-          DOING
-        </Button>
-
-        <Button
-          variant={status === "DONE" ? "default" : "outline"}
-          onClick={() => {
-            setStatus("DONE");
-
-            setOffset(0);
-          }}
-        >
-          DONE
-        </Button>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant={sort === "created_at" ? "default" : "outline"}
-          onClick={() => {
-            setSort("created_at");
-
-            setOffset(0);
-          }}
-        >
-          Created
-        </Button>
-
-        <Button
-          variant={sort === "due_date" ? "default" : "outline"}
-          onClick={() => {
-            setSort("due_date");
-
-            setOffset(0);
-          }}
-        >
-          Due Date
-        </Button>
-
-        <Button
-          variant="outline"
-          onClick={() => {
-            setOrder((prev) => (prev === "ASC" ? "DESC" : "ASC"));
-
-            setOffset(0);
-          }}
-        >
-          {order}
-        </Button>
-      </div>
+          setOffset(0);
+        }}
+      />
 
       <TasksTable tasks={data.items} />
 
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          disabled={!hasPrevPage}
-          onClick={() => setOffset((prev) => Math.max(prev - limit, 0))}
-        >
-          Previous
-        </Button>
-
-        <p className="text-muted-foreground text-sm">
-          {offset + 1} - {offset + data.items.length} / {data.count}
-        </p>
-
-        <Button
-          variant="outline"
-          disabled={!hasNextPage}
-          onClick={() => setOffset((prev) => prev + limit)}
-        >
-          Next
-        </Button>
-      </div>
+      <TasksPagination
+        offset={offset}
+        limit={limit}
+        total={data.count}
+        currentCount={data.items.length}
+        hasPrevPage={hasPrevPage}
+        hasNextPage={hasNextPage}
+        onPrevious={() => setOffset((prev) => Math.max(prev - limit, 0))}
+        onNext={() => setOffset((prev) => prev + limit)}
+      />
     </main>
   );
 }

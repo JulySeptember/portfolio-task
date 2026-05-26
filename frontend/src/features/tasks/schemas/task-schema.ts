@@ -66,6 +66,26 @@ export const taskListSchema = z.object({
 });
 
 // =========================
+// form schema
+// frontend form shape
+// datetime-local compatible
+// =========================
+
+export const taskFormSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, "Title is required")
+    .max(255, "Title is too long"),
+
+  description: z.string().max(5000, "Description is too long"),
+
+  status: taskStatusSchema,
+
+  due_date: z.string().nullable(),
+});
+
+// =========================
 // create/update request
 // backend request shape
 // =========================
@@ -94,5 +114,7 @@ export type TaskStatus = z.infer<typeof taskStatusSchema>;
 export type Task = z.infer<typeof taskSchema>;
 
 export type TaskListResponse = z.infer<typeof taskListSchema>;
+
+export type TaskFormValues = z.infer<typeof taskFormSchema>;
 
 export type TaskRequest = z.infer<typeof taskRequestSchema>;

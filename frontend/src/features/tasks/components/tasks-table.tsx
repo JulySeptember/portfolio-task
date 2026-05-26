@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   Table,
   TableBody,
@@ -9,31 +11,26 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-import { TaskStatusBadge } from "./task-status-badge";
-
-import { useDeleteTask } from "../hooks/use-delete-task";
+import { TaskDetailDialog } from "./task-detail-dialog";
 
 import { useUpdateTaskStatus } from "../hooks/use-update-task-status";
 
 import type { Task, TaskStatus } from "../schemas/task-schema";
-import { EditTaskDialog } from "./edit-task-dialog";
 
 type Props = {
   tasks: Task[];
 };
 
-const nextStatusMap: Record<TaskStatus, TaskStatus> = {
-  TODO: "DOING",
-
-  DOING: "DONE",
-
-  DONE: "TODO",
-};
-
 export function TasksTable({ tasks }: Props) {
-  const deleteTask = useDeleteTask();
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const updateStatus = useUpdateTaskStatus();
 
@@ -46,81 +43,89 @@ export function TasksTable({ tasks }: Props) {
   }
 
   return (
-    <div className="rounded-lg border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Title</TableHead>
+    <>
+      <div className="rounded-xl border">
+        <Table className="table-fixed">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[55%]">Title</TableHead>
 
-            <TableHead>Status</TableHead>
+              <TableHead className="w-45">Status</TableHead>
 
-            <TableHead>Due Date</TableHead>
+              <TableHead className="w-55">Due Date</TableHead>
+            </TableRow>
+          </TableHeader>
 
-            <TableHead className="w-55">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
+          <TableBody>
+            {tasks.map((task) => (
+              <TableRow
+                key={task.id}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => setSelectedTask(task)}
+              >
+                <TableCell>
+                  <div className="min-w-0 space-y-1">
+                    <p className="truncate font-medium">{task.title}</p>
 
-        <TableBody>
-          {tasks.map((task) => (
-            <TableRow key={task.id}>
-              <TableCell>
-                <div>
-                  <p className="font-medium">{task.title}</p>
+                    {task.description && (
+                      <p className="text-muted-foreground line-clamp-2 break-all text-sm">
+                        {task.description}
+                      </p>
+                    )}
+                  </div>
+                </TableCell>
 
-                  {task.description && (
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      {task.description}
-                    </p>
-                  )}
-                </div>
-              </TableCell>
-
-              <TableCell>
-                <TaskStatusBadge status={task.status} />
-              </TableCell>
-
-              <TableCell>
-                {task.dueDate ? (
-                  <span className="text-sm">
-                    {new Date(task.dueDate).toLocaleString()}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground text-sm">-</span>
-                )}
-              </TableCell>
-
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={updateStatus.isPending}
-                    onClick={() =>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <Select
+                    value={task.status}
+                    onValueChange={(value: TaskStatus) => {
                       updateStatus.mutate({
                         id: task.id,
-                        status: nextStatusMap[task.status],
-                      })
-                    }
-                  >
-                    Next Status
-                  </Button>
 
-                  <EditTaskDialog task={task} />
-
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    disabled={deleteTask.isPending}
-                    onClick={() => deleteTask.mutate(task.id)}
+                        status: value,
+                      });
+                    }}
                   >
-                    Delete
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="TODO">TODO</SelectItem>
+
+                      <SelectItem value="DOING">DOING</SelectItem>
+
+                      <SelectItem value="DONE">DONE</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+
+                <TableCell>
+                  {task.dueDate ? (
+                    <span className="truncate text-sm">
+                      {new Date(task.dueDate).toLocaleString()}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">-</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {selectedTask && (
+        <TaskDetailDialog
+          task={selectedTask}
+          open={!!selectedTask}
+          onOpenChange={(open: boolean) => {
+            if (!open) {
+              setSelectedTask(null);
+            }
+          }}
+        />
+      )}
+    </>
   );
 }
