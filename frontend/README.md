@@ -1,39 +1,40 @@
 # Frontend
 
-Serverless Task Management App の
-Next.js App Router frontend です。
+Serverless Task Management App frontend built with
+Next.js App Router.
 
 ---
 
-# 技術スタック
+# Tech Stack
 
 | Layer | Technology |
 | --- | --- |
 | Framework | Next.js |
 | Language | TypeScript |
 | Styling | Tailwind CSS v4 |
-| UI Components | shadcn/ui |
+| UI Components | shadcn/ui + Radix UI |
 | API State Management | React Query |
 | Global State Management | Zustand |
+| Validation | Zod |
 | Icons | Lucide React |
 
 ---
 
-# 開発
+# Development
 
-依存 package install:
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-開発 server 起動:
+Start development server:
 
 ```bash
 npm run dev
 ```
 
-ブラウザ:
+Application:
 
 ```text
 http://localhost:3000
@@ -41,11 +42,11 @@ http://localhost:3000
 
 ---
 
-# 環境変数
+# Environment Variables
 
-`.env.local` を作成。
+Create `.env.local`.
 
-例:
+Example:
 
 ```env
 NEXT_PUBLIC_API_URL=https://xxxxxxxx.execute-api.ap-northeast-1.amazonaws.com
@@ -87,7 +88,7 @@ app/
 
 | Directory | Role |
 | --- | --- |
-| (auth) | login page |
+| (auth) | login pages |
 | (protected) | authenticated pages |
 | api | route handlers |
 | auth | Cognito callback handling |
@@ -96,7 +97,7 @@ app/
 
 # UI
 
-本 project は以下を利用。
+This project uses:
 
 ```text
 - Tailwind CSS
@@ -104,18 +105,20 @@ app/
 - Radix UI
 ```
 
-導入済み base components:
+Included base UI components:
 
 ```text
+- badge
 - button
-- input
 - card
 - dialog
 - dropdown-menu
+- input
+- label
+- skeleton
 - table
 - textarea
-- badge
-- skeleton
+- toaster
 ```
 
 ---
@@ -124,15 +127,16 @@ app/
 
 ## React Query
 
-API 通信管理に利用。
+Used for API state management.
 
-用途:
+Responsibilities:
 
 ```text
 - API fetch
 - cache management
 - loading state
 - mutation
+- optimistic updates
 - refetch
 ```
 
@@ -140,21 +144,21 @@ API 通信管理に利用。
 
 ## Zustand
 
-frontend global state 管理。
+Used for lightweight frontend global state.
 
-用途:
+Responsibilities:
 
 ```text
-- auth state
+- authentication state
 ```
 
 ---
 
 # Authentication
 
-認証は AWS Cognito Hosted UI を利用。
+Authentication uses AWS Cognito Hosted UI.
 
-frontend flow:
+Frontend authentication flow:
 
 ```text
 Login button
@@ -165,17 +169,23 @@ redirect (/auth/callback)
   ↓
 token exchange
   ↓
-localStorage 保存
+localStorage storage
   ↓
 Authorization: Bearer <id_token>
 ```
+
+Current implementation stores tokens in localStorage
+for development simplicity.
+
+Production-grade deployments should consider
+HttpOnly cookie based authentication strategies.
 
 ---
 
 # JWT Validation
 
-JWT validation は frontend ではなく
-API Gateway JWT Authorizer に委譲。
+JWT signature validation is delegated to
+API Gateway JWT Authorizer.
 
 ```text
 Client
@@ -191,34 +201,34 @@ Lambda
 
 # User Bootstrap
 
-ログイン後に bootstrap API を呼び出し、
-Cognito user と users table を同期。
+After login, frontend calls bootstrap API
+to synchronize Cognito users with users table.
 
-仕様:
+Behavior:
 
 ```text
-- 初回 login 時 INSERT
-- 既存 user は UPDATE
-- Cognito sub を auth_user_id として利用
+- INSERT on first login
+- UPDATE on existing users
+- Cognito sub used as auth_user_id
 ```
 
 ---
 
 # API
 
-backend API:
+Backend API endpoints:
 
 ```text
 /api/v1/*
 ```
 
-health check:
+Health check endpoint:
 
 ```text
 /health
 ```
 
-Swagger:
+Swagger/OpenAPI:
 
 ```text
 /api/docs
@@ -230,7 +240,7 @@ Swagger:
 
 ## Tasks
 
-対応予定:
+Implemented / planned capabilities:
 
 ```text
 - create task
@@ -246,7 +256,7 @@ Swagger:
 
 # Frontend Architecture
 
-feature based structure を採用。
+This project adopts feature-based architecture.
 
 ```text
 features/
@@ -254,7 +264,7 @@ features/
 └── tasks
 ```
 
-各 feature は:
+Each feature internally manages:
 
 ```text
 - api
@@ -265,18 +275,45 @@ features/
 - utils
 ```
 
-を内部に持つ。
+Benefits:
+
+```text
+- scalability
+- separation of concerns
+- maintainability
+- feature isolation
+```
 
 ---
 
 # Deployment
 
-frontend は以下構成で deploy:
+Frontend deployment architecture:
+
+```text
+CloudFront
+  ↓
+Next.js hosting environment
+```
+
+Static assets may additionally be distributed via:
 
 ```text
 CloudFront
   ↓
 S3
-  ↓
-Next.js static assets
+```
+
+---
+
+# Notes
+
+This project focuses on:
+
+```text
+- modern frontend architecture
+- scalable feature organization
+- serverless integration
+- authentication flow design
+- API-driven UI development
 ```
