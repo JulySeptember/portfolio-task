@@ -7,10 +7,16 @@ import {
   type TaskStatus,
 } from "../schemas/task-schema";
 
-export async function updateTaskStatus(
-  id: number,
-  status: TaskStatus,
-): Promise<Task> {
+type UpdateTaskStatusInput = {
+  id: number;
+
+  status: TaskStatus;
+};
+
+export async function updateTaskStatus({
+  id,
+  status,
+}: UpdateTaskStatusInput): Promise<Task> {
   const body = {
     status: taskStatusSchema.parse(status),
   };

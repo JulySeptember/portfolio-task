@@ -2,23 +2,32 @@ import { apiClient } from "@/lib/api/client";
 
 import {
   taskSchema,
-  taskRequestSchema,
   type Task,
   type TaskRequest,
 } from "../schemas/task-schema";
 
-export async function updateTask(
-  id: number,
-  input: TaskRequest,
-): Promise<Task> {
-  const body = taskRequestSchema.parse(input);
+type UpdateTaskInput = {
+  id: number;
+} & TaskRequest;
 
+export async function updateTask({
+  id,
+  title,
+  description,
+  status,
+  due_date,
+}: UpdateTaskInput): Promise<Task> {
   const data = await apiClient<unknown>(
     `${process.env.NEXT_PUBLIC_API_URL}/tasks/${id}`,
     {
       method: "PUT",
 
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        title,
+        description,
+        status,
+        due_date,
+      }),
     },
   );
 
