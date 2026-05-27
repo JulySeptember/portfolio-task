@@ -30,7 +30,7 @@ type Props = {
 };
 
 export function TasksTable({ tasks }: Props) {
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
 
   const updateStatus = useUpdateTaskStatus();
 
@@ -61,7 +61,7 @@ export function TasksTable({ tasks }: Props) {
               <TableRow
                 key={task.id}
                 className="cursor-pointer hover:bg-muted/50"
-                onClick={() => setSelectedTask(task)}
+                onClick={() => setSelectedTaskId(task.id)}
               >
                 <TableCell>
                   <div className="min-w-0 space-y-1">
@@ -115,13 +115,13 @@ export function TasksTable({ tasks }: Props) {
         </Table>
       </div>
 
-      {selectedTask && (
+      {selectedTaskId && (
         <TaskDetailDialog
-          task={selectedTask}
-          open={!!selectedTask}
-          onOpenChange={(open: boolean) => {
+          taskId={selectedTaskId}
+          open={!!selectedTaskId}
+          onOpenChange={(open) => {
             if (!open) {
-              setSelectedTask(null);
+              setSelectedTaskId(null);
             }
           }}
         />

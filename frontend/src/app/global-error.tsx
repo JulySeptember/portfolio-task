@@ -23,7 +23,11 @@ export default function GlobalError({ error, reset }: Props) {
             </p>
           </div>
 
-          <Button onClick={() => reset()} className="h-11 px-6 text-base">
+          <Button
+            onClick={() => {
+              window.location.reload();
+            }}
+          >
             Reload App
           </Button>
         </main>

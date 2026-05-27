@@ -8,7 +8,7 @@ import { updateTaskStatus } from "../api/update-task-status";
 
 import { taskQueryKeys } from "../queries/task-query-keys";
 
-import type { TaskListResponse } from "../schemas/task-schema";
+import type { Task, TaskListResponse } from "../schemas/task-schema";
 
 type Variables = {
   id: number;
@@ -24,15 +24,25 @@ export function useUpdateTaskStatus() {
 
     onMutate: async ({ id, status }: Variables) => {
       await queryClient.cancelQueries({
-        queryKey: taskQueryKeys.list(),
+        queryKey: taskQueryKeys.lists(),
       });
 
-      const previousTasks = queryClient.getQueryData<TaskListResponse>(
-        taskQueryKeys.list(),
+      await queryClient.cancelQueries({
+        queryKey: taskQueryKeys.detail(id),
+      });
+
+      const previousQueries = queryClient.getQueriesData<TaskListResponse>({
+        queryKey: taskQueryKeys.lists(),
+      });
+
+      const previousTask = queryClient.getQueryData<Task>(
+        taskQueryKeys.detail(id),
       );
 
-      queryClient.setQueryData<TaskListResponse>(
-        taskQueryKeys.list(),
+      queryClient.setQueriesData<TaskListResponse>(
+        {
+          queryKey: taskQueryKeys.lists(),
+        },
         (old) => {
           if (!old) {
             return old;
@@ -54,14 +64,38 @@ export function useUpdateTaskStatus() {
         },
       );
 
+      queryClient.setQueryData(
+        taskQueryKeys.detail(id),
+        (old: Task | undefined) => {
+          if (!old) {
+            return old;
+          }
+
+          return {
+            ...old,
+
+            status,
+          };
+        },
+      );
+
       return {
-        previousTasks,
+        previousQueries,
+
+        previousTask,
       };
     },
 
-    onError: (error, _, context) => {
-      if (context?.previousTasks) {
-        queryClient.setQueryData(taskQueryKeys.list(), context.previousTasks);
+    onError: (error, variables, context) => {
+      context?.previousQueries.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
+
+      if (context?.previousTask) {
+        queryClient.setQueryData(
+          taskQueryKeys.detail(variables.id),
+          context.previousTask,
+        );
       }
 
       toast.error(error.message);
@@ -71,9 +105,13 @@ export function useUpdateTaskStatus() {
       toast.success("Task status updated");
     },
 
-    onSettled: async () => {
+    onSettled: async (_, __, variables) => {
       await queryClient.invalidateQueries({
-        queryKey: taskQueryKeys.list(),
+        queryKey: taskQueryKeys.lists(),
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: taskQueryKeys.detail(variables.id),
       });
     },
   });

@@ -1,5 +1,13 @@
 // src/lib/api/client.ts
 
+import {
+  clearTokens,
+  getAccessToken,
+} from "@/features/auth/utils/token-storage";
+
+import { toast } from "sonner";
+import { refreshToken } from "@/features/auth/api/refresh-token";
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -12,15 +20,16 @@ export class ApiError extends Error {
   }
 }
 
-type ApiClientOptions = RequestInit & {
-  token?: string;
-};
+type ApiClientOptions = RequestInit;
 
-export async function apiClient<T>(
+let refreshPromise: Promise<string> | null = null;
+
+async function request<T>(
   input: RequestInfo | URL,
   options: ApiClientOptions = {},
+  accessToken?: string,
 ): Promise<T> {
-  const { token, headers, ...init } = options;
+  const { headers, ...init } = options;
 
   const response = await fetch(input, {
     ...init,
@@ -28,8 +37,8 @@ export async function apiClient<T>(
     headers: {
       "Content-Type": "application/json",
 
-      ...(token && {
-        Authorization: `Bearer ${token}`,
+      ...(accessToken && {
+        Authorization: `Bearer ${accessToken}`,
       }),
 
       ...headers,
@@ -64,4 +73,45 @@ export async function apiClient<T>(
   }
 
   return body as T;
+}
+
+export async function apiClient<T>(
+  input: RequestInfo | URL,
+  options: ApiClientOptions = {},
+  isRetry = false,
+): Promise<T> {
+  const accessToken = getAccessToken();
+
+  try {
+    return await request<T>(input, options, accessToken ?? undefined);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401 && !isRetry) {
+      try {
+        if (!refreshPromise) {
+          refreshPromise = refreshToken();
+        }
+
+        const newAccessToken = await refreshPromise;
+
+        refreshPromise = null;
+
+        return await apiClient<T>(input, options, true);
+      } catch {
+        refreshPromise = null;
+
+        clearTokens();
+
+        toast.error("Session expired. Please login again.");
+
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 500);
+
+        throw error;
+        throw error;
+      }
+    }
+
+    throw error;
+  }
 }

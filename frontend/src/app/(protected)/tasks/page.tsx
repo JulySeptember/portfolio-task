@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { AppHeader } from "@/components/layout/app-header";
+
+import { PageContainer } from "@/components/layout/page-container";
+
+import { CreateTaskDialog } from "@/features/tasks/components/create-task-dialog";
+
 import { TasksFilter } from "@/features/tasks/components/tasks-filter";
 
 import { TasksPagination } from "@/features/tasks/components/tasks-pagination";
@@ -13,7 +19,6 @@ import { TasksSort } from "@/features/tasks/components/tasks-sort";
 import { TasksTable } from "@/features/tasks/components/tasks-table";
 
 import { useTasks } from "@/features/tasks/hooks/use-tasks";
-import { CreateTaskDialog } from "@/features/tasks/components/create-task-dialog";
 
 export default function TasksPage() {
   const searchParams = useSearchParams();
@@ -66,63 +71,84 @@ export default function TasksPage() {
     offset,
   });
 
-  if (isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (isError) {
-    return <div>{error.message}</div>;
-  }
-
   const hasPrevPage = offset > 0;
 
-  const hasNextPage = data.offset + data.items.length < data.count;
+  const hasNextPage = !!data && data.offset + data.items.length < data.count;
 
   return (
-    <main className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold">Tasks</h1>
+    <>
+      <AppHeader />
 
-        <p className="text-muted-foreground text-sm">Total: {data.count}</p>
-      </div>
-      <CreateTaskDialog />
+      <PageContainer>
+        <div className="space-y-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Tasks</h1>
 
-      <TasksFilter
-        status={status}
-        onChange={(value) => {
-          setStatus(value);
+              {data && (
+                <p className="text-muted-foreground text-sm">
+                  Total: {data.count}
+                </p>
+              )}
+            </div>
 
-          setOffset(0);
-        }}
-      />
+            <CreateTaskDialog />
+          </div>
 
-      <TasksSort
-        sort={sort}
-        order={order}
-        onSortChange={(value) => {
-          setSort(value);
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <TasksFilter
+              status={status}
+              onChange={(value) => {
+                setStatus(value);
 
-          setOffset(0);
-        }}
-        onOrderChange={(value) => {
-          setOrder(value);
+                setOffset(0);
+              }}
+            />
 
-          setOffset(0);
-        }}
-      />
+            <TasksSort
+              sort={sort}
+              order={order}
+              onSortChange={(value) => {
+                setSort(value);
 
-      <TasksTable tasks={data.items} />
+                setOffset(0);
+              }}
+              onOrderChange={(value) => {
+                setOrder(value);
 
-      <TasksPagination
-        offset={offset}
-        limit={limit}
-        total={data.count}
-        currentCount={data.items.length}
-        hasPrevPage={hasPrevPage}
-        hasNextPage={hasNextPage}
-        onPrevious={() => setOffset((prev) => Math.max(prev - limit, 0))}
-        onNext={() => setOffset((prev) => prev + limit)}
-      />
-    </main>
+                setOffset(0);
+              }}
+            />
+          </div>
+
+          {isPending && <div>Loading...</div>}
+
+          {isError && (
+            <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500">
+              {error.message}
+            </div>
+          )}
+
+          {data && (
+            <>
+              <TasksTable tasks={data.items} />
+
+              <TasksPagination
+                offset={offset}
+                limit={limit}
+                total={data.count}
+                currentCount={data.items.length}
+                hasPrevPage={hasPrevPage}
+                hasNextPage={hasNextPage}
+                onPrevious={() =>
+                  setOffset((prev) => Math.max(prev - limit, 0))
+                }
+                onNext={() => setOffset((prev) => prev + limit)}
+              />
+            </>
+          )}
+        </div>
+      </PageContainer>
+    </>
   );
 }

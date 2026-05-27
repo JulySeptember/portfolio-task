@@ -4,9 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 
 import { listTasks, type ListTasksParams } from "../api/list-tasks";
 
+import { taskQueryKeys } from "../queries/task-query-keys";
+
 export function useTasks(params?: ListTasksParams) {
   return useQuery({
-    queryKey: ["tasks", params],
+    queryKey: taskQueryKeys.list(params),
 
     queryFn: () => listTasks(params),
   });

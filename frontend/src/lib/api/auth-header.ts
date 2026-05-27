@@ -1,17 +1,13 @@
-import {
-  getAccessToken,
-} from "@/features/auth/utils/token-storage"
+import { getAccessToken } from "@/features/auth/utils/token-storage";
 
 export function getAuthHeader() {
-  const token =
-    getAccessToken()
+  const token = getAccessToken();
 
   if (!token) {
-    return {}
+    return {};
   }
 
   return {
-    Authorization:
-      `Bearer ${token}`,
-  }
+    Authorization: `Bearer ${token}`,
+  };
 }

@@ -8,7 +8,7 @@ import { deleteTask } from "../api/delete-task";
 
 import { taskQueryKeys } from "../queries/task-query-keys";
 
-import type { TaskListResponse } from "../schemas/task-schema";
+import type { Task, TaskListResponse } from "../schemas/task-schema";
 
 export function useDeleteTask() {
   const queryClient = useQueryClient();
@@ -18,38 +18,66 @@ export function useDeleteTask() {
 
     onMutate: async (id: number) => {
       await queryClient.cancelQueries({
-        queryKey: taskQueryKeys.list(),
+        queryKey: taskQueryKeys.lists(),
       });
 
-      const previousTasks = queryClient.getQueryData<TaskListResponse>(
-        taskQueryKeys.list(),
+      await queryClient.cancelQueries({
+        queryKey: taskQueryKeys.detail(id),
+      });
+
+      const previousQueries = queryClient.getQueriesData<TaskListResponse>({
+        queryKey: taskQueryKeys.lists(),
+      });
+
+      const previousTask = queryClient.getQueryData<Task>(
+        taskQueryKeys.detail(id),
       );
 
-      queryClient.setQueryData<TaskListResponse>(
-        taskQueryKeys.list(),
+      queryClient.setQueriesData<TaskListResponse>(
+        {
+          queryKey: taskQueryKeys.lists(),
+        },
         (old) => {
           if (!old) {
             return old;
           }
 
+          const nextItems = old.items.filter((task) => task.id !== id);
+
           return {
             ...old,
 
-            count: old.count - 1,
+            count: Math.max(
+              0,
+              old.count - (old.items.length - nextItems.length),
+            ),
 
-            items: old.items.filter((task) => task.id !== id),
+            items: nextItems,
           };
         },
       );
 
+      queryClient.removeQueries({
+        queryKey: taskQueryKeys.detail(id),
+      });
+
       return {
-        previousTasks,
+        previousQueries,
+
+        previousTask,
       };
     },
 
-    onError: (error, _, context) => {
-      if (context?.previousTasks) {
-        queryClient.setQueryData(taskQueryKeys.list(), context.previousTasks);
+    onError: (error, id, context) => {
+      context?.previousQueries.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
+
+      if (context?.previousTask) {
+        queryClient.setQueryData(
+          taskQueryKeys.detail(id),
+          context.previousTask,
+        );
       }
 
       toast.error(error.message);
@@ -59,9 +87,13 @@ export function useDeleteTask() {
       toast.success("Task deleted");
     },
 
-    onSettled: async () => {
+    onSettled: async (_, __, id) => {
       await queryClient.invalidateQueries({
-        queryKey: taskQueryKeys.list(),
+        queryKey: taskQueryKeys.lists(),
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: taskQueryKeys.detail(id),
       });
     },
   });

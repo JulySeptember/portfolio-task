@@ -1,7 +1,11 @@
 export const taskQueryKeys = {
   all: ["tasks"] as const,
 
-  list: () => [...taskQueryKeys.all] as const,
+  lists: () => [...taskQueryKeys.all, "list"] as const,
 
-  detail: (id: number) => [...taskQueryKeys.all, id] as const,
+  list: (params?: unknown) => [...taskQueryKeys.lists(), params] as const,
+
+  details: () => [...taskQueryKeys.all, "detail"] as const,
+
+  detail: (id: number) => [...taskQueryKeys.details(), id] as const,
 };

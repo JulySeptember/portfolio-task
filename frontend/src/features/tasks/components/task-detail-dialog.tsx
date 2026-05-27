@@ -31,7 +31,6 @@ import { TaskStatusBadge } from "./task-status-badge";
 
 import {
   taskFormSchema,
-  type Task,
   type TaskFormValues,
   type TaskStatus,
 } from "../schemas/task-schema";
@@ -44,7 +43,7 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
-  AlertDialogContent,
+  AlertDialogContent as AlertDialogContentPrimitive,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
@@ -52,15 +51,19 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+import { useTask } from "../hooks/use-task";
+
 type Props = {
-  task: Task;
+  taskId: number;
 
   open: boolean;
 
   onOpenChange: (open: boolean) => void;
 };
 
-export function TaskDetailDialog({ task, open, onOpenChange }: Props) {
+export function TaskDetailDialog({ taskId, open, onOpenChange }: Props) {
+  const shouldFetch = open && !!taskId;
+  const { data: task, isLoading, isError } = useTask(taskId, shouldFetch);
   const updateTask = useUpdateTask();
 
   const deleteTask = useDeleteTask();
@@ -69,16 +72,55 @@ export function TaskDetailDialog({ task, open, onOpenChange }: Props) {
     resolver: zodResolver(taskFormSchema),
 
     values: {
-      title: task.title,
+      title: task?.title ?? "",
 
-      description: task.description,
+      description: task?.description ?? "",
 
-      status: task.status,
+      status: task?.status ?? "TODO",
 
-      due_date: task.dueDate ? task.dueDate.slice(0, 16) : "",
+      due_date: task?.dueDate ? task.dueDate.slice(0, 16) : "",
     },
   });
 
+  if (isLoading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          className="max-h-[90vh] w-[95vw] max-w-6xl! overflow-y-auto p-10"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>Loading task</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex items-center justify-center py-20">
+            <p className="text-muted-foreground">Loading task...</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (isError || !task) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          className="max-h-[90vh] w-[95vw] max-w-6xl! overflow-y-auto p-10"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>Task error</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex items-center justify-center py-20">
+            <p className="text-destructive">Failed to load task</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
   const onSubmit = (values: TaskFormValues) => {
     updateTask.mutate(
       {
@@ -207,21 +249,21 @@ export function TaskDetailDialog({ task, open, onOpenChange }: Props) {
                     className="h-12 px-8 text-base"
                     disabled={deleteTask.isPending}
                   >
-                    {deleteTask.isPending ? "削除中..." : "Delete"}
+                    {deleteTask.isPending ? "Deleting..." : "Delete"}
                   </Button>
                 </AlertDialogTrigger>
 
-                <AlertDialogContent className="max-w-lg p-8">
+                <AlertDialogContentPrimitive className="max-w-lg p-8">
                   <AlertDialogHeader className="space-y-4">
                     <AlertDialogTitle className="text-2xl font-bold">
-                      タスクを削除しますか？
+                      Delete task?
                     </AlertDialogTitle>
 
                     <AlertDialogDescription className="text-base leading-relaxed">
-                      「{task.title}」を削除します。
+                      “{task.title}” will be deleted.
                       <br />
                       <br />
-                      この操作は取り消せません。
+                      This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
 
@@ -233,17 +275,15 @@ export function TaskDetailDialog({ task, open, onOpenChange }: Props) {
                     <AlertDialogAction
                       className="h-11 text-base"
                       onClick={() => {
-                        deleteTask.mutate(task.id, {
-                          onSuccess: () => {
-                            onOpenChange(false);
-                          },
-                        });
+                        onOpenChange(false);
+
+                        deleteTask.mutate(task.id);
                       }}
                     >
                       Delete
                     </AlertDialogAction>
                   </AlertDialogFooter>
-                </AlertDialogContent>
+                </AlertDialogContentPrimitive>
               </AlertDialog>
 
               <Button
