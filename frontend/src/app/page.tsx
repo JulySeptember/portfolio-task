@@ -1,3 +1,107 @@
 export default function HomePage() {
-  return <div>Home</div>;
+  return (
+    <main className="min-h-screen bg-background text-foreground">
+      {/* Header */}
+      <header className="border-border/80 border-b backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary h-8 w-8 rounded-lg" />
+
+            <span className="text-lg font-semibold tracking-tight">
+              Task App
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <a
+              href="/login"
+              className="hover:bg-accent rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+            >
+              Login
+            </a>
+
+            <a
+              href="/tasks"
+              className="bg-primary text-primary-foreground hover:opacity-90 rounded-lg px-4 py-2 text-sm font-medium transition-opacity"
+            >
+              Open App
+            </a>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="mx-auto flex max-w-7xl flex-col items-center px-6 py-28 text-center">
+        <div className="border-border bg-card/70 mb-8 rounded-full border px-4 py-1 text-sm backdrop-blur">
+          Serverless Task Management App
+        </div>
+
+        <h1 className="max-w-4xl text-5xl font-bold tracking-tight md:text-7xl">
+          Organize your tasks with a clean GitHub-style workflow.
+        </h1>
+
+        <p className="text-muted-foreground mt-8 max-w-2xl text-lg leading-relaxed">
+          Built with Next.js, TypeScript, React Query, Tailwind CSS, AWS, and
+          modern serverless architecture.
+        </p>
+
+        <div className="mt-12 flex flex-wrap items-center justify-center gap-4">
+          <a
+            href="/tasks"
+            className="bg-primary text-primary-foreground hover:opacity-90 rounded-xl px-6 py-3 text-sm font-semibold transition-opacity"
+          >
+            Go to Tasks
+          </a>
+
+          <a
+            href="/login"
+            className="border-border bg-card hover:bg-accent rounded-xl border px-6 py-3 text-sm font-semibold transition-colors"
+          >
+            Login
+          </a>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="mx-auto grid max-w-7xl gap-6 px-6 pb-24 md:grid-cols-3">
+        <div className="bg-card border-border rounded-2xl border p-6 shadow-sm">
+          <div className="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl text-xl">
+            ✓
+          </div>
+
+          <h3 className="text-xl font-semibold">Task Management</h3>
+
+          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+            Create, update, filter, and organize tasks with smooth UX and
+            optimistic updates.
+          </p>
+        </div>
+
+        <div className="bg-card border-border rounded-2xl border p-6 shadow-sm">
+          <div className="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl text-xl">
+            ⚡
+          </div>
+
+          <h3 className="text-xl font-semibold">Serverless Backend</h3>
+
+          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+            Powered by AWS Lambda, API Gateway, Cognito, and Terraform.
+          </p>
+        </div>
+
+        <div className="bg-card border-border rounded-2xl border p-6 shadow-sm">
+          <div className="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl text-xl">
+            🔒
+          </div>
+
+          <h3 className="text-xl font-semibold">Secure Authentication</h3>
+
+          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+            Authentication handled through Amazon Cognito Hosted UI and JWT
+            authorization.
+          </p>
+        </div>
+      </section>
+    </main>
+  );
 }

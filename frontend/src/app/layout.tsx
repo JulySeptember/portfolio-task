@@ -18,7 +18,7 @@ type Props = {
 export default function RootLayout({ children }: Props) {
   return (
     <html lang="ja">
-      <body>
+      <body className="bg-background text-foreground">
         <QueryProvider>
           <AuthProvider>
             {children}
