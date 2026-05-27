@@ -1,43 +1,45 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { useRouter, useSearchParams } from "next/navigation";
 
-type Props = {
-  status: "TODO" | "DOING" | "DONE" | undefined;
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-  onChange: (status: "TODO" | "DOING" | "DONE" | undefined) => void;
-};
+export function TasksFilter() {
+  const router = useRouter();
 
-export function TasksFilter({ status, onChange }: Props) {
+  const searchParams = useSearchParams();
+
+  const status = searchParams.get("status") ?? "ALL";
+
+  function updateStatus(value: string) {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (value === "ALL") {
+      params.delete("status");
+    } else {
+      params.set("status", value);
+    }
+
+    params.set("offset", "0");
+
+    router.push(`/tasks?${params.toString()}`);
+  }
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button
-        variant={!status ? "default" : "outline"}
-        onClick={() => onChange(undefined)}
-      >
-        ALL
-      </Button>
+    <ToggleGroup
+      type="single"
+      value={status}
+      onValueChange={(value) => {
+        if (value) updateStatus(value);
+      }}
+    >
+      <ToggleGroupItem value="ALL">ALL</ToggleGroupItem>
 
-      <Button
-        variant={status === "TODO" ? "default" : "outline"}
-        onClick={() => onChange("TODO")}
-      >
-        TODO
-      </Button>
+      <ToggleGroupItem value="TODO">TODO</ToggleGroupItem>
 
-      <Button
-        variant={status === "DOING" ? "default" : "outline"}
-        onClick={() => onChange("DOING")}
-      >
-        DOING
-      </Button>
+      <ToggleGroupItem value="DOING">DOING</ToggleGroupItem>
 
-      <Button
-        variant={status === "DONE" ? "default" : "outline"}
-        onClick={() => onChange("DONE")}
-      >
-        DONE
-      </Button>
-    </div>
+      <ToggleGroupItem value="DONE">DONE</ToggleGroupItem>
+    </ToggleGroup>
   );
 }

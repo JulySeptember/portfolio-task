@@ -2,13 +2,7 @@
 
 import { toast } from "sonner";
 
-import { buildLogoutURL } from "../utils/hosted-ui";
-
-import { clearTokens } from "../utils/token-storage";
-
 export function logout() {
-  clearTokens();
-
   toast.success("Logged out");
 
   const isMockAuth = process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === "true";
@@ -20,6 +14,6 @@ export function logout() {
   }
 
   setTimeout(() => {
-    window.location.href = buildLogoutURL();
+    window.location.href = "/api/auth/logout";
   }, 300);
 }

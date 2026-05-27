@@ -1,13 +1,5 @@
 // src/lib/api/client.ts
 
-import {
-  clearTokens,
-  getAccessToken,
-} from "@/features/auth/utils/token-storage";
-
-import { toast } from "sonner";
-import { refreshToken } from "@/features/auth/api/refresh-token";
-
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -22,24 +14,19 @@ export class ApiError extends Error {
 
 type ApiClientOptions = RequestInit;
 
-let refreshPromise: Promise<string> | null = null;
-
 async function request<T>(
   input: RequestInfo | URL,
   options: ApiClientOptions = {},
-  accessToken?: string,
 ): Promise<T> {
   const { headers, ...init } = options;
 
   const response = await fetch(input, {
     ...init,
 
+    credentials: "include",
+
     headers: {
       "Content-Type": "application/json",
-
-      ...(accessToken && {
-        Authorization: `Bearer ${accessToken}`,
-      }),
 
       ...headers,
     },
@@ -78,38 +65,12 @@ async function request<T>(
 export async function apiClient<T>(
   input: RequestInfo | URL,
   options: ApiClientOptions = {},
-  isRetry = false,
 ): Promise<T> {
-  const accessToken = getAccessToken();
-
   try {
-    return await request<T>(input, options, accessToken ?? undefined);
+    return await request<T>(input, options);
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401 && !isRetry) {
-      try {
-        if (!refreshPromise) {
-          refreshPromise = refreshToken();
-        }
-
-        const newAccessToken = await refreshPromise;
-
-        refreshPromise = null;
-
-        return await apiClient<T>(input, options, true);
-      } catch {
-        refreshPromise = null;
-
-        clearTokens();
-
-        toast.error("Session expired. Please login again.");
-
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 500);
-
-        throw error;
-        throw error;
-      }
+    if (error instanceof ApiError && error.status === 401) {
+      window.location.href = "/login";
     }
 
     throw error;

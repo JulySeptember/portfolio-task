@@ -55,7 +55,7 @@ export const taskSchema = z
 // task list
 // =========================
 
-export const taskListSchema = z.object({
+export const taskListResponseSchema = z.object({
   count: z.number().int().nonnegative(),
 
   items: z.array(taskSchema),
@@ -113,7 +113,7 @@ export type TaskStatus = z.infer<typeof taskStatusSchema>;
 
 export type Task = z.infer<typeof taskSchema>;
 
-export type TaskListResponse = z.infer<typeof taskListSchema>;
+export type TaskListResponse = z.infer<typeof taskListResponseSchema>;
 
 export type TaskFormValues = z.infer<typeof taskFormSchema>;
 

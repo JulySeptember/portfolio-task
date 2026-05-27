@@ -1,11 +1,17 @@
 import { apiClient } from "@/lib/api/client";
 
-import { currentUserSchema, type CurrentUser } from "../types/auth-user";
+export type CurrentUser = {
+  id?: string;
 
-export async function getCurrentUser(): Promise<CurrentUser> {
-  const data = await apiClient<unknown>(
-    `${process.env.NEXT_PUBLIC_API_URL}/me`,
-  );
+  name?: string;
 
-  return currentUserSchema.parse(data);
+  email?: string;
+};
+
+export async function getCurrentUser(): Promise<CurrentUser | null> {
+  try {
+    return await apiClient<CurrentUser>("/api/auth/me");
+  } catch {
+    return null;
+  }
 }

@@ -1,40 +1,55 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { useRouter, useSearchParams } from "next/navigation";
 
-type Props = {
-  sort: "created_at" | "due_date";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-  order: "ASC" | "DESC";
+export function TasksSort() {
+  const router = useRouter();
 
-  onSortChange: (sort: "created_at" | "due_date") => void;
+  const searchParams = useSearchParams();
 
-  onOrderChange: (order: "ASC" | "DESC") => void;
-};
+  const sort = searchParams.get("sort") ?? "created_at";
 
-export function TasksSort({ sort, order, onSortChange, onOrderChange }: Props) {
+  const order = searchParams.get("order") ?? "DESC";
+
+  function update(key: string, value: string) {
+    const params = new URLSearchParams(searchParams.toString());
+
+    params.set(key, value);
+
+    router.push(`/tasks?${params.toString()}`);
+  }
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button
-        variant={sort === "created_at" ? "default" : "outline"}
-        onClick={() => onSortChange("created_at")}
-      >
-        Created
-      </Button>
+    <div className="flex items-center gap-3">
+      <Select value={sort} onValueChange={(value) => update("sort", value)}>
+        <SelectTrigger className="w-44">
+          <SelectValue />
+        </SelectTrigger>
 
-      <Button
-        variant={sort === "due_date" ? "default" : "outline"}
-        onClick={() => onSortChange("due_date")}
-      >
-        Due Date
-      </Button>
+        <SelectContent>
+          <SelectItem value="created_at">Created At</SelectItem>
+          <SelectItem value="due_date">Due Date</SelectItem>
+        </SelectContent>
+      </Select>
 
-      <Button
-        variant="outline"
-        onClick={() => onOrderChange(order === "ASC" ? "DESC" : "ASC")}
-      >
-        {order}
-      </Button>
+      <Select value={order} onValueChange={(value) => update("order", value)}>
+        <SelectTrigger className="w-32">
+          <SelectValue />
+        </SelectTrigger>
+
+        <SelectContent>
+          <SelectItem value="DESC">DESC</SelectItem>
+          <SelectItem value="ASC">ASC</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   );
 }

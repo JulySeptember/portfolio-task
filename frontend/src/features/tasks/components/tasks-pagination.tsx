@@ -1,48 +1,57 @@
 "use client";
 
+import { useRouter, useSearchParams } from "next/navigation";
+
 import { Button } from "@/components/ui/button";
 
 type Props = {
-  offset: number;
+  total: number;
 
   limit: number;
 
-  total: number;
-
-  currentCount: number;
-
-  hasPrevPage: boolean;
-
-  hasNextPage: boolean;
-
-  onPrevious: () => void;
-
-  onNext: () => void;
+  offset: number;
 };
 
-export function TasksPagination({
-  offset,
-  limit,
-  total,
-  currentCount,
-  hasPrevPage,
-  hasNextPage,
-  onPrevious,
-  onNext,
-}: Props) {
+export function TasksPagination({ total, limit, offset }: Props) {
+  const router = useRouter();
+
+  const searchParams = useSearchParams();
+
+  const hasPrevPage = offset > 0;
+
+  const hasNextPage = offset + limit < total;
+
+  function move(nextOffset: number) {
+    const params = new URLSearchParams(searchParams.toString());
+
+    params.set("offset", String(nextOffset));
+
+    router.push(`/tasks?${params.toString()}`);
+  }
+
   return (
     <div className="flex items-center justify-between">
-      <Button variant="outline" disabled={!hasPrevPage} onClick={onPrevious}>
-        Previous
-      </Button>
-
       <p className="text-muted-foreground text-sm">
-        {offset + 1} - {offset + currentCount} / {total}
+        {offset + 1}-{Math.min(offset + limit, total)} / {total}
       </p>
 
-      <Button variant="outline" disabled={!hasNextPage} onClick={onNext}>
-        Next
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          disabled={!hasPrevPage}
+          onClick={() => move(Math.max(offset - limit, 0))}
+        >
+          Previous
+        </Button>
+
+        <Button
+          variant="outline"
+          disabled={!hasNextPage}
+          onClick={() => move(offset + limit)}
+        >
+          Next
+        </Button>
+      </div>
     </div>
   );
 }

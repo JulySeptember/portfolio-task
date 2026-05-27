@@ -1,4 +1,4 @@
-import { getRefreshToken, saveTokens } from "../utils/token-storage";
+import { getRefreshToken, saveTokens } from "../lib/token-storage";
 
 import { refreshTokenResponseSchema } from "../types/auth";
 

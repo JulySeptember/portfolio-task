@@ -1,154 +1,110 @@
-"use client";
+// src/app/(protected)/tasks/page.tsx
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
-import { AppHeader } from "@/components/layout/app-header";
+import { getTasks } from "@/features/tasks/server/get-tasks";
 
-import { PageContainer } from "@/components/layout/page-container";
+import { TasksTable } from "@/features/tasks/components/tasks-table";
+
+import { TaskDetailDialog } from "@/features/tasks/components/task-detail-dialog";
 
 import { CreateTaskDialog } from "@/features/tasks/components/create-task-dialog";
 
 import { TasksFilter } from "@/features/tasks/components/tasks-filter";
 
-import { TasksPagination } from "@/features/tasks/components/tasks-pagination";
-
 import { TasksSort } from "@/features/tasks/components/tasks-sort";
 
-import { TasksTable } from "@/features/tasks/components/tasks-table";
+import { getCurrentUser } from "@/features/auth/api/get-current-user";
 
-import { useTasks } from "@/features/tasks/hooks/use-tasks";
+type Props = {
+  searchParams: Promise<{
+    limit?: string;
+    offset?: string;
+    status?: "TODO" | "DOING" | "DONE";
+    sort?: "created_at" | "due_date";
+    order?: "ASC" | "DESC";
+    taskId?: string;
+    create?: string;
+  }>;
+};
 
-export default function TasksPage() {
-  const searchParams = useSearchParams();
+export default async function TasksPage({ searchParams }: Props) {
+  const params = await searchParams;
 
-  const router = useRouter();
+  const limit = Number(params.limit ?? 10);
 
-  const limit = 10;
+  const offset = Number(params.offset ?? 0);
 
-  const [status, setStatus] = useState<"TODO" | "DOING" | "DONE" | undefined>(
-    (searchParams.get("status") as "TODO" | "DOING" | "DONE" | null) ??
-      undefined,
-  );
+  const [response, currentUser] = await Promise.all([
+    getTasks({
+      limit,
+      offset,
+      status: params.status,
+      sort: params.sort,
+      order: params.order,
+    }),
 
-  const [sort, setSort] = useState<"created_at" | "due_date">(
-    (searchParams.get("sort") as "created_at" | "due_date" | null) ??
-      "created_at",
-  );
-
-  const [order, setOrder] = useState<"ASC" | "DESC">(
-    (searchParams.get("order") as "ASC" | "DESC" | null) ?? "DESC",
-  );
-
-  const [offset, setOffset] = useState(() => {
-    const page = Number(searchParams.get("page") ?? "1");
-
-    return (page - 1) * limit;
-  });
-
-  useEffect(() => {
-    const params = new URLSearchParams();
-
-    if (status) {
-      params.set("status", status);
-    }
-
-    params.set("sort", sort);
-
-    params.set("order", order);
-
-    params.set("page", String(offset / limit + 1));
-
-    router.replace(`/tasks?${params.toString()}`);
-  }, [status, sort, order, offset, limit, router]);
-
-  const { data, isPending, isError, error } = useTasks({
-    status,
-    sort,
-    order,
-    limit,
-    offset,
-  });
-
-  const hasPrevPage = offset > 0;
-
-  const hasNextPage = !!data && data.offset + data.items.length < data.count;
+    getCurrentUser(),
+  ]);
 
   return (
-    <>
-      <AppHeader />
+    <div className="mx-auto w-full max-w-7xl space-y-8 p-8">
+      {/* ========================= */}
+      {/* top */}
+      {/* ========================= */}
 
-      <PageContainer>
-        <div className="space-y-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Tasks</h1>
+      <div className="flex items-start justify-between gap-6">
+        <div className="space-y-3">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight">
+              Task Management
+            </h1>
 
-              {data && (
-                <p className="text-muted-foreground text-sm">
-                  Total: {data.count}
-                </p>
-              )}
-            </div>
-
-            <CreateTaskDialog />
+            <p className="text-muted-foreground mt-2 text-base">
+              Manage your tasks efficiently
+            </p>
           </div>
-
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <TasksFilter
-              status={status}
-              onChange={(value) => {
-                setStatus(value);
-
-                setOffset(0);
-              }}
-            />
-
-            <TasksSort
-              sort={sort}
-              order={order}
-              onSortChange={(value) => {
-                setSort(value);
-
-                setOffset(0);
-              }}
-              onOrderChange={(value) => {
-                setOrder(value);
-
-                setOffset(0);
-              }}
-            />
-          </div>
-
-          {isPending && <div>Loading...</div>}
-
-          {isError && (
-            <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500">
-              {error.message}
-            </div>
-          )}
-
-          {data && (
-            <>
-              <TasksTable tasks={data.items} />
-
-              <TasksPagination
-                offset={offset}
-                limit={limit}
-                total={data.count}
-                currentCount={data.items.length}
-                hasPrevPage={hasPrevPage}
-                hasNextPage={hasNextPage}
-                onPrevious={() =>
-                  setOffset((prev) => Math.max(prev - limit, 0))
-                }
-                onNext={() => setOffset((prev) => prev + limit)}
-              />
-            </>
-          )}
         </div>
-      </PageContainer>
-    </>
+      </div>
+
+      {/* ========================= */}
+      {/* controls */}
+      {/* ========================= */}
+
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <TasksFilter />
+
+          <TasksSort />
+        </div>
+
+        <Button asChild size="lg" className="h-12 px-8 text-base font-medium">
+          <Link href="/tasks?create=true">Create Task</Link>
+        </Button>
+      </div>
+
+      {/* ========================= */}
+      {/* table */}
+      {/* ========================= */}
+
+      <TasksTable
+        initialData={response}
+        limit={limit}
+        offset={offset}
+        status={params.status}
+        sort={params.sort}
+        order={params.order}
+      />
+
+      {/* ========================= */}
+      {/* dialogs */}
+      {/* ========================= */}
+
+      <CreateTaskDialog />
+
+      {params.taskId && <TaskDetailDialog taskId={Number(params.taskId)} />}
+    </div>
   );
 }

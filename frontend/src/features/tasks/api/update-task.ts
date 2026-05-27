@@ -6,30 +6,16 @@ import {
   type TaskRequest,
 } from "../schemas/task-schema";
 
-type UpdateTaskInput = {
+type Params = {
   id: number;
 } & TaskRequest;
 
-export async function updateTask({
-  id,
-  title,
-  description,
-  status,
-  due_date,
-}: UpdateTaskInput): Promise<Task> {
-  const data = await apiClient<unknown>(
-    `${process.env.NEXT_PUBLIC_API_URL}/tasks/${id}`,
-    {
-      method: "PUT",
+export async function updateTask({ id, ...body }: Params): Promise<Task> {
+  const data = await apiClient<unknown>(`/api/tasks/${id}`, {
+    method: "PUT",
 
-      body: JSON.stringify({
-        title,
-        description,
-        status,
-        due_date,
-      }),
-    },
-  );
+    body: JSON.stringify(body),
+  });
 
   return taskSchema.parse(data);
 }

@@ -4,8 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 
 import { getCurrentUser } from "../api/get-current-user";
 
-import { getAccessToken } from "../utils/token-storage";
-
 export function useCurrentUser() {
   const isMockAuth = process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === "true";
 
@@ -26,6 +24,6 @@ export function useCurrentUser() {
       return getCurrentUser();
     },
 
-    enabled: !!getAccessToken(),
+    retry: false,
   });
 }

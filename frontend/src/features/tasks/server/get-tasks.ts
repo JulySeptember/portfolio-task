@@ -1,11 +1,15 @@
-import { apiClient } from "@/lib/api/client";
+// src/features/tasks/server/get-tasks.ts
+
+import { cookies } from "next/headers";
 
 import {
   taskListResponseSchema,
   type TaskListResponse,
 } from "../schemas/task-schema";
 
-export type ListTasksParams = {
+const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+
+type Params = {
   limit?: number;
 
   offset?: number;
@@ -17,9 +21,15 @@ export type ListTasksParams = {
   order?: "ASC" | "DESC";
 };
 
-export async function listTasks(
-  params?: ListTasksParams,
-): Promise<TaskListResponse> {
+export async function getTasks(params?: Params): Promise<TaskListResponse> {
+  const cookieStore = await cookies();
+
+  const accessToken = cookieStore.get("access_token")?.value;
+
+  if (!accessToken) {
+    throw new Error("Unauthorized");
+  }
+
   const searchParams = new URLSearchParams();
 
   if (params?.limit) {
@@ -44,9 +54,21 @@ export async function listTasks(
 
   const query = searchParams.toString();
 
-  const data = await apiClient<unknown>(
-    `/api/tasks${query ? `?${query}` : ""}`,
-  );
+  const response = await fetch(`${API_URL}/tasks${query ? `?${query}` : ""}`, {
+    method: "GET",
+
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch tasks");
+  }
+
+  const data = await response.json();
 
   return taskListResponseSchema.parse(data);
 }

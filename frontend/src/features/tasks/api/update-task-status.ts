@@ -1,34 +1,21 @@
 import { apiClient } from "@/lib/api/client";
 
-import {
-  taskSchema,
-  taskStatusSchema,
-  type Task,
-  type TaskStatus,
-} from "../schemas/task-schema";
+import { taskSchema, type Task } from "../schemas/task-schema";
 
-type UpdateTaskStatusInput = {
+type Params = {
   id: number;
 
-  status: TaskStatus;
+  status: "TODO" | "DOING" | "DONE";
 };
 
-export async function updateTaskStatus({
-  id,
-  status,
-}: UpdateTaskStatusInput): Promise<Task> {
-  const body = {
-    status: taskStatusSchema.parse(status),
-  };
+export async function updateTaskStatus({ id, status }: Params): Promise<Task> {
+  const data = await apiClient<unknown>(`/api/tasks/${id}/status`, {
+    method: "PATCH",
 
-  const data = await apiClient<unknown>(
-    `${process.env.NEXT_PUBLIC_API_URL}/tasks/${id}/status`,
-    {
-      method: "PATCH",
-
-      body: JSON.stringify(body),
-    },
-  );
+    body: JSON.stringify({
+      status,
+    }),
+  });
 
   return taskSchema.parse(data);
 }
