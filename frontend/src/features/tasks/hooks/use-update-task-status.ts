@@ -34,17 +34,28 @@ export function useUpdateTaskStatus() {
           return;
         }
 
+        const params = queryKey[2] as
+          | {
+              status?: "TODO" | "DOING" | "DONE";
+            }
+          | undefined;
+
+        let items = data.items.map((task) =>
+          task.id === id
+            ? {
+                ...task,
+                status,
+              }
+            : task,
+        );
+
+        if (params?.status) {
+          items = items.filter((task) => task.status === params.status);
+        }
+
         queryClient.setQueryData<TaskListResponse>(queryKey, {
           ...data,
-
-          items: data.items.map((task) =>
-            task.id === id
-              ? {
-                  ...task,
-                  status,
-                }
-              : task,
-          ),
+          items,
         });
       });
 

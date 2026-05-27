@@ -8,7 +8,6 @@ export const taskStatusSchema = z.enum(["TODO", "DOING", "DONE"]);
 
 // =========================
 // api task schema
-// backend response shape
 // =========================
 
 export const taskSchema = z
@@ -27,11 +26,11 @@ export const taskSchema = z
 
     status: taskStatusSchema,
 
-    due_date: z.iso.datetime().nullable(),
+    due_date: z.string().datetime().nullable(),
 
-    created_at: z.iso.datetime(),
+    created_at: z.string().datetime(),
 
-    updated_at: z.iso.datetime(),
+    updated_at: z.string().datetime(),
   })
   .transform((data) => ({
     id: data.id,
@@ -67,8 +66,6 @@ export const taskListResponseSchema = z.object({
 
 // =========================
 // form schema
-// frontend form shape
-// datetime-local compatible
 // =========================
 
 export const taskFormSchema = z.object({
@@ -82,12 +79,11 @@ export const taskFormSchema = z.object({
 
   status: taskStatusSchema,
 
-  due_date: z.string().nullable(),
+  due_date: z.string(),
 });
 
 // =========================
-// create/update request
-// backend request shape
+// request schema
 // =========================
 
 export const taskRequestSchema = z.object({
@@ -101,12 +97,11 @@ export const taskRequestSchema = z.object({
 
   status: taskStatusSchema,
 
-  due_date: z.iso.datetime().nullable(),
+  due_date: z.string().datetime().nullable(),
 });
 
 // =========================
-// frontend types
-// camelCase
+// types
 // =========================
 
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
@@ -115,6 +110,10 @@ export type Task = z.infer<typeof taskSchema>;
 
 export type TaskListResponse = z.infer<typeof taskListResponseSchema>;
 
-export type TaskFormValues = z.infer<typeof taskFormSchema>;
+// input (form values before transform)
+export type TaskFormInput = z.input<typeof taskFormSchema>;
+
+// output (after transform)
+export type TaskFormValues = z.output<typeof taskFormSchema>;
 
 export type TaskRequest = z.infer<typeof taskRequestSchema>;

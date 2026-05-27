@@ -13,7 +13,5 @@ export function logout() {
     return;
   }
 
-  setTimeout(() => {
-    window.location.href = "/api/auth/logout";
-  }, 300);
+  window.location.href = "/api/auth/logout";
 }

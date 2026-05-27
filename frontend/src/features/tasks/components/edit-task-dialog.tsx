@@ -1,4 +1,4 @@
-// src/features/tasks/components/create-task-dialog.tsx
+// src/features/tasks/components/edit-task-dialog.tsx
 
 "use client";
 
@@ -11,30 +11,40 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+import { useTask } from "../hooks/use-task";
+
 import { TaskEditor } from "./task-editor";
 
-export function CreateTaskDialog() {
+type Props = {
+  taskId: number;
+};
+
+export function EditTaskDialog({ taskId }: Props) {
   const router = useRouter();
 
   const searchParams = useSearchParams();
 
-  const open = searchParams.get("create") === "true";
+  const { data: task, isLoading } = useTask(taskId);
 
   function closeDialog() {
     const params = new URLSearchParams(searchParams.toString());
 
-    params.delete("create");
+    params.delete("taskId");
 
     router.replace(`/tasks?${params.toString()}`, {
       scroll: false,
     });
   }
 
+  if (isLoading || !task) {
+    return null;
+  }
+
   return (
     <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) {
+      open
+      onOpenChange={(open) => {
+        if (!open) {
           closeDialog();
         }
       }}
@@ -42,17 +52,25 @@ export function CreateTaskDialog() {
       <DialogContent
         className="
           w-[95vw]
-          max-w-4xl
+          max-w-6xl
           overflow-y-auto
           rounded-2xl
           p-6
           sm:p-8
         "
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader className="sr-only">
-          <DialogTitle>Create Task</DialogTitle>
+          <DialogTitle>Edit Task</DialogTitle>
         </DialogHeader>
-        <TaskEditor mode="create" onSuccess={closeDialog} />
+
+        <TaskEditor
+          mode="edit"
+          task={task}
+          onSuccess={closeDialog}
+          showOpenPageButton
+        />
       </DialogContent>
     </Dialog>
   );

@@ -28,25 +28,27 @@ export function TasksSort() {
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       <Select value={sort} onValueChange={(value) => update("sort", value)}>
-        <SelectTrigger className="w-44">
+        <SelectTrigger className="h-11 min-w-0 flex-1 sm:w-44 sm:flex-none">
           <SelectValue />
         </SelectTrigger>
 
         <SelectContent>
           <SelectItem value="created_at">Created At</SelectItem>
+
           <SelectItem value="due_date">Due Date</SelectItem>
         </SelectContent>
       </Select>
 
       <Select value={order} onValueChange={(value) => update("order", value)}>
-        <SelectTrigger className="w-32">
+        <SelectTrigger className="h-11 w-28 shrink-0 sm:w-32">
           <SelectValue />
         </SelectTrigger>
 
         <SelectContent>
           <SelectItem value="DESC">DESC</SelectItem>
+
           <SelectItem value="ASC">ASC</SelectItem>
         </SelectContent>
       </Select>

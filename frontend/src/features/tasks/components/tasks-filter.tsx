@@ -28,18 +28,23 @@ export function TasksFilter() {
   return (
     <ToggleGroup
       type="single"
-      value={status}
+      value={status === "ALL" ? "" : status}
       onValueChange={(value) => {
-        if (value) updateStatus(value);
+        updateStatus(value || "ALL");
       }}
+      className="flex items-center gap-2"
     >
-      <ToggleGroupItem value="ALL">ALL</ToggleGroupItem>
+      <ToggleGroupItem value="TODO" className="h-9 px-3 text-sm">
+        TODO
+      </ToggleGroupItem>
 
-      <ToggleGroupItem value="TODO">TODO</ToggleGroupItem>
+      <ToggleGroupItem value="DOING" className="h-9 px-3 text-sm">
+        DOING
+      </ToggleGroupItem>
 
-      <ToggleGroupItem value="DOING">DOING</ToggleGroupItem>
-
-      <ToggleGroupItem value="DONE">DONE</ToggleGroupItem>
+      <ToggleGroupItem value="DONE" className="h-9 px-3 text-sm">
+        DONE
+      </ToggleGroupItem>
     </ToggleGroup>
   );
 }

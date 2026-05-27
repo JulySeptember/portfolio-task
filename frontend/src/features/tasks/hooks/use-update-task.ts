@@ -34,20 +34,29 @@ export function useUpdateTask() {
           return;
         }
 
+        const params = queryKey[2] as
+          | {
+              status?: "TODO" | "DOING" | "DONE";
+            }
+          | undefined;
+
+        let items = data.items.map((task) =>
+          task.id === updatedTask.id
+            ? {
+                ...task,
+                ...updatedTask,
+                dueDate: updatedTask.due_date,
+              }
+            : task,
+        );
+
+        if (params?.status) {
+          items = items.filter((task) => task.status === params.status);
+        }
+
         queryClient.setQueryData<TaskListResponse>(queryKey, {
           ...data,
-
-          items: data.items.map((task) =>
-            task.id === updatedTask.id
-              ? {
-                  ...task,
-
-                  ...updatedTask,
-
-                  dueDate: updatedTask.due_date,
-                }
-              : task,
-          ),
+          items,
         });
       });
 

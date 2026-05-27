@@ -2,6 +2,8 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { Plus } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 
 export function TasksToolbar() {
@@ -19,7 +21,10 @@ export function TasksToolbar() {
 
   return (
     <div className="flex justify-end">
-      <Button onClick={openCreate}>Create Task</Button>
+      <Button onClick={openCreate} className="h-11 rounded-xl px-5">
+        <Plus className="mr-2 h-4 w-4" />
+        Create Task
+      </Button>
     </div>
   );
 }

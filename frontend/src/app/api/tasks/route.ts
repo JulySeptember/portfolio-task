@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 
 import { proxyApi } from "@/lib/server/api-proxy";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   const search = request.nextUrl.search;
 
@@ -12,7 +14,13 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  let body: unknown = null;
+
+  try {
+    body = await request.json();
+  } catch {
+    body = null;
+  }
 
   return proxyApi({
     path: "/tasks",

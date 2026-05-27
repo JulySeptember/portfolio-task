@@ -1,16 +1,6 @@
 // src/lib/api/client.ts
 
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public body?: unknown,
-    message?: string,
-  ) {
-    super(message ?? "API Error");
-
-    this.name = "ApiError";
-  }
-}
+import { ApiError } from "./error";
 
 type ApiClientOptions = RequestInit;
 
@@ -69,7 +59,11 @@ export async function apiClient<T>(
   try {
     return await request<T>(input, options);
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401) {
+    if (
+      typeof window !== "undefined" &&
+      error instanceof ApiError &&
+      error.status === 401
+    ) {
       window.location.href = "/login";
     }
 
