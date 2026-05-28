@@ -47,11 +47,10 @@ export function TaskForm({
   autoResizeDescription = false,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const form = useForm<TaskFormInput>({
+  const form = useForm<TaskFormInput, unknown, TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
     defaultValues,
   });
-
   const dueDate = form.watch("due_date");
   const description = form.watch("description");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);

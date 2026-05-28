@@ -1,11 +1,8 @@
-// src/features/tasks/components/task-editor.tsx
-
 "use client";
 
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-
 import { Button } from "@/components/ui/button";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,15 +16,9 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { useCreateTask } from "../hooks/use-create-task";
-
 import { useDeleteTask } from "../hooks/use-delete-task";
-
 import { useUpdateTask } from "../hooks/use-update-task";
-
-import { useRouter } from "next/navigation";
-
 import type { Task, TaskFormValues, TaskStatus } from "../schemas/task-schema";
-
 import { TaskForm } from "./task-form";
 
 type Props =
@@ -39,6 +30,8 @@ type Props =
       showOpenPageButton?: boolean;
 
       autoResizeDescription?: boolean;
+
+      onOpenFullPage?: () => void;
     }
   | {
       mode: "edit";
@@ -50,21 +43,19 @@ type Props =
       showOpenPageButton?: boolean;
 
       autoResizeDescription?: boolean;
+
+      onOpenFullPage?: () => void;
     };
 
 export function TaskEditor(props: Props) {
   const createTask = useCreateTask();
-
   const updateTask = useUpdateTask();
-
   const deleteTask = useDeleteTask();
-
   const router = useRouter();
 
   async function handleSubmit(values: TaskFormValues) {
     const payload = {
       ...values,
-
       due_date:
         values.due_date && values.due_date !== ""
           ? new Date(values.due_date).toISOString()
@@ -77,7 +68,6 @@ export function TaskEditor(props: Props) {
           props.onSuccess?.();
         },
       });
-
       return;
     }
 
@@ -92,6 +82,14 @@ export function TaskEditor(props: Props) {
         },
       },
     );
+  }
+
+  // ここでフルページ用 hash URL を生成
+  function openFullPage() {
+    if (props.mode === "edit" && props.task?.id) {
+      const hashedId = encodeURIComponent(btoa(String(props.task.id)));
+      router.push(`/tasks/${hashedId}`);
+    }
   }
 
   if (props.mode === "create") {
@@ -132,8 +130,13 @@ export function TaskEditor(props: Props) {
       onSubmit={handleSubmit}
       secondaryAction={
         props.showOpenPageButton ? (
-          <Button asChild variant="outline" className="rounded-xl">
-            <Link href={`/tasks/${props.task.id}`}>Open Full Page</Link>
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-xl"
+            onClick={openFullPage}
+          >
+            Open Full Page
           </Button>
         ) : null
       }
@@ -148,7 +151,6 @@ export function TaskEditor(props: Props) {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete task?</AlertDialogTitle>
-
               <AlertDialogDescription>
                 This action cannot be undone.
               </AlertDialogDescription>
@@ -163,7 +165,6 @@ export function TaskEditor(props: Props) {
                   deleteTask.mutate(props.task.id, {
                     onSuccess: () => {
                       props.onSuccess?.();
-
                       if (!props.onSuccess) {
                         router.push("/tasks");
                       }

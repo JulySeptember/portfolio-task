@@ -1,5 +1,3 @@
-// src/features/tasks/components/edit-task-dialog.tsx
-
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
@@ -22,21 +20,23 @@ type Props = {
 
 export function EditTaskDialog({ taskId }: Props) {
   const router = useRouter();
-
   const searchParams = useSearchParams();
 
   const { data: task, isLoading } = useTask(taskId);
 
   function closeDialog() {
     const params = new URLSearchParams(searchParams.toString());
-
     params.delete("taskId");
-
     const query = params.toString();
-
     router.replace(query ? `/tasks?${query}` : "/tasks", {
       scroll: false,
     });
+  }
+
+  function openFullPage() {
+    if (!task?.id) return;
+    const hashedId = encodeURIComponent(btoa(String(task.id)));
+    router.push(`/tasks/${hashedId}`);
   }
 
   if (isLoading || !task) {
@@ -66,7 +66,6 @@ export function EditTaskDialog({ taskId }: Props) {
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Edit Task</DialogTitle>
-
           <DialogDescription>
             Edit task details and update task status.
           </DialogDescription>
@@ -77,6 +76,7 @@ export function EditTaskDialog({ taskId }: Props) {
           task={task}
           onSuccess={closeDialog}
           showOpenPageButton
+          onOpenFullPage={openFullPage} // 完全版追加
         />
       </DialogContent>
     </Dialog>

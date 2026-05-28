@@ -89,9 +89,12 @@ export function TasksTable({
   const tasks: Task[] = data?.items ?? [];
 
   function openTask(taskId: number) {
+    // URL表示用だけハッシュ化
+    const hashedId = encodeURIComponent(btoa(String(taskId)));
+
     const params = new URLSearchParams(searchParams.toString());
 
-    params.set("taskId", String(taskId));
+    params.set("taskId", hashedId);
 
     router.push(`/tasks?${params.toString()}`);
   }

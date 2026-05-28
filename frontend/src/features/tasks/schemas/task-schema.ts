@@ -1,3 +1,5 @@
+// src/features/tasks/schemas/task-schema.ts
+
 import { z } from "zod";
 
 // =========================
@@ -51,7 +53,7 @@ export const taskSchema = z
   }));
 
 // =========================
-// task list
+// task list response
 // =========================
 
 export const taskListResponseSchema = z.object({
@@ -68,20 +70,32 @@ export const taskListResponseSchema = z.object({
 // form schema
 // =========================
 
-export const taskFormSchema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(1, "Title is required")
-    .max(255, "Title is too long"),
+// form schema
 
-  description: z.string().max(5000, "Description is too long"),
+export const taskFormSchema = z
+  .object({
+    title: z
+      .string()
+      .trim()
+      .min(1, "Title is required")
+      .max(255, "Title is too long"),
 
-  status: taskStatusSchema,
+    description: z.string().max(5000, "Description is too long"),
 
-  due_date: z.string(),
-});
+    status: taskStatusSchema,
 
+    due_date: z.string().optional(),
+  })
+  .transform((data) => ({
+    title: data.title,
+
+    description: data.description,
+
+    status: data.status,
+
+    // null じゃなく undefined にする
+    due_date: data.due_date ? new Date(data.due_date).toISOString() : undefined,
+  }));
 // =========================
 // request schema
 // =========================
@@ -110,10 +124,8 @@ export type Task = z.infer<typeof taskSchema>;
 
 export type TaskListResponse = z.infer<typeof taskListResponseSchema>;
 
-// input (form values before transform)
 export type TaskFormInput = z.input<typeof taskFormSchema>;
 
-// output (after transform)
 export type TaskFormValues = z.output<typeof taskFormSchema>;
 
 export type TaskRequest = z.infer<typeof taskRequestSchema>;

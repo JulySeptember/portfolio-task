@@ -1,10 +1,6 @@
-// src/features/tasks/hooks/use-update-task-status.ts
-
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
-
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { toast } from "sonner";
 
@@ -14,11 +10,20 @@ import { taskQueryKeys } from "../queries/task-query-keys";
 
 import type { TaskListResponse } from "../schemas/task-schema";
 
+type UpdateTaskStatusInput = {
+  id: number;
+
+  status: "TODO" | "DOING" | "DONE";
+};
+
 export function useUpdateTaskStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: updateTaskStatus,
+    mutationFn: ({ id, status }: UpdateTaskStatusInput) =>
+      updateTaskStatus(id, {
+        status,
+      }),
 
     onMutate: async ({ id, status }) => {
       await queryClient.cancelQueries({
@@ -34,13 +39,7 @@ export function useUpdateTaskStatus() {
           return;
         }
 
-        const params = queryKey[2] as
-          | {
-              status?: "TODO" | "DOING" | "DONE";
-            }
-          | undefined;
-
-        let items = data.items.map((task) =>
+        const items = data.items.map((task) =>
           task.id === id
             ? {
                 ...task,
@@ -48,10 +47,6 @@ export function useUpdateTaskStatus() {
               }
             : task,
         );
-
-        if (params?.status) {
-          items = items.filter((task) => task.status === params.status);
-        }
 
         queryClient.setQueryData<TaskListResponse>(queryKey, {
           ...data,
@@ -69,11 +64,11 @@ export function useUpdateTaskStatus() {
         queryClient.setQueryData(queryKey, data);
       });
 
-      toast.error("Failed to update status");
+      toast.error("Failed to update task status");
     },
 
     onSuccess: () => {
-      toast.success("Status updated");
+      toast.success("Task status updated");
     },
 
     onSettled: () => {

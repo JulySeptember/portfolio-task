@@ -1,38 +1,87 @@
 // src/app/(protected)/tasks/[id]/page.tsx
 
+"use client";
+
+import { useEffect, useState } from "react";
+
 import Link from "next/link";
 
-import { notFound } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 
 import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-import { getTask } from "@/features/tasks/server/get-task";
+import { apiClient } from "@/lib/api/client";
+
+import { taskSchema, type Task } from "@/features/tasks/schemas/task-schema";
 
 import { TaskEditor } from "@/features/tasks/components/task-editor";
 
-type Props = {
-  params: Promise<{
-    id: string;
-  }>;
-};
+export default function TaskDetailPage() {
+  const params = useParams();
 
-export default async function TaskDetailPage({ params }: Props) {
-  const { id } = await params;
+  const router = useRouter();
 
-  const taskId = Number(id);
+  const [task, setTask] = useState<Task | null>(null);
 
-  if (!Number.isInteger(taskId) || taskId <= 0) {
-    notFound();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const encodedId = params.id;
+
+    if (!encodedId || typeof encodedId !== "string") {
+      router.replace("/tasks");
+
+      return;
+    }
+
+    let taskId: number;
+
+    try {
+      // URL表示用hash decode
+      taskId = Number(atob(decodeURIComponent(encodedId)));
+    } catch {
+      router.replace("/tasks");
+
+      return;
+    }
+
+    if (!Number.isInteger(taskId) || taskId <= 0) {
+      router.replace("/tasks");
+
+      return;
+    }
+
+    async function fetchTask() {
+      try {
+        const data = await apiClient(`/api/v1/tasks/${taskId}`);
+
+        setTask(taskSchema.parse(data));
+      } catch (error) {
+        console.error(error);
+
+        router.replace("/tasks");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchTask();
+  }, [params, router]);
+
+  if (isLoading || !task) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </div>
+    );
   }
-
-  const task = await getTask(taskId);
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="space-y-10">
-        {/* top */}
+        {/* Top back button */}
 
         <div className="space-y-5">
           <Button asChild variant="ghost" className="h-auto px-0 text-sm">
@@ -43,7 +92,7 @@ export default async function TaskDetailPage({ params }: Props) {
           </Button>
         </div>
 
-        {/* editor */}
+        {/* Task editor */}
 
         <TaskEditor mode="edit" task={task} autoResizeDescription />
       </div>

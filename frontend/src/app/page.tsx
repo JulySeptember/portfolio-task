@@ -9,23 +9,16 @@ import { buildLoginURL } from "@/features/auth/lib/hosted-ui";
 export default function HomePage() {
   const isMockAuth = process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === "true";
 
-  async function handleLogin() {
+  function handleLogin() {
+    // local development mock auth
     if (isMockAuth) {
-      const response = await fetch("/api/auth/mock-login", {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        console.error("mock login failed");
-
-        return;
-      }
+      localStorage.setItem("access_token", "local-dev-token");
 
       window.location.href = "/tasks";
 
       return;
     }
-
+    // production cognito auth
     window.location.href = buildLoginURL();
   }
 

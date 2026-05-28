@@ -1,10 +1,16 @@
+"use client";
+
 // src/app/(protected)/tasks/page.tsx
 
 import Link from "next/link";
 
+import { useMemo } from "react";
+
+import { useSearchParams } from "next/navigation";
+
 import { Button } from "@/components/ui/button";
 
-import { getTasks } from "@/features/tasks/server/get-tasks";
+import { useTasks } from "@/features/tasks/hooks/use-tasks";
 
 import { TasksTable } from "@/features/tasks/components/tasks-table";
 
@@ -16,38 +22,59 @@ import { TasksFilter } from "@/features/tasks/components/tasks-filter";
 
 import { TasksSort } from "@/features/tasks/components/tasks-sort";
 
-type Props = {
-  searchParams: Promise<{
-    limit?: string;
-    offset?: string;
-    status?: "TODO" | "DOING" | "DONE";
-    sort?: "created_at" | "due_date";
-    order?: "ASC" | "DESC";
-    taskId?: string;
-    create?: string;
-  }>;
-};
+import { TasksTableSkeleton } from "@/features/tasks/components/tasks-table-skeleton";
 
-export default async function TasksPage({ searchParams }: Props) {
-  const params = await searchParams;
+export default function TasksPage() {
+  const searchParams = useSearchParams();
 
-  const limit = Number(params.limit ?? 10);
+  const limit = Number(searchParams.get("limit") ?? 10);
 
-  const offset = Number(params.offset ?? 0);
+  const offset = Number(searchParams.get("offset") ?? 0);
 
-  const response = await getTasks({
+  const status =
+    (searchParams.get("status") as "TODO" | "DOING" | "DONE" | null) ??
+    undefined;
+
+  const sort =
+    (searchParams.get("sort") as "created_at" | "due_date" | null) ?? undefined;
+
+  const order =
+    (searchParams.get("order") as "ASC" | "DESC" | null) ?? undefined;
+
+  // =========================
+  // decode hashed task id
+  // =========================
+
+  const encodedTaskId = searchParams.get("taskId");
+
+  const decodedTaskId = useMemo(() => {
+    if (!encodedTaskId) {
+      return null;
+    }
+
+    try {
+      const decoded = Number(atob(decodeURIComponent(encodedTaskId)));
+
+      if (!Number.isInteger(decoded) || decoded <= 0) {
+        return null;
+      }
+
+      return decoded;
+    } catch {
+      return null;
+    }
+  }, [encodedTaskId]);
+  const { data, isPending } = useTasks({
     limit,
     offset,
-    status: params.status,
-    sort: params.sort,
-    order: params.order,
+    status,
+    sort,
+    order,
   });
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-      {/* ========================= */}
       {/* top */}
-      {/* ========================= */}
 
       <div className="space-y-4">
         <div>
@@ -59,7 +86,7 @@ export default async function TasksPage({ searchParams }: Props) {
             Manage your tasks efficiently
           </p>
         </div>
-        {/* create button outside */}
+
         <div className="flex justify-start">
           <Button
             asChild
@@ -71,9 +98,7 @@ export default async function TasksPage({ searchParams }: Props) {
         </div>
       </div>
 
-      {/* ========================= */}
       {/* controls */}
-      {/* ========================= */}
 
       <div className="flex flex-col gap-4 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <TasksFilter />
@@ -81,26 +106,33 @@ export default async function TasksPage({ searchParams }: Props) {
         <TasksSort />
       </div>
 
-      {/* ========================= */}
       {/* table */}
-      {/* ========================= */}
 
-      <TasksTable
-        initialData={response}
-        limit={limit}
-        offset={offset}
-        status={params.status}
-        sort={params.sort}
-        order={params.order}
-      />
+      {isPending ? (
+        <TasksTableSkeleton />
+      ) : (
+        <TasksTable
+          initialData={
+            data ?? {
+              items: [],
+              count: 0,
+              limit,
+              offset,
+            }
+          }
+          limit={limit}
+          offset={offset}
+          status={status}
+          sort={sort}
+          order={order}
+        />
+      )}
 
-      {/* ========================= */}
       {/* dialogs */}
-      {/* ========================= */}
 
       <CreateTaskDialog />
 
-      {params.taskId && <EditTaskDialog taskId={Number(params.taskId)} />}
+      {decodedTaskId && <EditTaskDialog taskId={decodedTaskId} />}
     </div>
   );
 }
