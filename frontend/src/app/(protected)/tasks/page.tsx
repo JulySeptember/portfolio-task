@@ -103,14 +103,6 @@ export default function TasksPage() {
         <TasksTableSkeleton />
       ) : (
         <TasksTable
-          initialData={
-            data ?? {
-              items: [],
-              count: 0,
-              limit,
-              offset,
-            }
-          }
           limit={limit}
           offset={offset}
           status={status}

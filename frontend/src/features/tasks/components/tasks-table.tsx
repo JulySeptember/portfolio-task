@@ -39,7 +39,6 @@ import { TasksPagination } from "./tasks-pagination";
 import { TaskStatusSelect } from "./task-status-select";
 
 type Props = {
-  initialData: TaskListResponse;
   limit: number;
   offset: number;
   status?: "TODO" | "DOING" | "DONE";
@@ -47,24 +46,14 @@ type Props = {
   order?: "ASC" | "DESC";
 };
 
-export function TasksTable({
-  initialData,
-  limit,
-  offset,
-  status,
-  sort,
-  order,
-}: Props) {
+export function TasksTable({ limit, offset, status, sort, order }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const updateStatus = useUpdateTaskStatus();
   const deleteTask = useDeleteTask();
 
-  const { data } = useTasks(
-    { limit, offset, status, sort, order },
-    { initialData },
-  );
+  const { data } = useTasks({ limit, offset, status, sort, order });
 
   const tasks: Task[] = data?.items ?? [];
 

@@ -368,5 +368,4 @@ Terraform により以下を構築。
 - SSM Parameter Store
 - Integration tests
 - Refresh token rotation
-- HttpOnly cookie authentication
 ```
