@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -31,7 +32,9 @@ export function EditTaskDialog({ taskId }: Props) {
 
     params.delete("taskId");
 
-    router.replace(`/tasks?${params.toString()}`, {
+    const query = params.toString();
+
+    router.replace(query ? `/tasks?${query}` : "/tasks", {
       scroll: false,
     });
   }
@@ -63,6 +66,10 @@ export function EditTaskDialog({ taskId }: Props) {
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Edit Task</DialogTitle>
+
+          <DialogDescription>
+            Edit task details and update task status.
+          </DialogDescription>
         </DialogHeader>
 
         <TaskEditor

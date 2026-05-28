@@ -1,7 +1,38 @@
+// src/app/page.tsx
+
+"use client";
+
+import { Button } from "@/components/ui/button";
+
+import { buildLoginURL } from "@/features/auth/lib/hosted-ui";
+
 export default function HomePage() {
+  const isMockAuth = process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === "true";
+
+  async function handleLogin() {
+    if (isMockAuth) {
+      const response = await fetch("/api/auth/mock-login", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        console.error("mock login failed");
+
+        return;
+      }
+
+      window.location.href = "/tasks";
+
+      return;
+    }
+
+    window.location.href = buildLoginURL();
+  }
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       {/* Header */}
+
       <header className="border-border/80 border-b backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <div className="flex items-center gap-3">
@@ -12,25 +43,14 @@ export default function HomePage() {
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <a
-              href="/login"
-              className="hover:bg-accent rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-            >
-              Login
-            </a>
-
-            <a
-              href="/tasks"
-              className="bg-primary text-primary-foreground hover:opacity-90 rounded-lg px-4 py-2 text-sm font-medium transition-opacity"
-            >
-              Open App
-            </a>
-          </div>
+          <Button variant="ghost" className="rounded-lg" onClick={handleLogin}>
+            Sign In
+          </Button>
         </div>
       </header>
 
       {/* Hero */}
+
       <section className="mx-auto flex max-w-7xl flex-col items-center px-6 py-28 text-center">
         <div className="border-border bg-card/70 mb-8 rounded-full border px-4 py-1 text-sm backdrop-blur">
           Serverless Task Management App
@@ -45,24 +65,15 @@ export default function HomePage() {
           modern serverless architecture.
         </p>
 
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-4">
-          <a
-            href="/tasks"
-            className="bg-primary text-primary-foreground hover:opacity-90 rounded-xl px-6 py-3 text-sm font-semibold transition-opacity"
-          >
-            Go to Tasks
-          </a>
-
-          <a
-            href="/login"
-            className="border-border bg-card hover:bg-accent rounded-xl border px-6 py-3 text-sm font-semibold transition-colors"
-          >
-            Login
-          </a>
+        <div className="mt-12 flex justify-center">
+          <Button size="lg" className="rounded-xl px-8" onClick={handleLogin}>
+            Get Started
+          </Button>
         </div>
       </section>
 
       {/* Features */}
+
       <section className="mx-auto grid max-w-7xl gap-6 px-6 pb-24 md:grid-cols-3">
         <div className="bg-card border-border rounded-2xl border p-6 shadow-sm">
           <div className="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl text-xl">

@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -25,7 +26,9 @@ export function CreateTaskDialog() {
 
     params.delete("create");
 
-    router.replace(`/tasks?${params.toString()}`, {
+    const query = params.toString();
+
+    router.replace(query ? `/tasks?${query}` : "/tasks", {
       scroll: false,
     });
   }
@@ -51,7 +54,12 @@ export function CreateTaskDialog() {
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Create Task</DialogTitle>
+
+          <DialogDescription>
+            Create a new task with title, description, and due date.
+          </DialogDescription>
         </DialogHeader>
+
         <TaskEditor mode="create" onSuccess={closeDialog} />
       </DialogContent>
     </Dialog>

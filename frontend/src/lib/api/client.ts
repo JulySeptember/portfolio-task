@@ -64,7 +64,17 @@ export async function apiClient<T>(
       error instanceof ApiError &&
       error.status === 401
     ) {
-      window.location.href = "/login";
+      try {
+        await fetch("/api/auth/refresh", {
+          method: "POST",
+
+          credentials: "include",
+        });
+
+        return await request<T>(input, options);
+      } catch {
+        window.location.href = "/";
+      }
     }
 
     throw error;

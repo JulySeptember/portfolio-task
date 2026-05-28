@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const code = request.nextUrl.searchParams.get("code");
 
     if (!code) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return NextResponse.redirect(new URL("/", request.url));
     }
 
     const body = new URLSearchParams({
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     );
 
     if (!response.ok) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return NextResponse.redirect(new URL("/", request.url));
     }
 
     const tokens = await response.json();
@@ -45,37 +45,25 @@ export async function GET(request: NextRequest) {
 
     cookieStore.set("access_token", tokens.access_token, {
       httpOnly: true,
-
       secure: process.env.NODE_ENV === "production",
-
       sameSite: "lax",
-
       path: "/",
-
       maxAge: 60 * 60,
     });
 
     cookieStore.set("id_token", tokens.id_token, {
       httpOnly: true,
-
       secure: process.env.NODE_ENV === "production",
-
       sameSite: "lax",
-
       path: "/",
-
       maxAge: 60 * 60,
     });
 
     cookieStore.set("refresh_token", tokens.refresh_token, {
       httpOnly: true,
-
       secure: process.env.NODE_ENV === "production",
-
       sameSite: "lax",
-
       path: "/",
-
       maxAge: 60 * 60 * 24 * 30,
     });
 
@@ -83,6 +71,6 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error(error);
 
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/", request.url));
   }
 }

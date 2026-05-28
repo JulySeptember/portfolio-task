@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -11,6 +13,10 @@ type Props = {
 };
 
 export default function GlobalError({ error, reset }: Props) {
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
+
   return (
     <html>
       <body>
@@ -25,7 +31,7 @@ export default function GlobalError({ error, reset }: Props) {
 
           <Button
             onClick={() => {
-              window.location.reload();
+              reset();
             }}
           >
             Reload App

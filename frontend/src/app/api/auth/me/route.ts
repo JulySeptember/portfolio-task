@@ -1,42 +1,46 @@
+// src/app/api/auth/me/route.ts
+
 import { cookies } from "next/headers";
 
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const cookieStore = await cookies();
+  try {
+    const cookieStore = await cookies();
 
-  const accessToken = cookieStore.get("access_token")?.value;
+    const accessToken = cookieStore.get("access_token")?.value;
 
-  if (!accessToken) {
-    return NextResponse.json(
+    if (!accessToken) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/users/me`,
       {
-        message: "Unauthorized",
-      },
-      {
-        status: 401,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+
+        cache: "no-store",
       },
     );
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { message: "Failed to fetch current user" },
+        { status: response.status },
+      );
+    }
+
+    const user = await response.json();
+
+    return NextResponse.json(user);
+  } catch (error) {
+    console.error(error);
+
+    return NextResponse.json(
+      { message: "Internal Server Error" },
+      { status: 500 },
+    );
   }
-
-  // mock auth
-  if (process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === "true") {
-    return NextResponse.json({
-      id: "mock-user",
-
-      name: "Mock User",
-
-      email: "mock@example.com",
-    });
-  }
-
-  // TODO:
-  // Cognito userinfo endpoint
-
-  return NextResponse.json({
-    id: "unknown",
-
-    name: "Authenticated User",
-
-    email: "user@example.com",
-  });
 }

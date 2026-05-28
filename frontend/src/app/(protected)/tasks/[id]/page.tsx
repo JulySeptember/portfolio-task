@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { notFound } from "next/navigation";
+
 import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,13 @@ type Props = {
 export default async function TaskDetailPage({ params }: Props) {
   const { id } = await params;
 
-  const task = await getTask(Number(id));
+  const taskId = Number(id);
+
+  if (!Number.isInteger(taskId) || taskId <= 0) {
+    notFound();
+  }
+
+  const task = await getTask(taskId);
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
