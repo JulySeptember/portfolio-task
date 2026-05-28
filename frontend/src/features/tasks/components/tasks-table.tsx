@@ -3,7 +3,6 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-
 import { Trash2 } from "lucide-react";
 
 import {
@@ -16,7 +15,6 @@ import {
 } from "@/components/ui/table";
 
 import { Button } from "@/components/ui/button";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,30 +28,22 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { formatDateOnly } from "@/lib/utils/date";
+import { encodeId } from "@/lib/utils/hash-id";
 
 import { useTasks } from "../hooks/use-tasks";
-
 import { useDeleteTask } from "../hooks/use-delete-task";
-
 import { useUpdateTaskStatus } from "../hooks/use-update-task-status";
 
 import type { Task, TaskListResponse } from "../schemas/task-schema";
-
 import { TasksPagination } from "./tasks-pagination";
-
 import { TaskStatusSelect } from "./task-status-select";
 
 type Props = {
   initialData: TaskListResponse;
-
   limit: number;
-
   offset: number;
-
   status?: "TODO" | "DOING" | "DONE";
-
   sort?: "created_at" | "due_date";
-
   order?: "ASC" | "DESC";
 };
 
@@ -66,36 +56,21 @@ export function TasksTable({
   order,
 }: Props) {
   const router = useRouter();
-
   const searchParams = useSearchParams();
 
   const updateStatus = useUpdateTaskStatus();
-
   const deleteTask = useDeleteTask();
 
   const { data } = useTasks(
-    {
-      limit,
-      offset,
-      status,
-      sort,
-      order,
-    },
-    {
-      initialData,
-    },
+    { limit, offset, status, sort, order },
+    { initialData },
   );
 
   const tasks: Task[] = data?.items ?? [];
 
   function openTask(taskId: number) {
-    // URL表示用だけハッシュ化
-    const hashedId = encodeURIComponent(btoa(String(taskId)));
-
     const params = new URLSearchParams(searchParams.toString());
-
-    params.set("taskId", hashedId);
-
+    params.set("taskId", encodeId(taskId));
     router.push(`/tasks?${params.toString()}`);
   }
 
@@ -103,7 +78,6 @@ export function TasksTable({
     return (
       <div className="rounded-xl border p-8 text-center">
         <p className="text-muted-foreground text-sm">No tasks found</p>
-
         <div className="border-t px-6 pt-6">
           <TasksPagination
             total={data?.count ?? 0}
@@ -122,8 +96,26 @@ export function TasksTable({
         {tasks.map((task: Task) => (
           <div
             key={task.id}
+            role="button"
+            tabIndex={0}
             onClick={() => openTask(task.id)}
-            className="space-y-4 rounded-xl border p-4 transition-colors hover:bg-muted/50"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openTask(task.id);
+              }
+            }}
+            className="
+        space-y-4
+        rounded-xl
+        border
+        p-4
+        transition-colors
+        hover:bg-muted/50
+        focus:outline-none
+        focus:ring-2
+        focus:ring-ring
+      "
           >
             <div className="space-y-2">
               <p className="line-clamp-2 break-all font-medium">{task.title}</p>
@@ -200,18 +192,14 @@ export function TasksTable({
           </div>
         ))}
       </div>
-
       {/* Desktop Table */}
       <div className="hidden rounded-xl border md:block">
         <Table className="table-fixed">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[50%]">Title</TableHead>
-
               <TableHead className="w-[25%]">Status</TableHead>
-
               <TableHead className="w-[20%]">Due Date</TableHead>
-
               <TableHead className="w-16" />
             </TableRow>
           </TableHeader>
@@ -226,7 +214,6 @@ export function TasksTable({
                 <TableCell>
                   <div className="min-w-0 space-y-1">
                     <p className="truncate font-medium">{task.title}</p>
-
                     {task.description && (
                       <p className="text-muted-foreground line-clamp-2 break-all text-sm">
                         {task.description}
@@ -275,7 +262,6 @@ export function TasksTable({
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete task?</AlertDialogTitle>
-
                         <AlertDialogDescription>
                           This action cannot be undone.
                         </AlertDialogDescription>
@@ -283,7 +269,6 @@ export function TasksTable({
 
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-
                         <AlertDialogAction
                           disabled={deleteTask.isPending}
                           onClick={() => {

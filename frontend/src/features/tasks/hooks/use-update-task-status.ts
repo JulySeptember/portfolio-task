@@ -67,10 +67,6 @@ export function useUpdateTaskStatus() {
       toast.error("Failed to update task status");
     },
 
-    onSuccess: () => {
-      toast.success("Task status updated");
-    },
-
     onSettled: () => {
       queryClient.invalidateQueries({
         queryKey: taskQueryKeys.lists(),

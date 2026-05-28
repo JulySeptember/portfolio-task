@@ -22,7 +22,7 @@ export function TasksFilter() {
 
     params.set("offset", "0");
 
-    router.push(`/tasks?${params.toString()}`);
+    router.replace(`/tasks?${params.toString()}`);
   }
 
   return (

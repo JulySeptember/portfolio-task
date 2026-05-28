@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+import { encodeId } from "@/lib/utils/hash-id";
+
 import { useTask } from "../hooks/use-task";
 
 import { TaskEditor } from "./task-editor";
@@ -35,10 +37,9 @@ export function EditTaskDialog({ taskId }: Props) {
 
   function openFullPage() {
     if (!task?.id) return;
-    const hashedId = encodeURIComponent(btoa(String(task.id)));
-    router.push(`/tasks/${hashedId}`);
-  }
 
+    router.push(`/tasks/${encodeId(task.id)}`);
+  }
   if (isLoading || !task) {
     return null;
   }

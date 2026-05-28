@@ -9,7 +9,7 @@ Thumbs.db
 # ============================
 # Env files
 # ============================
-.env
+*.env
 backend/.env
 frontend/.env.local
 

@@ -1,26 +1,34 @@
 # 📌 Serverless Task Management App
 
 Next.js × Go × AWS × Terraform × MySQL を用いた  
-フルスタック タスク管理アプリです。
+フルスタック Serverless Task Management App です。
+
+認証・API・Infrastructure を含めた  
+実践的なモダン Web アプリ構成を採用しています。
 
 ---
 
-<img src="./docs/architecture_and_erd_v1.png" width="900">
+<p align="center">
+  <img src="./docs/architecture_and_erd_v1.png" width="900">
+</p>
 
 ---
 
 # ✨ Features
 
-- JWT Authentication (AWS Cognito)
-- Serverless Go API on AWS Lambda
+```text
+- AWS Cognito Authentication
 - API Gateway JWT Authorizer
-- Owner-isolated Task APIs
+- Serverless Go API (AWS Lambda)
+- Task CRUD APIs
+- Owner-isolated authorization
 - Terraform Infrastructure as Code
-- Swagger / OpenAPI documentation
-- Structured logging
+- Swagger / OpenAPI
+- Structured Logging
 - Layered Architecture
 - Private RDS MySQL
 - CloudFront + S3 Frontend Hosting
+```
 
 ---
 
@@ -33,18 +41,22 @@ Next.js × Go × AWS × Terraform × MySQL を用いた
 
 ---
 
-# 🌐 System Architecture
+# 🧩 Tech Stack
 
-- Frontend: Next.js + S3 + CloudFront
-- Backend: Go + AWS Lambda
-- API: API Gateway HTTP API
-- Database: RDS MySQL
-- Authentication: AWS Cognito
-- Infrastructure: Terraform
+| Layer | Technology |
+| --- | --- |
+| Frontend | Next.js + TypeScript |
+| Backend | Go |
+| Infrastructure | Terraform |
+| Authentication | AWS Cognito |
+| API | API Gateway HTTP API |
+| Runtime | AWS Lambda |
+| Database | MySQL (RDS) |
+| Hosting | S3 + CloudFront |
 
 ---
 
-# 🏗 Architecture
+# 🏗 System Architecture
 
 ```text
 Client
@@ -70,39 +82,25 @@ RDS MySQL
 
 ---
 
-# 🧩 Tech Stack
-
-| Layer | Technology |
-| --- | --- |
-| Frontend | Next.js |
-| Backend | Go |
-| Infrastructure | Terraform |
-| API | API Gateway HTTP API |
-| Authentication | AWS Cognito |
-| Runtime | AWS Lambda |
-| Database | MySQL (RDS) |
-| Hosting | S3 + CloudFront |
-
----
-
 # 🔐 Authentication
 
-認証は AWS Cognito + API Gateway JWT Authorizer を利用します。
+認証は AWS Cognito Hosted UI を利用。
 
-JWT の検証は API Gateway 側で実施し、  
-Lambda 側では検証済み claims のみを利用します。
+JWT 検証は API Gateway JWT Authorizer に委譲しています。
 
 ```text
 Login
   ↓
 JWT 発行
   ↓
-Authorization: Bearer <id_token>
+Authorization: Bearer <token>
   ↓
 API Gateway JWT validation
   ↓
-claims → Lambda
+validated claims → Lambda
 ```
+
+Lambda 側では検証済み claims のみを利用します。
 
 ---
 
@@ -113,26 +111,79 @@ Cognito user と users table を同期します。
 
 仕様:
 
-- 初回ログイン時に INSERT
-- 既存ユーザーは UPDATE
+```text
+- 初回ログイン時 INSERT
+- 既存ユーザー UPDATE
 - Cognito sub を auth_user_id として利用
+```
 
 ---
 
 # 🧱 Backend Design
 
-- Layered Architecture
+Backend は Layered Architecture を採用。
+
+```text
+Handler
+  ↓
+Service
+  ↓
+Repository
+```
+
+特徴:
+
+```text
 - Handler / Service / Repository separation
 - Context timeout
-- Owner isolation
 - Structured logging
-- JWT verification offloaded to API Gateway
+- Owner isolation
+- Strict JSON decode
+- API Gateway JWT delegation
 - Private RDS architecture
+```
+
+---
+
+# 🎨 Frontend Design
+
+Frontend は feature-based architecture を採用。
+
+```text
+features/
+├── auth
+└── tasks
+```
+
+各 feature は:
+
+```text
+- api
+- hooks
+- components
+- schemas
+- queries
+- utils
+```
+
+を内部管理。
+
+特徴:
+
+```text
+- React Query cache management
+- optimistic update
+- Dialog / Full Page editor
+- Hashids URL obfuscation
+- Responsive UI
+- shadcn/ui + Radix UI
+```
 
 ---
 
 # 🔒 Security
 
+```text
 - Cognito Authentication
 - API Gateway JWT Authorizer
 - Request timeout
@@ -145,154 +196,54 @@ Cognito user と users table を同期します。
 - Private RDS
 - IMDSv2 required
 - Encrypted EBS
+```
 
 ---
 
 # 📡 API
 
-## Public Routes
+## Public Endpoints
 
 ```http
 GET /health
-
 GET /api/docs
 GET /api/spec/swagger.yml
 ```
 
 ---
 
-## JWT Required
+## Protected Endpoints
 
 ```text
 /api/v1/*
 ```
 
----
-
-# 👤 User APIs
-
-## Bootstrap User
-
-認証済みユーザーを users table に同期します。
-
-```http
-POST /api/v1/auth/bootstrap
-```
+JWT authentication required.
 
 ---
 
-## Get Current User
+## Main APIs
 
-現在ログイン中ユーザー情報を取得します。
+### User
 
-```http
-GET /api/v1/users/me
-```
-
----
-
-## Delete Current User
-
-自分自身のアカウントを削除します。
-
-関連 task は cascade delete されます。
-
-```http
+```text
+POST   /api/v1/auth/bootstrap
+GET    /api/v1/users/me
 DELETE /api/v1/users/me
 ```
 
----
-
-# ✅ Task APIs
-
-## Create Task
-
-新しい task を作成します。
-
-```http
-POST /api/v1/tasks
-```
-
-example:
-
-```json
-{
-  "title": "Buy milk",
-  "description": "Go to supermarket",
-  "status": "TODO",
-  "due_date": "2026-05-30T00:00:00Z"
-}
-```
-
----
-
-## List Tasks
-
-自分の task 一覧を取得します。
-
-対応:
-
-- pagination
-- sorting
-- status filtering
-- owner isolation
-
-```http
-GET /api/v1/tasks?limit=20&status=TODO&sort=created_at&order=DESC
-```
-
----
-
-## Get Task
-
-指定 task を取得します。
-
-```http
-GET /api/v1/tasks/{id}
-```
-
-仕様:
-
-- task_id + user_id で取得
-- 他ユーザー task は取得不可
-
----
-
-## Update Task
-
-task 情報を更新します。
-
-```http
-PUT /api/v1/tasks/{id}
-```
-
----
-
-## Update Task Status
-
-task の status のみ更新します。
-
-```http
-PATCH /api/v1/tasks/{id}/status
-```
-
-status:
+### Tasks
 
 ```text
-TODO
-DOING
-DONE
-```
-
----
-
-## Delete Task
-
-task を削除します。
-
-```http
+POST   /api/v1/tasks
+GET    /api/v1/tasks
+GET    /api/v1/tasks/{id}
+PUT    /api/v1/tasks/{id}
+PATCH  /api/v1/tasks/{id}/status
 DELETE /api/v1/tasks/{id}
 ```
+
+Detailed request/response schemas are available in Swagger/OpenAPI.
 
 ---
 
@@ -365,10 +316,17 @@ http://localhost:8080/api/spec/swagger.yml
 │   │
 │   ├── migrations
 │   ├── swagger
+│   │
 │   └── Makefile
 │
 ├── frontend
-│   └── src/app
+│   └── src
+│       ├── app
+│       │
+│       ├── components
+│       ├── features
+│       ├── lib
+│       └── providers
 │
 ├── infra
 │   ├── bootstrap
@@ -379,12 +337,11 @@ http://localhost:8080/api/spec/swagger.yml
 │
 └── .github/workflows
 ```
-
 ---
 
-# 📚 Infrastructure
+# 🏗 Infrastructure
 
-Terraform により以下を構築しています。
+Terraform により以下を構築。
 
 ```text
 - VPC
@@ -407,6 +364,9 @@ Terraform により以下を構築しています。
 - GitHub Actions CI/CD
 - Automated Lambda migration
 - Bastion removal
-- Secrets Manager / SSM Parameter Store
+- Secrets Manager
+- SSM Parameter Store
 - Integration tests
+- Refresh token rotation
+- HttpOnly cookie authentication
 ```

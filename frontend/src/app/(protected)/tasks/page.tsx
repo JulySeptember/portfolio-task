@@ -10,6 +10,8 @@ import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 
+import { decodeId } from "@/lib/utils/hash-id";
+
 import { useTasks } from "@/features/tasks/hooks/use-tasks";
 
 import { TasksTable } from "@/features/tasks/components/tasks-table";
@@ -48,21 +50,10 @@ export default function TasksPage() {
   const encodedTaskId = searchParams.get("taskId");
 
   const decodedTaskId = useMemo(() => {
-    if (!encodedTaskId) {
-      return null;
-    }
+    if (!encodedTaskId) return null;
 
-    try {
-      const decoded = Number(atob(decodeURIComponent(encodedTaskId)));
-
-      if (!Number.isInteger(decoded) || decoded <= 0) {
-        return null;
-      }
-
-      return decoded;
-    } catch {
-      return null;
-    }
+    const id = decodeId(encodedTaskId);
+    return id;
   }, [encodedTaskId]);
   const { data, isPending } = useTasks({
     limit,

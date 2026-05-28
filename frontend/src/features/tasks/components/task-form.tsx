@@ -159,8 +159,11 @@ export function TaskForm({
       </div>
 
       {/* Footer */}
-      <div className="flex flex-col gap-4 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">{secondaryAction}</div>
+      <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-start gap-1">
+          {secondaryAction}
+        </div>
+
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
           <div className="w-full sm:w-auto">{footer}</div>
           <Button

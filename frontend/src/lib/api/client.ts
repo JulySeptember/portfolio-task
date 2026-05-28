@@ -76,8 +76,6 @@ export async function apiClient<T>(
       localStorage.removeItem("id_token");
 
       localStorage.removeItem("refresh_token");
-
-      window.location.href = "/";
     }
 
     throw error;

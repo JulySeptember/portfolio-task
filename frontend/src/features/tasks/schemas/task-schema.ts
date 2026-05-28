@@ -70,8 +70,6 @@ export const taskListResponseSchema = z.object({
 // form schema
 // =========================
 
-// form schema
-
 export const taskFormSchema = z
   .object({
     title: z
@@ -84,7 +82,19 @@ export const taskFormSchema = z
 
     status: taskStatusSchema,
 
-    due_date: z.string().optional(),
+    due_date: z
+      .string()
+      .optional()
+      .refine(
+        (value) => {
+          if (!value) return true;
+
+          return !Number.isNaN(new Date(value).getTime());
+        },
+        {
+          message: "Invalid date",
+        },
+      ),
   })
   .transform((data) => ({
     title: data.title,
@@ -93,9 +103,9 @@ export const taskFormSchema = z
 
     status: data.status,
 
-    // null じゃなく undefined にする
     due_date: data.due_date ? new Date(data.due_date).toISOString() : undefined,
   }));
+
 // =========================
 // request schema
 // =========================

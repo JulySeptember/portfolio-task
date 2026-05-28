@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 
 import { apiClient } from "@/lib/api/client";
 
+import { decodeId } from "@/lib/utils/hash-id";
+
 import { taskSchema, type Task } from "@/features/tasks/schemas/task-schema";
 
 import { TaskEditor } from "@/features/tasks/components/task-editor";
@@ -28,28 +30,17 @@ export default function TaskDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const encodedId = params.id;
+    const encodedIdRaw = params.id;
 
-    if (!encodedId || typeof encodedId !== "string") {
+    // 配列や undefined を弾く
+    if (!encodedIdRaw || Array.isArray(encodedIdRaw)) {
       router.replace("/tasks");
-
       return;
     }
 
-    let taskId: number;
-
-    try {
-      // URL表示用hash decode
-      taskId = Number(atob(decodeURIComponent(encodedId)));
-    } catch {
+    const taskId = decodeId(encodedIdRaw); // ここは string なのでOK
+    if (!taskId || !Number.isInteger(taskId) || taskId <= 0) {
       router.replace("/tasks");
-
-      return;
-    }
-
-    if (!Number.isInteger(taskId) || taskId <= 0) {
-      router.replace("/tasks");
-
       return;
     }
 

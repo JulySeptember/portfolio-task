@@ -1,31 +1,46 @@
 // src/features/tasks/hooks/use-update-task.ts
+
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { toast } from "sonner";
+
 import { updateTask } from "../api/update-task";
+
 import { taskQueryKeys } from "../queries/task-query-keys";
+
 import type { Task, TaskListResponse } from "../schemas/task-schema";
 
 type UpdateTaskInput = {
   id: number;
+
   title: string;
+
   description: string;
+
   status: "TODO" | "DOING" | "DONE";
+
   due_date: string | null;
+};
+
+type UpdateTaskContext = {
+  previousLists: Array<[readonly unknown[], TaskListResponse | undefined]>;
 };
 
 export function useUpdateTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    // mutationFn をラップして1つのオブジェクトで渡す
     mutationFn: async (input: UpdateTaskInput) => {
       const { id, ...body } = input;
+
       return updateTask(id, body);
     },
 
-    onMutate: async (updatedTask: UpdateTaskInput) => {
+    onMutate: async (
+      updatedTask: UpdateTaskInput,
+    ): Promise<UpdateTaskContext> => {
       await queryClient.cancelQueries({
         queryKey: taskQueryKeys.lists(),
       });
@@ -35,15 +50,23 @@ export function useUpdateTask() {
       });
 
       previousLists.forEach(([queryKey, data]) => {
-        if (!data) return;
+        if (!data) {
+          return;
+        }
 
         const params = queryKey[2] as
-          | { status?: "TODO" | "DOING" | "DONE" }
+          | {
+              status?: "TODO" | "DOING" | "DONE";
+            }
           | undefined;
 
         let items = data.items.map((task) =>
           task.id === updatedTask.id
-            ? { ...task, ...updatedTask, dueDate: updatedTask.due_date }
+            ? {
+                ...task,
+                ...updatedTask,
+                dueDate: updatedTask.due_date,
+              }
             : task,
         );
 
@@ -53,15 +76,20 @@ export function useUpdateTask() {
 
         queryClient.setQueryData<TaskListResponse>(queryKey, {
           ...data,
+
+          count: items.length,
+
           items,
         });
       });
 
-      return { previousLists };
+      return {
+        previousLists,
+      };
     },
 
-    onError: (_, __, context: any) => {
-      context?.previousLists.forEach(([queryKey, data]: any) => {
+    onError: (_, __, context?: UpdateTaskContext) => {
+      context?.previousLists.forEach(([queryKey, data]) => {
         queryClient.setQueryData(queryKey, data);
       });
 
@@ -70,11 +98,14 @@ export function useUpdateTask() {
 
     onSuccess: (task: Task) => {
       queryClient.setQueryData(taskQueryKeys.detail(task.id), task);
+
       toast.success("Task updated");
     },
 
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: taskQueryKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: taskQueryKeys.lists(),
+      });
     },
   });
 }

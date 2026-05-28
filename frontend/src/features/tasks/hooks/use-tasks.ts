@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { listTasks, type ListTasksParams } from "../api/list-tasks";
 
@@ -19,5 +19,7 @@ export function useTasks(params?: ListTasksParams, options?: Options) {
     queryFn: () => listTasks(params),
 
     initialData: options?.initialData,
+
+    placeholderData: keepPreviousData,
   });
 }
