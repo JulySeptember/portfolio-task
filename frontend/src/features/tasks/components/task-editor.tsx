@@ -1,3 +1,5 @@
+// src/features/tasks/components/task-editor.tsx
+
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -7,8 +9,6 @@ import Link from "next/link";
 import { Expand } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-
-import { encodeId } from "@/lib/utils/hash-id";
 
 import {
   AlertDialog,
@@ -102,13 +102,10 @@ export function TaskEditor(props: Props) {
   }
 
   function openFullPage() {
-    if (props.mode === "edit" && props.task?.id) {
-      const hashedId = encodeId(props.task.id);
-
-      router.push(`/tasks/${hashedId}`);
+    if (props.mode === "edit" && props.task.publicId) {
+      router.replace(`/tasks/${props.task.publicId}`);
     }
   }
-
   function FullButton({
     href,
     onClick,
@@ -182,7 +179,11 @@ export function TaskEditor(props: Props) {
         autoResizeDescription={props.autoResizeDescription}
         secondaryAction={
           props.showOpenPageButton === false ? null : (
-            <FullButton href="/tasks/new" />
+            <FullButton
+              onClick={() => {
+                router.replace("/tasks/new");
+              }}
+            />
           )
         }
       />

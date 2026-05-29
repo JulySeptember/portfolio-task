@@ -43,6 +43,8 @@ export function CreateTaskDialog() {
       }}
     >
       <DialogContent
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
         className="
           w-[95vw]
           max-w-4xl

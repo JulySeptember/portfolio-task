@@ -78,6 +78,11 @@ export function TaskForm({
         <Input
           className="h-12 w-full min-w-0 rounded-xl px-4 text-base md:text-lg"
           placeholder="Enter task title"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+            }
+          }}
           {...form.register("title")}
         />
         {form.formState.errors.title && (

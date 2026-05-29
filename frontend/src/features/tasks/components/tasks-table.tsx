@@ -1,10 +1,8 @@
 // src/features/tasks/components/tasks-table.tsx
-
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Trash2 } from "lucide-react";
-
 import {
   Table,
   TableBody,
@@ -13,7 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -26,15 +23,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
 import { formatDateOnly } from "@/lib/utils/date";
-import { encodeId } from "@/lib/utils/hash-id";
-
 import { useTasks } from "../hooks/use-tasks";
 import { useDeleteTask } from "../hooks/use-delete-task";
 import { useUpdateTaskStatus } from "../hooks/use-update-task-status";
-
-import type { Task, TaskListResponse } from "../schemas/task-schema";
+import type { Task } from "../schemas/task-schema";
 import { TasksPagination } from "./tasks-pagination";
 import { TaskStatusSelect } from "./task-status-select";
 
@@ -44,15 +37,21 @@ type Props = {
   status?: "TODO" | "DOING" | "DONE";
   sort?: "created_at" | "due_date";
   order?: "ASC" | "DESC";
+  onOpenTask: (task: Task) => void;
 };
 
-export function TasksTable({ limit, offset, status, sort, order }: Props) {
+export function TasksTable({
+  limit,
+  offset,
+  status,
+  sort,
+  order,
+  onOpenTask,
+}: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-
   const updateStatus = useUpdateTaskStatus();
   const deleteTask = useDeleteTask();
-
   const { data, isLoading } = useTasks({
     limit,
     offset,
@@ -61,18 +60,13 @@ export function TasksTable({ limit, offset, status, sort, order }: Props) {
     order,
   });
 
-  // 初回ロード中は何も描画しない
   if (isLoading || !data) return null;
 
   const tasks: Task[] = data.items;
 
-  // ここで関数定義
-  function openTask(taskId: number) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("taskId", encodeId(taskId));
-    router.push(`/tasks?${params.toString()}`);
+  function openTask(task: Task) {
+    onOpenTask(task);
   }
-
   if (tasks.length === 0) {
     return (
       <div className="rounded-xl border p-8 text-center">
@@ -89,64 +83,55 @@ export function TasksTable({ limit, offset, status, sort, order }: Props) {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Mobile Cards */}
-      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-3 md:hidden">
-        {tasks.map((task: Task, index) => (
+    <div
+      className="
+        animate-in
+        fade-in-0
+        slide-in-from-bottom-4
+        duration-500
+        space-y-4
+      "
+    >
+      {/* mobile */}
+      <div className="space-y-3 md:hidden">
+        {tasks.map((task) => (
           <div
             key={task.id}
-            style={{
-              animationDelay: `${index * 40}ms`,
-            }}
             role="button"
             tabIndex={0}
-            onClick={() => openTask(task.id)}
-            className="
-      animate-in
-      fade-in
-      slide-in-from-bottom-2
-      duration-300
-
-      space-y-4
-      rounded-xl
-      border
-      p-4
-
-      transition-all
-      hover:bg-muted/50
-      hover:shadow-sm
-
-      focus:outline-none
-      focus:ring-2
-      focus:ring-ring
-    "
+            onClick={() => openTask(task)}
+            className="space-y-4 rounded-xl border p-4 hover:bg-muted/50 transition-colors"
           >
             <div className="space-y-2">
-              <p className="line-clamp-2 break-all font-medium">{task.title}</p>
-
+              <p className="line-clamp-1 wrap-break-word font-medium">
+                {task.title}
+              </p>
               {task.description && (
-                <p className="text-muted-foreground line-clamp-3 break-all text-sm">
+                <p
+                  className="
+                    text-muted-foreground
+                    line-clamp-2
+                    wrap-break-word
+                    text-sm
+                  "
+                >
                   {task.description}
                 </p>
               )}
             </div>
             <div className="flex items-center justify-between gap-3">
               <div
+                className="w-28 shrink-0"
                 onClick={(e) => e.stopPropagation()}
-                className="min-w-0 flex-1"
               >
                 <TaskStatusSelect
                   value={task.status}
-                  onChange={(value) => {
-                    updateStatus.mutate({
-                      id: task.id,
-                      status: value,
-                    });
-                  }}
-                  className="h-10 w-full rounded-lg text-sm"
+                  onChange={(value) =>
+                    updateStatus.mutate({ id: task.id, status: value })
+                  }
+                  className="h-10 w-full rounded-lg text-xs"
                 />
               </div>
-
               <div className="shrink-0 text-sm">
                 {task.dueDate ? (
                   <span>{formatDateOnly(task.dueDate)}</span>
@@ -154,7 +139,6 @@ export function TasksTable({ limit, offset, status, sort, order }: Props) {
                   <span className="text-muted-foreground">No date</span>
                 )}
               </div>
-
               <div onClick={(e) => e.stopPropagation()}>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -166,24 +150,18 @@ export function TasksTable({ limit, offset, status, sort, order }: Props) {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </AlertDialogTrigger>
-
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete task?</AlertDialogTitle>
-
                       <AlertDialogDescription>
                         This action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
-
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-
                       <AlertDialogAction
                         disabled={deleteTask.isPending}
-                        onClick={() => {
-                          deleteTask.mutate(task.id);
-                        }}
+                        onClick={() => deleteTask.mutate(task.id)}
                       >
                         {deleteTask.isPending ? "Deleting..." : "Delete"}
                       </AlertDialogAction>
@@ -195,48 +173,54 @@ export function TasksTable({ limit, offset, status, sort, order }: Props) {
           </div>
         ))}
       </div>
-      {/* Desktop Table */}
-      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 hidden rounded-xl border md:block">
+
+      {/* desktop */}
+      <div className="hidden rounded-xl border md:block">
         <Table className="table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[50%]">Title</TableHead>
-              <TableHead className="w-[25%]">Status</TableHead>
-              <TableHead className="w-[20%]">Due Date</TableHead>
+              <TableHead className="w-[50%] pl-4 text-left">Title</TableHead>
+              <TableHead className="w-[25%] text-left">Status</TableHead>
+              <TableHead className="w-[20%] text-left">Due Date</TableHead>
               <TableHead className="w-16" />
             </TableRow>
           </TableHeader>
-
           <TableBody>
-            {tasks.map((task: Task) => (
+            {tasks.map((task) => (
               <TableRow
                 key={task.id}
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => openTask(task.id)}
+                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => openTask(task)}
               >
-                <TableCell>
-                  <div className="min-w-0 space-y-1">
-                    <p className="truncate font-medium">{task.title}</p>
+                <TableCell className="pl-4">
+                  <div className="space-y-1">
+                    <p className="overflow-hidden text-ellipsis wrap-break-word font-medium">
+                      {task.title}
+                    </p>
                     {task.description && (
-                      <p className="text-muted-foreground line-clamp-2 break-all text-sm">
+                      <p
+                        className="
+                            text-muted-foreground
+                            line-clamp-2
+                            overflow-hidden
+                            text-ellipsis
+                            wrap-break-word
+                            text-sm
+                          "
+                      >
                         {task.description}
                       </p>
                     )}
                   </div>
                 </TableCell>
-
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <TaskStatusSelect
                     value={task.status}
-                    onChange={(value) => {
-                      updateStatus.mutate({
-                        id: task.id,
-                        status: value,
-                      });
-                    }}
+                    onChange={(value) =>
+                      updateStatus.mutate({ id: task.id, status: value })
+                    }
                   />
                 </TableCell>
-
                 <TableCell>
                   {task.dueDate ? (
                     <span className="text-sm">
@@ -246,7 +230,6 @@ export function TasksTable({ limit, offset, status, sort, order }: Props) {
                     <span className="text-muted-foreground text-sm">-</span>
                   )}
                 </TableCell>
-
                 <TableCell
                   className="text-right"
                   onClick={(e) => e.stopPropagation()}
@@ -261,7 +244,6 @@ export function TasksTable({ limit, offset, status, sort, order }: Props) {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </AlertDialogTrigger>
-
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete task?</AlertDialogTitle>
@@ -269,14 +251,11 @@ export function TasksTable({ limit, offset, status, sort, order }: Props) {
                           This action cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
-
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                           disabled={deleteTask.isPending}
-                          onClick={() => {
-                            deleteTask.mutate(task.id);
-                          }}
+                          onClick={() => deleteTask.mutate(task.id)}
                         >
                           {deleteTask.isPending ? "Deleting..." : "Delete"}
                         </AlertDialogAction>
@@ -292,9 +271,9 @@ export function TasksTable({ limit, offset, status, sort, order }: Props) {
 
       <div className="rounded-xl border px-4 py-4 md:px-6">
         <TasksPagination
-          total={data?.count ?? 0}
-          limit={data?.limit ?? limit}
-          offset={data?.offset ?? offset}
+          total={data.count ?? 0}
+          limit={data.limit ?? limit}
+          offset={data.offset ?? offset}
         />
       </div>
     </div>

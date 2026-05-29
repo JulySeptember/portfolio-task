@@ -16,6 +16,8 @@ export const taskSchema = z
   .object({
     id: z.number().int().positive(),
 
+    public_id: z.string().uuid(),
+
     user_id: z.number().int().positive(),
 
     title: z
@@ -36,6 +38,8 @@ export const taskSchema = z
   })
   .transform((data) => ({
     id: data.id,
+
+    publicId: data.public_id,
 
     userId: data.user_id,
 
@@ -87,7 +91,9 @@ export const taskFormSchema = z
       .optional()
       .refine(
         (value) => {
-          if (!value) return true;
+          if (!value) {
+            return true;
+          }
 
           return !Number.isNaN(new Date(value).getTime());
         },
