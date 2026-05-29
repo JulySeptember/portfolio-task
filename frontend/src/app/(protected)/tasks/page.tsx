@@ -24,8 +24,6 @@ import { TasksFilter } from "@/features/tasks/components/tasks-filter";
 
 import { TasksSort } from "@/features/tasks/components/tasks-sort";
 
-import { TasksTableSkeleton } from "@/features/tasks/components/tasks-table-skeleton";
-
 export default function TasksPage() {
   const searchParams = useSearchParams();
 
@@ -55,7 +53,7 @@ export default function TasksPage() {
     const id = decodeId(encodedTaskId);
     return id;
   }, [encodedTaskId]);
-  const { data, isPending } = useTasks({
+  useTasks({
     limit,
     offset,
     status,
@@ -99,18 +97,13 @@ export default function TasksPage() {
 
       {/* table */}
 
-      {isPending ? (
-        <TasksTableSkeleton />
-      ) : (
-        <TasksTable
-          limit={limit}
-          offset={offset}
-          status={status}
-          sort={sort}
-          order={order}
-        />
-      )}
-
+      <TasksTable
+        limit={limit}
+        offset={offset}
+        status={status}
+        sort={sort}
+        order={order}
+      />
       {/* dialogs */}
 
       <CreateTaskDialog />

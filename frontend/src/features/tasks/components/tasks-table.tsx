@@ -53,10 +53,20 @@ export function TasksTable({ limit, offset, status, sort, order }: Props) {
   const updateStatus = useUpdateTaskStatus();
   const deleteTask = useDeleteTask();
 
-  const { data } = useTasks({ limit, offset, status, sort, order });
+  const { data, isLoading } = useTasks({
+    limit,
+    offset,
+    status,
+    sort,
+    order,
+  });
 
-  const tasks: Task[] = data?.items ?? [];
+  // 初回ロード中は何も描画しない
+  if (isLoading || !data) return null;
 
+  const tasks: Task[] = data.items;
+
+  // ここで関数定義
   function openTask(taskId: number) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("taskId", encodeId(taskId));
@@ -69,9 +79,9 @@ export function TasksTable({ limit, offset, status, sort, order }: Props) {
         <p className="text-muted-foreground text-sm">No tasks found</p>
         <div className="border-t px-6 pt-6">
           <TasksPagination
-            total={data?.count ?? 0}
-            limit={data?.limit ?? limit}
-            offset={data?.offset ?? offset}
+            total={data.count ?? 0}
+            limit={data.limit ?? limit}
+            offset={data.offset ?? offset}
           />
         </div>
       </div>
@@ -81,30 +91,35 @@ export function TasksTable({ limit, offset, status, sort, order }: Props) {
   return (
     <div className="space-y-4">
       {/* Mobile Cards */}
-      <div className="space-y-3 md:hidden">
-        {tasks.map((task: Task) => (
+      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-3 md:hidden">
+        {tasks.map((task: Task, index) => (
           <div
             key={task.id}
+            style={{
+              animationDelay: `${index * 40}ms`,
+            }}
             role="button"
             tabIndex={0}
             onClick={() => openTask(task.id)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                openTask(task.id);
-              }
-            }}
             className="
-        space-y-4
-        rounded-xl
-        border
-        p-4
-        transition-colors
-        hover:bg-muted/50
-        focus:outline-none
-        focus:ring-2
-        focus:ring-ring
-      "
+      animate-in
+      fade-in
+      slide-in-from-bottom-2
+      duration-300
+
+      space-y-4
+      rounded-xl
+      border
+      p-4
+
+      transition-all
+      hover:bg-muted/50
+      hover:shadow-sm
+
+      focus:outline-none
+      focus:ring-2
+      focus:ring-ring
+    "
           >
             <div className="space-y-2">
               <p className="line-clamp-2 break-all font-medium">{task.title}</p>
@@ -115,7 +130,6 @@ export function TasksTable({ limit, offset, status, sort, order }: Props) {
                 </p>
               )}
             </div>
-
             <div className="flex items-center justify-between gap-3">
               <div
                 onClick={(e) => e.stopPropagation()}
@@ -182,7 +196,7 @@ export function TasksTable({ limit, offset, status, sort, order }: Props) {
         ))}
       </div>
       {/* Desktop Table */}
-      <div className="hidden rounded-xl border md:block">
+      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 hidden rounded-xl border md:block">
         <Table className="table-fixed">
           <TableHeader>
             <TableRow>
