@@ -116,69 +116,17 @@ func (h *TaskHandler) Get(
 
 	r = r.WithContext(ctx)
 
-	id, ok := parseID(
-		w,
-		r,
-	)
-
-	if !ok {
-		return
-	}
-
-	userID, ok := requireUserID(
-		w,
-		r,
-		h.userSvc,
-	)
-
-	if !ok {
-		return
-	}
-
-	task, err := h.taskSvc.GetTask(
-		r.Context(),
-		id,
-		userID,
-	)
-
-	if err != nil {
-
-		httpx.HandleError(
-			w,
-			err,
-		)
-
-		return
-	}
-
-	httpx.WriteJSON(
-		w,
-		http.StatusOK,
-		dto.ToTaskResponse(task),
-	)
-}
-
-func (h *TaskHandler) GetByPublicID(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-	ctx, cancel := withTimeout(
-		r,
-		defaultHandlerTimeout,
-	)
-	defer cancel()
-
-	r = r.WithContext(ctx)
-
 	publicID := r.PathValue("publicId")
 
 	if publicID == "" {
+
 		httpx.WriteError(
 			w,
 			http.StatusBadRequest,
 			"BAD_REQUEST",
 			"public id required",
 		)
+
 		return
 	}
 
@@ -199,7 +147,12 @@ func (h *TaskHandler) GetByPublicID(
 	)
 
 	if err != nil {
-		httpx.HandleError(w, err)
+
+		httpx.HandleError(
+			w,
+			err,
+		)
+
 		return
 	}
 
@@ -352,12 +305,17 @@ func (h *TaskHandler) Update(
 
 	r = r.WithContext(ctx)
 
-	id, ok := parseID(
-		w,
-		r,
-	)
+	publicID := r.PathValue("publicId")
 
-	if !ok {
+	if publicID == "" {
+
+		httpx.WriteError(
+			w,
+			http.StatusBadRequest,
+			"BAD_REQUEST",
+			"public id required",
+		)
+
 		return
 	}
 
@@ -392,7 +350,7 @@ func (h *TaskHandler) Update(
 
 	task, err := h.taskSvc.UpdateTask(
 		r.Context(),
-		id,
+		publicID,
 		userID,
 		req.Title,
 		req.Description,
@@ -434,12 +392,17 @@ func (h *TaskHandler) UpdateStatus(
 
 	r = r.WithContext(ctx)
 
-	id, ok := parseID(
-		w,
-		r,
-	)
+	publicID := r.PathValue("publicId")
 
-	if !ok {
+	if publicID == "" {
+
+		httpx.WriteError(
+			w,
+			http.StatusBadRequest,
+			"BAD_REQUEST",
+			"public id required",
+		)
+
 		return
 	}
 
@@ -465,7 +428,7 @@ func (h *TaskHandler) UpdateStatus(
 
 	task, err := h.taskSvc.UpdateStatus(
 		r.Context(),
-		id,
+		publicID,
 		userID,
 		req.Status,
 	)
@@ -504,12 +467,17 @@ func (h *TaskHandler) Delete(
 
 	r = r.WithContext(ctx)
 
-	id, ok := parseID(
-		w,
-		r,
-	)
+	publicID := r.PathValue("publicId")
 
-	if !ok {
+	if publicID == "" {
+
+		httpx.WriteError(
+			w,
+			http.StatusBadRequest,
+			"BAD_REQUEST",
+			"public id required",
+		)
+
 		return
 	}
 
@@ -525,7 +493,7 @@ func (h *TaskHandler) Delete(
 
 	err := h.taskSvc.DeleteTask(
 		r.Context(),
-		id,
+		publicID,
 		userID,
 	)
 
@@ -539,11 +507,7 @@ func (h *TaskHandler) Delete(
 		return
 	}
 
-	httpx.WriteJSON(
-		w,
-		http.StatusOK,
-		map[string]string{
-			"message": "task deleted",
-		},
+	w.WriteHeader(
+		http.StatusNoContent,
 	)
 }

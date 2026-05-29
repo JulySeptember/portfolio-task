@@ -30,12 +30,6 @@ type TaskRepository interface {
 		query models.TaskListQuery,
 	) (*models.TaskListResult, error)
 
-	Get(
-		ctx context.Context,
-		taskID int64,
-		userID int64,
-	) (*models.Task, error)
-
 	GetByPublicID(
 		ctx context.Context,
 		publicID string,
@@ -49,14 +43,14 @@ type TaskRepository interface {
 
 	UpdateStatus(
 		ctx context.Context,
-		taskID int64,
+		publicID string,
 		userID int64,
 		status models.TaskStatus,
 	) (*models.Task, error)
 
 	Delete(
 		ctx context.Context,
-		taskID int64,
+		publicID string,
 		userID int64,
 	) error
 }
@@ -167,27 +161,6 @@ func (s *TaskService) CreateTask(
 // Get
 // =========================
 
-func (s *TaskService) GetTask(
-	ctx context.Context,
-	id int64,
-	userID int64,
-) (*models.Task, error) {
-
-	if id <= 0 {
-		return nil, apperr.ErrInvalidID
-	}
-
-	if userID <= 0 {
-		return nil, apperr.ErrInvalidUserID
-	}
-
-	return s.repo.Get(
-		ctx,
-		id,
-		userID,
-	)
-}
-
 func (s *TaskService) GetTaskByPublicID(
 	ctx context.Context,
 	publicID string,
@@ -236,7 +209,7 @@ func (s *TaskService) ListTasks(
 
 func (s *TaskService) UpdateTask(
 	ctx context.Context,
-	id int64,
+	publicID string,
 	userID int64,
 	title string,
 	description string,
@@ -244,7 +217,7 @@ func (s *TaskService) UpdateTask(
 	dueDate *time.Time,
 ) (*models.Task, error) {
 
-	if id <= 0 {
+	if publicID == "" {
 		return nil, apperr.ErrInvalidID
 	}
 
@@ -268,7 +241,7 @@ func (s *TaskService) UpdateTask(
 	}
 
 	task := &models.Task{
-		ID:          id,
+		PublicID:    publicID,
 		UserID:      userID,
 		Title:       title,
 		Description: description,
@@ -288,12 +261,12 @@ func (s *TaskService) UpdateTask(
 
 func (s *TaskService) UpdateStatus(
 	ctx context.Context,
-	id int64,
+	publicID string,
 	userID int64,
 	status models.TaskStatus,
 ) (*models.Task, error) {
 
-	if id <= 0 {
+	if publicID == "" {
 		return nil, apperr.ErrInvalidID
 	}
 
@@ -307,7 +280,7 @@ func (s *TaskService) UpdateStatus(
 
 	return s.repo.UpdateStatus(
 		ctx,
-		id,
+		publicID,
 		userID,
 		status,
 	)
@@ -319,11 +292,11 @@ func (s *TaskService) UpdateStatus(
 
 func (s *TaskService) DeleteTask(
 	ctx context.Context,
-	id int64,
+	publicID string,
 	userID int64,
 ) error {
 
-	if id <= 0 {
+	if publicID == "" {
 		return apperr.ErrInvalidID
 	}
 
@@ -333,7 +306,7 @@ func (s *TaskService) DeleteTask(
 
 	return s.repo.Delete(
 		ctx,
-		id,
+		publicID,
 		userID,
 	)
 }
