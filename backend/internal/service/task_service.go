@@ -36,6 +36,12 @@ type TaskRepository interface {
 		userID int64,
 	) (*models.Task, error)
 
+	GetByPublicID(
+		ctx context.Context,
+		publicID string,
+		userID int64,
+	) (*models.Task, error)
+
 	Update(
 		ctx context.Context,
 		task *models.Task,
@@ -178,6 +184,27 @@ func (s *TaskService) GetTask(
 	return s.repo.Get(
 		ctx,
 		id,
+		userID,
+	)
+}
+
+func (s *TaskService) GetTaskByPublicID(
+	ctx context.Context,
+	publicID string,
+	userID int64,
+) (*models.Task, error) {
+
+	if publicID == "" {
+		return nil, apperr.ErrInvalidID
+	}
+
+	if userID <= 0 {
+		return nil, apperr.ErrInvalidUserID
+	}
+
+	return s.repo.GetByPublicID(
+		ctx,
+		publicID,
 		userID,
 	)
 }

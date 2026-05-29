@@ -55,6 +55,11 @@ func NewRouter(
 	)
 
 	mux.HandleFunc(
+		"GET /api/v1/tasks/public/{publicId}",
+		taskHandler.GetByPublicID,
+	)
+
+	mux.HandleFunc(
 		"PUT /api/v1/tasks/{id}",
 		taskHandler.Update,
 	)

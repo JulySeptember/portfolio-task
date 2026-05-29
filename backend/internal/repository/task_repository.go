@@ -11,6 +11,8 @@ import (
 
 	"portfolio/backend/internal/apperr"
 	"portfolio/backend/internal/models"
+
+	"github.com/google/uuid"
 )
 
 type TaskRepository struct {
@@ -28,6 +30,7 @@ func NewTaskRepository(
 
 var taskColumns = strings.Join([]string{
 	"id",
+	"public_id",
 	"user_id",
 	"title",
 	"description",
@@ -65,6 +68,7 @@ AND user_id = ?
 		userID,
 	).Scan(
 		&task.ID,
+		&task.PublicID,
 		&task.UserID,
 		&task.Title,
 		&task.Description,
@@ -95,19 +99,23 @@ func (r *TaskRepository) Create(
 	task *models.Task,
 ) (*models.Task, error) {
 
+	publicID := uuid.New().String()
+
 	query := `
 INSERT INTO tasks (
+	public_id,
 	user_id,
 	title,
 	description,
 	status,
 	due_date
-) VALUES (?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?)
 `
 
 	res, err := r.db.ExecContext(
 		ctx,
 		query,
+		publicID,
 		task.UserID,
 		task.Title,
 		task.Description,
@@ -131,6 +139,10 @@ INSERT INTO tasks (
 		task.UserID,
 	)
 }
+
+// =========================
+// List
+// =========================
 
 func (r *TaskRepository) ListByUserID(
 	ctx context.Context,
@@ -260,6 +272,7 @@ OFFSET ?
 
 		if err := rows.Scan(
 			&t.ID,
+			&t.PublicID,
 			&t.UserID,
 			&t.Title,
 			&t.Description,
@@ -303,6 +316,23 @@ func (r *TaskRepository) Get(
 		taskID,
 		userID,
 	)
+}
+
+func (r *TaskRepository) GetByPublicID(ctx context.Context, publicID string, userID int64) (*models.Task, error) {
+	query := fmt.Sprintf(`SELECT %s FROM tasks WHERE public_id = ? AND user_id = ?`, taskColumns)
+
+	var task models.Task
+	err := r.db.QueryRowContext(ctx, query, publicID, userID).Scan(
+		&task.ID, &task.PublicID, &task.UserID, &task.Title, &task.Description,
+		&task.Status, &task.DueDate, &task.CreatedAt, &task.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperr.ErrTaskNotFound
+		}
+		return nil, parseMySQLError(err)
+	}
+	return &task, nil
 }
 
 // =========================

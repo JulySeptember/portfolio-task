@@ -1,6 +1,9 @@
 CREATE TABLE tasks (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
 
+    -- external/public identifier
+    public_id CHAR(36) NOT NULL,
+
     user_id BIGINT NOT NULL,
 
     title VARCHAR(255) NOT NULL,
@@ -19,6 +22,9 @@ CREATE TABLE tasks (
     updated_at TIMESTAMP NOT NULL
         DEFAULT CURRENT_TIMESTAMP
         ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_tasks_public_id
+        UNIQUE (public_id),
 
     CONSTRAINT fk_tasks_user
         FOREIGN KEY (user_id)

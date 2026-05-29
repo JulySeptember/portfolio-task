@@ -1,10 +1,7 @@
-# swagger/swagger.yml
-
 openapi: 3.0.3
 
 info:
   title: Task Management API
-
   description: |
     Full-stack task management REST API built with:
 
@@ -15,8 +12,7 @@ info:
     - Terraform
     - Cognito JWT Authentication
     - Next.js
-
-  version: 1.0.0
+  version: 1.1.0
 
 servers:
   - url: /
@@ -31,102 +27,53 @@ security:
   - bearerAuth: []
 
 paths:
-  # =========================
-  # health
-  # =========================
-
   /health:
     get:
       tags:
         - health
-
       summary: Health check
-
       security: []
-
       responses:
         "200":
           description: OK
-
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
 
-              example:
-                status: ok
-
-  # =========================
-  # users
-  # =========================
-
   /api/v1/users/me:
     get:
       tags:
         - users
-
       summary: Get current user
-
       operationId: getCurrentUser
-
       responses:
         "200":
           description: OK
-
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserResponse"
 
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
     delete:
       tags:
         - users
-
       summary: Delete current user
-
-      description: |
-        Permanently deletes the authenticated user.
-
-        All related tasks are cascade deleted.
-
-        User may be recreated automatically
-        on next Cognito login.
-
       operationId: deleteCurrentUser
-
       responses:
         "204":
           description: No Content
-
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
-  # =========================
-  # tasks collection
-  # =========================
 
   /api/v1/tasks:
     get:
       tags:
         - tasks
-
       summary: List tasks
-
       operationId: listTasks
 
       parameters:
         - name: limit
           in: query
-
           schema:
             type: integer
             minimum: 1
@@ -135,7 +82,6 @@ paths:
 
         - name: offset
           in: query
-
           schema:
             type: integer
             minimum: 0
@@ -143,13 +89,11 @@ paths:
 
         - name: status
           in: query
-
           schema:
             $ref: "#/components/schemas/TaskStatus"
 
         - name: sort
           in: query
-
           schema:
             type: string
             enum:
@@ -159,7 +103,6 @@ paths:
 
         - name: order
           in: query
-
           schema:
             type: string
             enum:
@@ -170,91 +113,41 @@ paths:
       responses:
         "200":
           description: OK
-
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TaskListResponse"
 
-              example:
-                count: 1
-                limit: 20
-                offset: 0
-
-                items:
-                  - id: 101
-                    user_id: 1
-                    title: Buy milk
-                    description: Buy from supermarket
-                    status: TODO
-                    due_date: "2026-05-21T12:00:00Z"
-                    created_at: "2026-05-20T10:30:00Z"
-                    updated_at: "2026-05-20T10:30:00Z"
-
-        "400":
-          $ref: "#/components/responses/BadRequestError"
-
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
     post:
       tags:
         - tasks
-
       summary: Create task
-
       operationId: createTask
 
       requestBody:
         required: true
-
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateTaskRequest"
 
-            example:
-              title: Buy milk
-              description: |
-                Buy from supermarket
-
-                - milk
-                - bread
-
-              status: TODO
-              due_date: "2026-05-20T12:00:00Z"
-
       responses:
         "201":
           description: Created
-
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TaskResponse"
 
-        "400":
-          $ref: "#/components/responses/ValidationError"
-
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
-  # =========================
-  # single task
-  # =========================
+  # ========================================
+  # INTERNAL ID API
+  # ========================================
 
   /api/v1/tasks/{id}:
     parameters:
       - name: id
         in: path
         required: true
-
         schema:
           type: integer
           format: int64
@@ -262,43 +155,25 @@ paths:
     get:
       tags:
         - tasks
-
-      summary: Get task
-
-      operationId: getTask
+      summary: Get task by internal ID
+      operationId: getTaskById
 
       responses:
         "200":
           description: OK
-
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TaskResponse"
 
-        "400":
-          $ref: "#/components/responses/BadRequestError"
-
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-
-        "404":
-          $ref: "#/components/responses/TaskNotFoundError"
-
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
     put:
       tags:
         - tasks
-
       summary: Update task
-
       operationId: updateTask
 
       requestBody:
         required: true
-
         content:
           application/json:
             schema:
@@ -307,92 +182,84 @@ paths:
       responses:
         "200":
           description: OK
-
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TaskResponse"
 
-        "400":
-          $ref: "#/components/responses/ValidationError"
-
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-
-        "404":
-          $ref: "#/components/responses/TaskNotFoundError"
-
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
     delete:
       tags:
         - tasks
-
       summary: Delete task
-
       operationId: deleteTask
 
       responses:
         "204":
           description: No Content
 
-        "400":
-          $ref: "#/components/responses/BadRequestError"
-
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-
-        "404":
-          $ref: "#/components/responses/TaskNotFoundError"
-
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
-  # =========================
-  # patch status only
-  # =========================
-
   /api/v1/tasks/{id}/status:
     patch:
       tags:
         - tasks
-
       summary: Update task status only
-
       operationId: updateTaskStatus
 
       parameters:
         - name: id
           in: path
           required: true
-
           schema:
             type: integer
             format: int64
 
       requestBody:
         required: true
-
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/UpdateTaskStatusRequest"
 
-            example:
-              status: DONE
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+
+  # ========================================
+  # PUBLIC ID API
+  # ========================================
+
+  /api/v1/tasks/public/{publicId}:
+    parameters:
+      - name: publicId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags:
+        - tasks
+      summary: Get task by public ID
+      description: |
+        Public-facing endpoint for frontend routing.
+        Used for browser URLs and direct page access.
+
+      operationId: getTaskByPublicId
 
       responses:
         "200":
           description: OK
-
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TaskResponse"
 
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/BadRequestError"
 
         "401":
           $ref: "#/components/responses/UnauthorizedError"
@@ -413,7 +280,6 @@ components:
   responses:
     BadRequestError:
       description: Bad request
-
       content:
         application/json:
           schema:
@@ -421,7 +287,6 @@ components:
 
     UnauthorizedError:
       description: Unauthorized
-
       content:
         application/json:
           schema:
@@ -429,7 +294,6 @@ components:
 
     InternalServerError:
       description: Internal server error
-
       content:
         application/json:
           schema:
@@ -437,7 +301,6 @@ components:
 
     ValidationError:
       description: Validation error
-
       content:
         application/json:
           schema:
@@ -445,7 +308,6 @@ components:
 
     TaskNotFoundError:
       description: Task not found
-
       content:
         application/json:
           schema:
@@ -454,18 +316,12 @@ components:
   schemas:
     HealthResponse:
       type: object
-
       properties:
         status:
           type: string
-          example: ok
-
-      required:
-        - status
 
     ErrorResponse:
       type: object
-
       properties:
         code:
           type: string
@@ -479,7 +335,6 @@ components:
 
     ValidationErrorResponse:
       type: object
-
       properties:
         code:
           type: string
@@ -489,7 +344,6 @@ components:
 
         errors:
           type: object
-
           additionalProperties:
             type: string
 
@@ -500,7 +354,6 @@ components:
 
     TaskStatus:
       type: string
-
       enum:
         - TODO
         - DOING
@@ -508,7 +361,6 @@ components:
 
     UserResponse:
       type: object
-
       properties:
         id:
           type: integer
@@ -526,12 +378,6 @@ components:
           type: string
           format: date-time
 
-      required:
-        - id
-        - email
-        - created_at
-        - updated_at
-
     TaskResponse:
       type: object
 
@@ -539,6 +385,10 @@ components:
         id:
           type: integer
           format: int64
+
+        public_id:
+          type: string
+          format: uuid
 
         user_id:
           type: integer
@@ -572,6 +422,7 @@ components:
 
       required:
         - id
+        - public_id
         - user_id
         - title
         - status
@@ -593,15 +444,8 @@ components:
 
         items:
           type: array
-
           items:
             $ref: "#/components/schemas/TaskResponse"
-
-      required:
-        - count
-        - limit
-        - offset
-        - items
 
     CreateTaskRequest:
       type: object

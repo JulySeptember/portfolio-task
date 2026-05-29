@@ -158,6 +158,58 @@ func (h *TaskHandler) Get(
 	)
 }
 
+func (h *TaskHandler) GetByPublicID(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	ctx, cancel := withTimeout(
+		r,
+		defaultHandlerTimeout,
+	)
+	defer cancel()
+
+	r = r.WithContext(ctx)
+
+	publicID := r.PathValue("publicId")
+
+	if publicID == "" {
+		httpx.WriteError(
+			w,
+			http.StatusBadRequest,
+			"BAD_REQUEST",
+			"public id required",
+		)
+		return
+	}
+
+	userID, ok := requireUserID(
+		w,
+		r,
+		h.userSvc,
+	)
+
+	if !ok {
+		return
+	}
+
+	task, err := h.taskSvc.GetTaskByPublicID(
+		r.Context(),
+		publicID,
+		userID,
+	)
+
+	if err != nil {
+		httpx.HandleError(w, err)
+		return
+	}
+
+	httpx.WriteJSON(
+		w,
+		http.StatusOK,
+		dto.ToTaskResponse(task),
+	)
+}
+
 // =========================
 // List
 // =========================
