@@ -4,14 +4,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
+type Status = "ALL" | "TODO" | "DOING" | "DONE";
+
 export function TasksFilter() {
   const router = useRouter();
 
   const searchParams = useSearchParams();
 
-  const status = searchParams.get("status") ?? "ALL";
+  const status = (searchParams.get("status") as Status | null) ?? "ALL";
 
-  function updateStatus(value: string) {
+  function updateStatus(value: Status) {
     const params = new URLSearchParams(searchParams.toString());
 
     if (value === "ALL") {
@@ -20,20 +22,30 @@ export function TasksFilter() {
       params.set("status", value);
     }
 
+    // filter変更時は1ページ目へ戻す
     params.set("offset", "0");
 
-    router.push(`/tasks?${params.toString()}`);
+    router.replace(`/tasks?${params.toString()}`);
   }
 
   return (
     <ToggleGroup
       type="single"
-      value={status === "ALL" ? "" : status}
+      value={status}
       onValueChange={(value) => {
-        updateStatus(value || "ALL");
+        if (!value) {
+          updateStatus("ALL");
+          return;
+        }
+
+        updateStatus(value as Status);
       }}
-      className="flex items-center gap-2"
+      className="flex flex-wrap items-center gap-2"
     >
+      <ToggleGroupItem value="ALL" className="h-9 px-3 text-sm">
+        ALL
+      </ToggleGroupItem>
+
       <ToggleGroupItem value="TODO" className="h-9 px-3 text-sm">
         TODO
       </ToggleGroupItem>

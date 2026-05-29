@@ -1,23 +1,76 @@
+"use client";
+
 // src/app/(protected)/layout.tsx
 
-import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+
+import { useRouter } from "next/navigation";
 
 import { AppHeader } from "@/components/layout/app-header";
 
-import { getCurrentUser } from "@/features/auth/api/get-current-user";
+export default function ProtectedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
 
-type Props = {
-  children: ReactNode;
-};
+  const [isLoading, setIsLoading] = useState(true);
 
-export default async function ProtectedLayout({ children }: Props) {
-  const user = await getCurrentUser();
+  useEffect(() => {
+    async function verifyAuth() {
+      const accessToken = localStorage.getItem("access_token");
+
+      if (!accessToken) {
+        router.replace("/");
+
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/me`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          },
+        );
+
+        if (!response.ok) {
+          localStorage.removeItem("access_token");
+
+          localStorage.removeItem("id_token");
+
+          router.replace("/");
+
+          return;
+        }
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error(error);
+
+        router.replace("/");
+      }
+    }
+
+    verifyAuth();
+  }, [router]);
+
+  if (isLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </main>
+    );
+  }
 
   return (
-    <>
-      <AppHeader user={user} />
+    <div className="min-h-screen bg-background">
+      <AppHeader />
 
       <main>{children}</main>
-    </>
+    </div>
   );
 }

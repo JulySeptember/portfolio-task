@@ -1,3 +1,5 @@
+// src/features/tasks/api/update-task.ts
+
 import { apiClient } from "@/lib/api/client";
 
 import {
@@ -6,12 +8,10 @@ import {
   type TaskRequest,
 } from "../schemas/task-schema";
 
-type Params = {
-  id: number;
-} & TaskRequest;
+import { taskEndpoints } from "./endpoints";
 
-export async function updateTask({ id, ...body }: Params): Promise<Task> {
-  const data = await apiClient<unknown>(`/api/tasks/${id}`, {
+export async function updateTask(id: number, body: TaskRequest): Promise<Task> {
+  const data = await apiClient<unknown>(taskEndpoints.detail(id), {
     method: "PUT",
 
     body: JSON.stringify(body),

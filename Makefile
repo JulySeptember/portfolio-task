@@ -1,6 +1,7 @@
 # ============================
 # Global variables
 # ============================
+include aws.env
 
 FRONTEND_DIR := frontend
 BACKEND_DIR := backend
@@ -12,15 +13,14 @@ TF_ENV_FILE := envs/dev.tfvars
 
 AWS_REGION := ap-northeast-1
 
-S3_BUCKET := your-frontend-bucket
-CLOUDFRONT_ID := YOUR_CLOUDFRONT_DISTRIBUTION_ID
-
 LAMBDA_ARTIFACT_BUCKET := portfolio-task-july-dev-backend-artifacts
 LAMBDA_ARTIFACT_KEY := lambda/portfolio-dev.zip
 
 LAMBDA_BINARY := bootstrap
 LAMBDA_ZIP := lambda.zip
 
+FRONTEND_BUCKET = portfolio-task-july-dev-frontend-assets
+CLOUDFRONT_ID := $(CLOUDFRONT_DISTRIBUTION_ID)
 
 # ============================
 # Frontend
@@ -33,7 +33,7 @@ frontend-build:
 	cd $(FRONTEND_DIR) && npm run build
 
 frontend-deploy: frontend-build
-	aws s3 sync $(FRONTEND_DIR)/out s3://$(S3_BUCKET) --delete
+	aws s3 sync $(FRONTEND_DIR)/out s3://$(FRONTEND_BUCKET) --delete
 	aws cloudfront create-invalidation \
 		--distribution-id $(CLOUDFRONT_ID) \
 		--paths "/*"
@@ -60,9 +60,6 @@ backend-upload: backend-package
 	aws s3 cp \
 		$(BACKEND_DIR)/$(LAMBDA_ZIP) \
 		s3://$(LAMBDA_ARTIFACT_BUCKET)/$(LAMBDA_ARTIFACT_KEY)
-
-backend-deploy: backend-upload
-	@echo "🚀 Lambda artifact uploaded"
 
 
 # ============================
@@ -114,14 +111,6 @@ tf-destroy:
 	cd $(INFRA_DIR) && terraform destroy \
 		-auto-approve \
 		-var-file=$(TF_ENV_FILE)
-
-
-# ============================
-# Full deploy
-# ============================
-
-deploy-all: frontend-deploy tf-apply
-	@echo "🚀 Full deploy complete"
 
 
 # ============================

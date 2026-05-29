@@ -3,7 +3,6 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-
 import { Trash2 } from "lucide-react";
 
 import {
@@ -16,7 +15,6 @@ import {
 } from "@/components/ui/table";
 
 import { Button } from "@/components/ui/button";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,69 +28,48 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { formatDateOnly } from "@/lib/utils/date";
+import { encodeId } from "@/lib/utils/hash-id";
 
 import { useTasks } from "../hooks/use-tasks";
-
 import { useDeleteTask } from "../hooks/use-delete-task";
-
 import { useUpdateTaskStatus } from "../hooks/use-update-task-status";
 
 import type { Task, TaskListResponse } from "../schemas/task-schema";
-
 import { TasksPagination } from "./tasks-pagination";
-
 import { TaskStatusSelect } from "./task-status-select";
 
 type Props = {
-  initialData: TaskListResponse;
-
   limit: number;
-
   offset: number;
-
   status?: "TODO" | "DOING" | "DONE";
-
   sort?: "created_at" | "due_date";
-
   order?: "ASC" | "DESC";
 };
 
-export function TasksTable({
-  initialData,
-  limit,
-  offset,
-  status,
-  sort,
-  order,
-}: Props) {
+export function TasksTable({ limit, offset, status, sort, order }: Props) {
   const router = useRouter();
-
   const searchParams = useSearchParams();
 
   const updateStatus = useUpdateTaskStatus();
-
   const deleteTask = useDeleteTask();
 
-  const { data } = useTasks(
-    {
-      limit,
-      offset,
-      status,
-      sort,
-      order,
-    },
-    {
-      initialData,
-    },
-  );
+  const { data, isLoading } = useTasks({
+    limit,
+    offset,
+    status,
+    sort,
+    order,
+  });
 
-  const tasks: Task[] = data?.items ?? [];
+  // 初回ロード中は何も描画しない
+  if (isLoading || !data) return null;
 
+  const tasks: Task[] = data.items;
+
+  // ここで関数定義
   function openTask(taskId: number) {
     const params = new URLSearchParams(searchParams.toString());
-
-    params.set("taskId", String(taskId));
-
+    params.set("taskId", encodeId(taskId));
     router.push(`/tasks?${params.toString()}`);
   }
 
@@ -100,12 +77,11 @@ export function TasksTable({
     return (
       <div className="rounded-xl border p-8 text-center">
         <p className="text-muted-foreground text-sm">No tasks found</p>
-
         <div className="border-t px-6 pt-6">
           <TasksPagination
-            total={data?.count ?? 0}
-            limit={data?.limit ?? limit}
-            offset={data?.offset ?? offset}
+            total={data.count ?? 0}
+            limit={data.limit ?? limit}
+            offset={data.offset ?? offset}
           />
         </div>
       </div>
@@ -115,12 +91,35 @@ export function TasksTable({
   return (
     <div className="space-y-4">
       {/* Mobile Cards */}
-      <div className="space-y-3 md:hidden">
-        {tasks.map((task: Task) => (
+      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-3 md:hidden">
+        {tasks.map((task: Task, index) => (
           <div
             key={task.id}
+            style={{
+              animationDelay: `${index * 40}ms`,
+            }}
+            role="button"
+            tabIndex={0}
             onClick={() => openTask(task.id)}
-            className="space-y-4 rounded-xl border p-4 transition-colors hover:bg-muted/50"
+            className="
+      animate-in
+      fade-in
+      slide-in-from-bottom-2
+      duration-300
+
+      space-y-4
+      rounded-xl
+      border
+      p-4
+
+      transition-all
+      hover:bg-muted/50
+      hover:shadow-sm
+
+      focus:outline-none
+      focus:ring-2
+      focus:ring-ring
+    "
           >
             <div className="space-y-2">
               <p className="line-clamp-2 break-all font-medium">{task.title}</p>
@@ -131,7 +130,6 @@ export function TasksTable({
                 </p>
               )}
             </div>
-
             <div className="flex items-center justify-between gap-3">
               <div
                 onClick={(e) => e.stopPropagation()}
@@ -197,18 +195,14 @@ export function TasksTable({
           </div>
         ))}
       </div>
-
       {/* Desktop Table */}
-      <div className="hidden rounded-xl border md:block">
+      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 hidden rounded-xl border md:block">
         <Table className="table-fixed">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[50%]">Title</TableHead>
-
               <TableHead className="w-[25%]">Status</TableHead>
-
               <TableHead className="w-[20%]">Due Date</TableHead>
-
               <TableHead className="w-16" />
             </TableRow>
           </TableHeader>
@@ -223,7 +217,6 @@ export function TasksTable({
                 <TableCell>
                   <div className="min-w-0 space-y-1">
                     <p className="truncate font-medium">{task.title}</p>
-
                     {task.description && (
                       <p className="text-muted-foreground line-clamp-2 break-all text-sm">
                         {task.description}
@@ -272,7 +265,6 @@ export function TasksTable({
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete task?</AlertDialogTitle>
-
                         <AlertDialogDescription>
                           This action cannot be undone.
                         </AlertDialogDescription>
@@ -280,7 +272,6 @@ export function TasksTable({
 
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-
                         <AlertDialogAction
                           disabled={deleteTask.isPending}
                           onClick={() => {

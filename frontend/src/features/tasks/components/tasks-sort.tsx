@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { useRouter, useSearchParams } from "next/navigation";
 
 import {
@@ -10,26 +12,62 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+type SortType = "created_at" | "due_date";
+
+type OrderType = "ASC" | "DESC";
+
 export function TasksSort() {
   const router = useRouter();
 
   const searchParams = useSearchParams();
 
-  const sort = searchParams.get("sort") ?? "created_at";
+  const [sort, setSort] = useState<SortType>(
+    (searchParams.get("sort") as SortType | null) ?? "created_at",
+  );
 
-  const order = searchParams.get("order") ?? "DESC";
+  const [order, setOrder] = useState<OrderType>(
+    (searchParams.get("order") as OrderType | null) ?? "DESC",
+  );
 
-  function update(key: string, value: string) {
+  // =========================
+  // sync from url
+  // =========================
+
+  useEffect(() => {
+    setSort((searchParams.get("sort") as SortType | null) ?? "created_at");
+
+    setOrder((searchParams.get("order") as OrderType | null) ?? "DESC");
+  }, [searchParams]);
+
+  // =========================
+  // update url
+  // =========================
+
+  function update(nextSort: SortType, nextOrder: OrderType) {
     const params = new URLSearchParams(searchParams.toString());
 
-    params.set(key, value);
+    params.set("sort", nextSort);
 
-    router.push(`/tasks?${params.toString()}`);
+    params.set("order", nextOrder);
+
+    // sort変えたら先頭ページへ
+    params.set("offset", "0");
+
+    router.replace(`/tasks?${params.toString()}`);
   }
 
   return (
     <div className="flex items-center gap-2">
-      <Select value={sort} onValueChange={(value) => update("sort", value)}>
+      {/* sort */}
+
+      <Select
+        value={sort}
+        onValueChange={(value: SortType) => {
+          setSort(value);
+
+          update(value, order);
+        }}
+      >
         <SelectTrigger className="h-11 min-w-0 flex-1 sm:w-44 sm:flex-none">
           <SelectValue />
         </SelectTrigger>
@@ -41,7 +79,16 @@ export function TasksSort() {
         </SelectContent>
       </Select>
 
-      <Select value={order} onValueChange={(value) => update("order", value)}>
+      {/* order */}
+
+      <Select
+        value={order}
+        onValueChange={(value: OrderType) => {
+          setOrder(value);
+
+          update(sort, value);
+        }}
+      >
         <SelectTrigger className="h-11 w-28 shrink-0 sm:w-32">
           <SelectValue />
         </SelectTrigger>

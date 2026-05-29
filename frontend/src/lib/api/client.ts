@@ -10,13 +10,20 @@ async function request<T>(
 ): Promise<T> {
   const { headers, ...init } = options;
 
-  const response = await fetch(input, {
-    ...init,
+  const accessToken =
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
-    credentials: "include",
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${input}`, {
+    ...init,
 
     headers: {
       "Content-Type": "application/json",
+
+      ...(accessToken
+        ? {
+            Authorization: `Bearer ${accessToken}`,
+          }
+        : {}),
 
       ...headers,
     },
@@ -64,17 +71,11 @@ export async function apiClient<T>(
       error instanceof ApiError &&
       error.status === 401
     ) {
-      try {
-        await fetch("/api/auth/refresh", {
-          method: "POST",
+      localStorage.removeItem("access_token");
 
-          credentials: "include",
-        });
+      localStorage.removeItem("id_token");
 
-        return await request<T>(input, options);
-      } catch {
-        window.location.href = "/";
-      }
+      localStorage.removeItem("refresh_token");
     }
 
     throw error;

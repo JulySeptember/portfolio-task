@@ -1,10 +1,14 @@
-// src/features/tasks/components/task-editor.tsx
-
 "use client";
+
+import { useRouter } from "next/navigation";
 
 import Link from "next/link";
 
+import { Expand } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+
+import { encodeId } from "@/lib/utils/hash-id";
 
 import {
   AlertDialog,
@@ -24,8 +28,6 @@ import { useDeleteTask } from "../hooks/use-delete-task";
 
 import { useUpdateTask } from "../hooks/use-update-task";
 
-import { useRouter } from "next/navigation";
-
 import type { Task, TaskFormValues, TaskStatus } from "../schemas/task-schema";
 
 import { TaskForm } from "./task-form";
@@ -39,6 +41,8 @@ type Props =
       showOpenPageButton?: boolean;
 
       autoResizeDescription?: boolean;
+
+      onOpenFullPage?: () => void;
     }
   | {
       mode: "edit";
@@ -50,6 +54,8 @@ type Props =
       showOpenPageButton?: boolean;
 
       autoResizeDescription?: boolean;
+
+      onOpenFullPage?: () => void;
     };
 
 export function TaskEditor(props: Props) {
@@ -84,6 +90,7 @@ export function TaskEditor(props: Props) {
     updateTask.mutate(
       {
         id: props.task.id,
+
         ...payload,
       },
       {
@@ -94,6 +101,69 @@ export function TaskEditor(props: Props) {
     );
   }
 
+  function openFullPage() {
+    if (props.mode === "edit" && props.task?.id) {
+      const hashedId = encodeId(props.task.id);
+
+      router.push(`/tasks/${hashedId}`);
+    }
+  }
+
+  function FullButton({
+    href,
+    onClick,
+  }: {
+    href?: string;
+
+    onClick?: () => void;
+  }) {
+    const className = `
+      h-10
+      gap-1.5
+      rounded-xl
+      px-3
+      text-muted-foreground
+      hover:bg-muted
+      hover:text-foreground
+    `;
+
+    const content = (
+      <>
+        <Expand className="h-4 w-4 shrink-0" />
+
+        <span
+          className="
+            text-[10px]
+            font-medium
+            tracking-[0.2em]
+            opacity-60
+          "
+        >
+          FULL
+        </span>
+      </>
+    );
+
+    if (href) {
+      return (
+        <Button asChild type="button" variant="ghost" className={className}>
+          <Link href={href}>{content}</Link>
+        </Button>
+      );
+    }
+
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        className={className}
+        onClick={onClick}
+      >
+        {content}
+      </Button>
+    );
+  }
+
   if (props.mode === "create") {
     return (
       <TaskForm
@@ -101,17 +171,18 @@ export function TaskEditor(props: Props) {
         isPending={createTask.isPending}
         defaultValues={{
           title: "",
+
           description: "",
+
           status: "TODO",
+
           due_date: "",
         }}
         onSubmit={handleSubmit}
         autoResizeDescription={props.autoResizeDescription}
         secondaryAction={
           props.showOpenPageButton === false ? null : (
-            <Button asChild variant="outline" className="rounded-xl">
-              <Link href="/tasks/new">Open Full Page</Link>
-            </Button>
+            <FullButton href="/tasks/new" />
           )
         }
       />
@@ -125,22 +196,30 @@ export function TaskEditor(props: Props) {
       autoResizeDescription={props.autoResizeDescription}
       defaultValues={{
         title: props.task.title,
+
         description: props.task.description,
+
         status: props.task.status as TaskStatus,
+
         due_date: props.task.dueDate ? props.task.dueDate.slice(0, 16) : "",
       }}
       onSubmit={handleSubmit}
       secondaryAction={
-        props.showOpenPageButton ? (
-          <Button asChild variant="outline" className="rounded-xl">
-            <Link href={`/tasks/${props.task.id}`}>Open Full Page</Link>
-          </Button>
-        ) : null
+        props.showOpenPageButton ? <FullButton onClick={openFullPage} /> : null
       }
       footer={
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="destructive" className="h-12 rounded-xl px-6">
+            <Button
+              variant="destructive"
+              className="
+                h-12
+                w-full
+                rounded-xl
+                px-6
+                sm:w-auto
+              "
+            >
               Delete Task
             </Button>
           </AlertDialogTrigger>

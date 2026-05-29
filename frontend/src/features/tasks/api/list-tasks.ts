@@ -1,3 +1,5 @@
+// src/features/tasks/api/list-tasks.ts
+
 import { apiClient } from "@/lib/api/client";
 
 import {
@@ -5,48 +7,52 @@ import {
   type TaskListResponse,
 } from "../schemas/task-schema";
 
+import { taskEndpoints } from "./endpoints";
+
 export type ListTasksParams = {
   limit?: number;
 
   offset?: number;
 
-  status?: "TODO" | "DOING" | "DONE";
+  status?: string;
 
-  sort?: "created_at" | "due_date";
+  sort?: string;
 
-  order?: "ASC" | "DESC";
+  order?: string;
 };
 
 export async function listTasks(
-  params?: ListTasksParams,
+  params: ListTasksParams = {},
 ): Promise<TaskListResponse> {
   const searchParams = new URLSearchParams();
 
-  if (params?.limit) {
+  if (params.limit) {
     searchParams.set("limit", String(params.limit));
   }
 
-  if (params?.offset) {
+  if (params.offset) {
     searchParams.set("offset", String(params.offset));
   }
 
-  if (params?.status) {
+  if (params.status) {
     searchParams.set("status", params.status);
   }
 
-  if (params?.sort) {
+  if (params.sort) {
     searchParams.set("sort", params.sort);
   }
 
-  if (params?.order) {
+  if (params.order) {
     searchParams.set("order", params.order);
   }
 
   const query = searchParams.toString();
 
-  const data = await apiClient<unknown>(
-    `/api/tasks${query ? `?${query}` : ""}`,
-  );
+  const endpoint = query
+    ? `${taskEndpoints.list()}?${query}`
+    : taskEndpoints.list();
+
+  const data = await apiClient<unknown>(endpoint);
 
   return taskListResponseSchema.parse(data);
 }

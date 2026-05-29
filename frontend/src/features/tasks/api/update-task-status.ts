@@ -1,20 +1,23 @@
+// src/features/tasks/api/update-task-status.ts
+
 import { apiClient } from "@/lib/api/client";
 
-import { taskSchema, type Task } from "../schemas/task-schema";
+import { taskSchema, type Task, type TaskStatus } from "../schemas/task-schema";
 
-type Params = {
-  id: number;
+import { taskEndpoints } from "./endpoints";
 
-  status: "TODO" | "DOING" | "DONE";
+type UpdateTaskStatusBody = {
+  status: TaskStatus;
 };
 
-export async function updateTaskStatus({ id, status }: Params): Promise<Task> {
-  const data = await apiClient<unknown>(`/api/tasks/${id}/status`, {
+export async function updateTaskStatus(
+  id: number,
+  body: UpdateTaskStatusBody,
+): Promise<Task> {
+  const data = await apiClient<unknown>(taskEndpoints.status(id), {
     method: "PATCH",
 
-    body: JSON.stringify({
-      status,
-    }),
+    body: JSON.stringify(body),
   });
 
   return taskSchema.parse(data);

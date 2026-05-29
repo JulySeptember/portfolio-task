@@ -2,9 +2,7 @@
 
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
-
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { toast } from "sonner";
 
@@ -14,13 +12,35 @@ import { taskQueryKeys } from "../queries/task-query-keys";
 
 import type { Task, TaskListResponse } from "../schemas/task-schema";
 
+type UpdateTaskInput = {
+  id: number;
+
+  title: string;
+
+  description: string;
+
+  status: "TODO" | "DOING" | "DONE";
+
+  due_date: string | null;
+};
+
+type UpdateTaskContext = {
+  previousLists: Array<[readonly unknown[], TaskListResponse | undefined]>;
+};
+
 export function useUpdateTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: updateTask,
+    mutationFn: async (input: UpdateTaskInput) => {
+      const { id, ...body } = input;
 
-    onMutate: async (updatedTask) => {
+      return updateTask(id, body);
+    },
+
+    onMutate: async (
+      updatedTask: UpdateTaskInput,
+    ): Promise<UpdateTaskContext> => {
       await queryClient.cancelQueries({
         queryKey: taskQueryKeys.lists(),
       });
@@ -56,6 +76,9 @@ export function useUpdateTask() {
 
         queryClient.setQueryData<TaskListResponse>(queryKey, {
           ...data,
+
+          count: items.length,
+
           items,
         });
       });
@@ -65,7 +88,7 @@ export function useUpdateTask() {
       };
     },
 
-    onError: (_, __, context) => {
+    onError: (_, __, context?: UpdateTaskContext) => {
       context?.previousLists.forEach(([queryKey, data]) => {
         queryClient.setQueryData(queryKey, data);
       });
