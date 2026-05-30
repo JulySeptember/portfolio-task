@@ -16,8 +16,7 @@ Next.js × Go × AWS × Terraform × MySQL を用いた
 
 # ✨ Features
 
-- AWS Cognito Hosted UI Authentication (Authorization Code Flow + PKCE)
-- Refresh Token Authentication
+- AWS Cognito Hosted UI Authentication (Implicit Flow)
 - API Gateway JWT Authorizer
 - Serverless Go API (AWS Lambda)
 - Task CRUD APIs
@@ -76,7 +75,10 @@ Browser
 Cognito Hosted UI
    │
    ▼
-Authorization Code + PKCE
+Implicit Flow
+   │
+   ▼
+ID Token / Access Token
    │
    ▼
 API Gateway JWT Authorizer
@@ -101,22 +103,21 @@ RDS MySQL
 
 # 🔐 Authentication
 
-AWS Cognito Hosted UI を利用した Authorization Code Flow + PKCE を採用しています。
+AWS Cognito Hosted UI を利用した Implicit Flow を採用しています。
 
 ```text
 Login
   ↓
 Hosted UI
   ↓
-Authorization Code
-  ↓
-Token Exchange
-  ↓
-Access Token
-Refresh Token
 ID Token
+Access Token
+(URL Hash)
   ↓
 Frontend Storage
+(localStorage)
+  ↓
+POST /api/v1/auth/bootstrap
   ↓
 Authorization: Bearer <token>
   ↓
@@ -128,12 +129,12 @@ Lambda
 特徴:
 
 ```text
-- Authorization Code Flow
-- PKCE (S256)
-- Refresh Token
-- Automatic Token Refresh
 - Cognito Hosted UI
-- JWT Validation at API Gateway
+- Implicit Flow
+- JWT Authentication
+- URL Hash Token Retrieval
+- User Bootstrap Synchronization
+- API Gateway JWT Validation
 ```
 
 ---
@@ -153,6 +154,7 @@ POST /api/v1/auth/bootstrap
 - First Login → INSERT
 - Existing User → UPDATE
 - Cognito sub → auth_user_id
+- Cognito email → email
 ```
 
 ---
@@ -189,11 +191,11 @@ Feature-Based Architecture を採用しています。
 
 ```text
 - React Query
-- Optimistic Update
-- Full Page Editor
+- Zustand
 - Responsive UI
-- PKCE Authentication
-- Automatic Token Refresh
+- Cognito Hosted UI Authentication
+- Implicit Flow
+- User Bootstrap
 - shadcn/ui
 ```
 
@@ -203,8 +205,7 @@ Feature-Based Architecture を採用しています。
 
 ```text
 - Cognito Hosted UI
-- Authorization Code Flow + PKCE
-- Refresh Token
+- Implicit Flow
 - API Gateway JWT Authorizer
 - Owner Isolation
 - Request Timeout
@@ -351,13 +352,14 @@ Terraform により以下を構築。
 # 🚀 Future Improvements
 
 ```text
+- Migration to Authorization Code Flow + PKCE
+- Refresh Token Support
 - GitHub Actions CI/CD
 - Lambda Deployment Pipeline
 - Bastion Removal
 - Secrets Manager
 - SSM Parameter Store
 - Integration Tests
-- Refresh Token Rotation
 - Rate Limiting
 - CloudWatch Dashboard
 ```

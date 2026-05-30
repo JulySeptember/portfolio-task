@@ -8,6 +8,16 @@ resource "aws_cloudfront_origin_access_control" "this" {
   signing_protocol                  = "sigv4"
 }
 
+
+# --- CloudFront Function ---
+resource "aws_cloudfront_function" "rewrite_index" {
+  name    = "${var.project_name}-${var.env}-rewrite-index"
+  runtime = "cloudfront-js-1.0"
+  comment = "Rewrite SPA routes to index.html"
+
+  code = file("${path.module}/functions/rewrite_index.js")
+}
+
 # --- Optional: get managed cache policy by name (robust vs hardcoding ID) ---
 data "aws_cloudfront_cache_policy" "managed_caching_optimized" {
   name = "Managed-CachingOptimized"
@@ -29,12 +39,18 @@ resource "aws_cloudfront_distribution" "this" {
   default_cache_behavior {
     target_origin_id       = "S3Origin"
     viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD"]
-    cached_methods         = ["GET", "HEAD"]
-    cache_policy_id        = data.aws_cloudfront_cache_policy.managed_caching_optimized.id
+
+    allowed_methods = ["GET", "HEAD"]
+    cached_methods  = ["GET", "HEAD"]
+
+    cache_policy_id = data.aws_cloudfront_cache_policy.managed_caching_optimized.id
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.rewrite_index.arn
+    }
   }
 
-  # SPA 用のカスタムエラーページ（index.html にフォールバック）
   custom_error_response {
     error_code            = 403
     response_code         = 200
