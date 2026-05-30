@@ -61,6 +61,12 @@ backend-upload:
 		$(BACKEND_DIR)/$(LAMBDA_ZIP) \
 		s3://$(LAMBDA_ARTIFACT_BUCKET)/$(LAMBDA_ARTIFACT_KEY)
 
+backend-migrate-up:
+	@set -a && . ./backend/.env.production && set +a && \
+	migrate \
+		-path backend/migrations \
+		-database "mysql://$$DB_USER:$$DB_PASSWORD@tcp($$DB_HOST:$$DB_PORT)/$$DB_NAME?parseTime=true&multiStatements=true" \
+		up
 
 # ============================
 # Terraform Bootstrap

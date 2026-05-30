@@ -49,7 +49,7 @@ resource "aws_cognito_user_pool_client" "this" {
   allowed_oauth_flows_user_pool_client = true
 
   allowed_oauth_flows = [
-    "code",
+    "implicit",
   ]
 
   allowed_oauth_scopes = [
@@ -60,17 +60,25 @@ resource "aws_cognito_user_pool_client" "this" {
 
   callback_urls = [
     "http://localhost:3000/auth/callback",
-    "https://d2ixcdmrt7p0nu.cloudfront.net/auth/callback"
+    "${var.frontend_url}/auth/callback"
   ]
 
   logout_urls = [
     "http://localhost:3000",
-    "https://d2ixcdmrt7p0nu.cloudfront.net"
+    var.frontend_url
   ]
 
   supported_identity_providers = [
     "COGNITO"
   ]
+
+  access_token_validity = 24
+  id_token_validity     = 24
+
+  token_validity_units {
+    access_token = "hours"
+    id_token     = "hours"
+  }
 }
 # account id 取得
 data "aws_caller_identity" "current" {}

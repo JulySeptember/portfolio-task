@@ -43,7 +43,9 @@ module "sg" {
   bastion_sg_id = module.bastion.bastion_sg_id
 
   tags = local.common_tags
-} # =========================
+}
+
+# =========================
 # RDS
 # =========================
 
@@ -116,9 +118,10 @@ module "cognito" {
   env          = var.env
   aws_region   = var.aws_region
 
+  frontend_url = "https://${module.cloudfront.domain_name}"
+
   tags = local.common_tags
 }
-
 # =========================
 # API Gateway
 # =========================

@@ -178,6 +178,7 @@ terraform output
 
 Next.js frontend を build して
 S3 + CloudFront に deploy。
+ただし、local.envが存在している場合リネームするか削除してからbuild
 
 ```bash
 make frontend-build
@@ -283,10 +284,8 @@ DB_PASSWORD=xxxxxxxx
 
 # 13. Migration 実行
 
-backend directory へ移動。
-
 ```bash
-make migrate-up-prod
+backend-migrate-up
 ```
 
 成功例:
@@ -383,106 +382,8 @@ $FRONTEND_URL
 
 ---
 
-# 20. API Functional Test
 
-## User Bootstrap
-
-```bash
-curl -X POST $API_URL/api/v1/auth/bootstrap \
-  -H "Authorization: Bearer $ID_TOKEN"
-```
-
----
-
-## Create Task
-
-```bash
-curl -X POST $API_URL/api/v1/tasks \
-  -H "Authorization: Bearer $ID_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title":"first task",
-    "description":"hello world",
-    "status":"TODO",
-    "due_date":"2026-06-01T12:00:00Z"
-  }'
-```
-
----
-
-## Update Task
-
-```bash
-curl -X PUT $API_URL/api/v1/tasks/1 \
-  -H "Authorization: Bearer $ID_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title":"updated title",
-    "description":"updated description",
-    "status":"DOING",
-    "due_date":"2026-06-10T15:00:00Z"
-  }'
-```
-
----
-
-## Update Task Status
-
-```bash
-curl -X PATCH $API_URL/api/v1/tasks/1/status \
-  -H "Authorization: Bearer $ID_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"status":"DONE"}'
-```
-
----
-
-## List Tasks
-
-```bash
-curl $API_URL/api/v1/tasks \
-  -H "Authorization: Bearer $ID_TOKEN"
-```
-
----
-
-## Get Task
-
-```bash
-curl $API_URL/api/v1/tasks/1 \
-  -H "Authorization: Bearer $ID_TOKEN"
-```
-
----
-
-## Delete Task
-
-```bash
-curl -X DELETE $API_URL/api/v1/tasks/1 \
-  -H "Authorization: Bearer $ID_TOKEN"
-```
-
----
-
-## Get Current User
-
-```bash
-curl $API_URL/api/v1/users/me \
-  -H "Authorization: Bearer $ID_TOKEN"
-```
-
----
-
-## Delete Current User
-
-```bash
-curl -X DELETE $API_URL/api/v1/users/me \
-  -H "Authorization: Bearer $ID_TOKEN"
-```
-
----
-
-# 21. DB Connection Verification
+# DB Connection Verification
 
 CloudWatch Logs に:
 
@@ -494,7 +395,7 @@ connected to db (mode=lambda ...)
 
 ---
 
-# 22. Troubleshooting
+# Troubleshooting
 
 最初に確認する場所:
 
