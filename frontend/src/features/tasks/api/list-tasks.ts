@@ -1,5 +1,3 @@
-// src/features/tasks/api/list-tasks.ts
-
 import { apiClient } from "@/lib/api/client";
 
 import {
@@ -11,14 +9,10 @@ import { taskEndpoints } from "./endpoints";
 
 export type ListTasksParams = {
   limit?: number;
-
   offset?: number;
-
-  status?: string;
-
-  sort?: string;
-
-  order?: string;
+  status?: "TODO" | "DOING" | "DONE";
+  sort?: "created_at" | "due_date";
+  order?: "ASC" | "DESC";
 };
 
 export async function listTasks(
@@ -26,11 +20,11 @@ export async function listTasks(
 ): Promise<TaskListResponse> {
   const searchParams = new URLSearchParams();
 
-  if (params.limit) {
+  if (params.limit !== undefined) {
     searchParams.set("limit", String(params.limit));
   }
 
-  if (params.offset) {
+  if (params.offset !== undefined) {
     searchParams.set("offset", String(params.offset));
   }
 
@@ -46,10 +40,8 @@ export async function listTasks(
     searchParams.set("order", params.order);
   }
 
-  const query = searchParams.toString();
-
-  const endpoint = query
-    ? `${taskEndpoints.list()}?${query}`
+  const endpoint = searchParams.toString()
+    ? `${taskEndpoints.list()}?${searchParams.toString()}`
     : taskEndpoints.list();
 
   const data = await apiClient<unknown>(endpoint);

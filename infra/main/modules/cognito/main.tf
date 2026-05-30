@@ -50,7 +50,6 @@ resource "aws_cognito_user_pool_client" "this" {
 
   allowed_oauth_flows = [
     "code",
-    "implicit" #フロントエンド実装までACCESSTOKEN取得のために追加
   ]
 
   allowed_oauth_scopes = [

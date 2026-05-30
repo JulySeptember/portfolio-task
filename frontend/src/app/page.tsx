@@ -9,17 +9,24 @@ import { buildLoginURL } from "@/features/auth/lib/hosted-ui";
 export default function HomePage() {
   const isMockAuth = process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === "true";
 
-  function handleLogin() {
-    // local development mock auth
-    if (isMockAuth) {
-      localStorage.setItem("access_token", "local-dev-token");
+  async function handleLogin() {
+    try {
+      // Local development mock auth
+      if (isMockAuth) {
+        localStorage.setItem("access_token", "local-dev-token");
 
-      window.location.href = "/tasks";
+        window.location.href = "/tasks";
 
-      return;
+        return;
+      }
+
+      // Cognito Hosted UI (Authorization Code + PKCE)
+      const loginUrl = await buildLoginURL();
+
+      window.location.href = loginUrl;
+    } catch (error) {
+      console.error("Login redirect failed:", error);
     }
-    // production cognito auth
-    window.location.href = buildLoginURL();
   }
 
   return (

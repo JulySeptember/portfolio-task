@@ -1,6 +1,12 @@
-// src/features/tasks/schemas/task-schema.ts
-
 import { z } from "zod";
+
+// =========================
+// constants
+// =========================
+
+export const TITLE_MAX_LENGTH = 255;
+
+export const DESCRIPTION_MAX_LENGTH = 5000;
 
 // =========================
 // enums
@@ -8,134 +14,78 @@ import { z } from "zod";
 
 export const taskStatusSchema = z.enum(["TODO", "DOING", "DONE"]);
 
+export type TaskStatus = z.infer<typeof taskStatusSchema>;
+
 // =========================
-// api task schema
+// API Task Schema
 // =========================
 
 export const taskSchema = z
   .object({
-    id: z.number().int().positive(),
+    publicId: z.string().optional(), // API は public_id を返す場合あり
+    public_id: z.string().optional(),
 
-    user_id: z.number().int().positive(),
+    title: z.string().min(1, "Title is required").max(255, "Title too long"),
 
-    title: z
-      .string()
-      .trim()
-      .min(1, "Title is required")
-      .max(255, "Title is too long"),
-
-    description: z.string().max(5000, "Description is too long"),
+    description: z.string().nullable().optional(),
 
     status: taskStatusSchema,
 
-    due_date: z.string().datetime().nullable(),
+    dueDate: z.string().nullable().optional(),
+    due_date: z.string().nullable().optional(),
 
-    created_at: z.string().datetime(),
+    createdAt: z.string().optional(),
+    created_at: z.string().optional(),
 
-    updated_at: z.string().datetime(),
+    updatedAt: z.string().optional(),
+    updated_at: z.string().optional(),
   })
-  .transform((data) => ({
-    id: data.id,
-
-    userId: data.user_id,
-
-    title: data.title,
-
-    description: data.description,
-
-    status: data.status,
-
-    dueDate: data.due_date,
-
-    createdAt: data.created_at,
-
-    updatedAt: data.updated_at,
+  .transform((task) => ({
+    publicId: task.publicId ?? task.public_id ?? "",
+    title: task.title,
+    description: task.description ?? null,
+    status: task.status,
+    dueDate: task.dueDate ?? task.due_date ?? null,
+    createdAt: task.createdAt ?? task.created_at ?? "",
+    updatedAt: task.updatedAt ?? task.updated_at ?? "",
   }));
 
+export type Task = z.infer<typeof taskSchema>;
+
 // =========================
-// task list response
+// Task List Response
 // =========================
 
 export const taskListResponseSchema = z.object({
-  count: z.number().int().nonnegative(),
-
   items: z.array(taskSchema),
-
-  limit: z.number().int().positive(),
-
-  offset: z.number().int().nonnegative(),
+  count: z.number(),
+  limit: z.number(),
+  offset: z.number(),
 });
 
-// =========================
-// form schema
-// =========================
-
-export const taskFormSchema = z
-  .object({
-    title: z
-      .string()
-      .trim()
-      .min(1, "Title is required")
-      .max(255, "Title is too long"),
-
-    description: z.string().max(5000, "Description is too long"),
-
-    status: taskStatusSchema,
-
-    due_date: z
-      .string()
-      .optional()
-      .refine(
-        (value) => {
-          if (!value) return true;
-
-          return !Number.isNaN(new Date(value).getTime());
-        },
-        {
-          message: "Invalid date",
-        },
-      ),
-  })
-  .transform((data) => ({
-    title: data.title,
-
-    description: data.description,
-
-    status: data.status,
-
-    due_date: data.due_date ? new Date(data.due_date).toISOString() : undefined,
-  }));
+export type TaskListResponse = z.infer<typeof taskListResponseSchema>;
 
 // =========================
-// request schema
+// Form Schema
 // =========================
 
-export const taskRequestSchema = z.object({
+export const taskFormSchema = z.object({
   title: z
     .string()
     .trim()
     .min(1, "Title is required")
-    .max(255, "Title is too long"),
-
-  description: z.string().max(5000, "Description is too long"),
+    .max(TITLE_MAX_LENGTH, `${TITLE_MAX_LENGTH} characters max`),
+  description: z
+    .string()
+    .trim()
+    .max(DESCRIPTION_MAX_LENGTH, `${DESCRIPTION_MAX_LENGTH} characters max`)
+    .optional(),
 
   status: taskStatusSchema,
 
-  due_date: z.string().datetime().nullable(),
+  due_date: z.string().nullable().optional(),
 });
-
-// =========================
-// types
-// =========================
-
-export type TaskStatus = z.infer<typeof taskStatusSchema>;
-
-export type Task = z.infer<typeof taskSchema>;
-
-export type TaskListResponse = z.infer<typeof taskListResponseSchema>;
 
 export type TaskFormInput = z.input<typeof taskFormSchema>;
 
 export type TaskFormValues = z.output<typeof taskFormSchema>;
-
-export type TaskRequest = z.infer<typeof taskRequestSchema>;

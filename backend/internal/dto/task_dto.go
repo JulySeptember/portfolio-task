@@ -33,8 +33,7 @@ type UpdateTaskStatusRequest struct {
 // =========================
 
 type TaskResponse struct {
-	ID          int64             `json:"id"`
-	UserID      int64             `json:"user_id"`
+	PublicID    string            `json:"public_id"`
 	Title       string            `json:"title"`
 	Description string            `json:"description"`
 	Status      models.TaskStatus `json:"status"`
@@ -63,8 +62,7 @@ func ToTaskResponse(
 ) TaskResponse {
 
 	return TaskResponse{
-		ID:          t.ID,
-		UserID:      t.UserID,
+		PublicID:    t.PublicID,
 		Title:       t.Title,
 		Description: t.Description,
 		Status:      t.Status,

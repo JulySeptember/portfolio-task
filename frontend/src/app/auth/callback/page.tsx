@@ -1,68 +1,47 @@
-// src/app/auth/callback/page.tsx
-
 "use client";
 
 import { useEffect } from "react";
-
 import { useRouter } from "next/navigation";
+
+import { exchangeCodeForTokens } from "@/features/auth/api/exchange-code";
+import { bootstrapUser } from "@/features/auth/api/bootstrap";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
-    async function authenticate() {
-      const hash = window.location.hash;
+    let cancelled = false;
 
-      const params = new URLSearchParams(hash.replace("#", ""));
-
-      const accessToken = params.get("access_token");
-
-      const idToken = params.get("id_token");
-
-      if (!accessToken || !idToken) {
-        router.replace("/");
-
-        return;
-      }
-
-      localStorage.setItem("access_token", accessToken);
-
-      localStorage.setItem("id_token", idToken);
-
-      const apiURL = process.env.NEXT_PUBLIC_API_URL;
-
+    const handleAuth = async () => {
       try {
-        const meResponse = await fetch(`${apiURL}/api/v1/users/me`, {
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-          },
-        });
+        const params = new URLSearchParams(window.location.search);
 
-        // 初回ログイン時のみ bootstrap
-        if (meResponse.status === 404) {
-          await fetch(`${apiURL}/api/v1/auth/bootstrap`, {
-            method: "POST",
+        const code = params.get("code");
 
-            headers: {
-              Authorization: `Bearer ${idToken}`,
-            },
-          });
+        if (!code) {
+          throw new Error("Authorization code not found");
         }
 
-        router.replace("/tasks");
+        // code → token交換
+        await exchangeCodeForTokens(code);
+
+        // users table同期
+        await bootstrapUser();
+
+        if (!cancelled) {
+          router.replace("/tasks");
+        }
       } catch (error) {
-        console.error(error);
-
-        router.replace("/");
+        console.error("Authentication callback failed", error);
       }
-    }
+    };
 
-    authenticate();
+    void handleAuth();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
-  return (
-    <main className="flex min-h-screen items-center justify-center">
-      <p className="text-sm text-muted-foreground">Signing in...</p>
-    </main>
-  );
+  return <div>Logging in...</div>;
 }

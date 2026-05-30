@@ -1,26 +1,48 @@
+// src/features/tasks/components/task-editor.tsx
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-import Link from "next/link";
+import { format } from "date-fns";
 
-import { Expand } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
+
+import { useForm } from "react-hook-form";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 
-import { encodeId } from "@/lib/utils/hash-id";
+import { Input } from "@/components/ui/input";
+
+import { Label } from "@/components/ui/label";
+
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+import { Calendar } from "@/components/ui/calendar";
 
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+import { cn } from "@/lib/utils";
+
+import { TaskStatusSelect } from "./task-status-select";
+
+import { TaskDescriptionField } from "./task-description-field";
 
 import { useCreateTask } from "../hooks/use-create-task";
 
@@ -28,21 +50,22 @@ import { useDeleteTask } from "../hooks/use-delete-task";
 
 import { useUpdateTask } from "../hooks/use-update-task";
 
-import type { Task, TaskFormValues, TaskStatus } from "../schemas/task-schema";
+import {
+  taskFormSchema,
+  type Task,
+  type TaskFormValues,
+  type TaskStatus,
+} from "../schemas/task-schema";
 
-import { TaskForm } from "./task-form";
+// =========================
+// props
+// =========================
 
 type Props =
   | {
       mode: "create";
 
       onSuccess?: () => void;
-
-      showOpenPageButton?: boolean;
-
-      autoResizeDescription?: boolean;
-
-      onOpenFullPage?: () => void;
     }
   | {
       mode: "edit";
@@ -50,32 +73,96 @@ type Props =
       task: Task;
 
       onSuccess?: () => void;
-
-      showOpenPageButton?: boolean;
-
-      autoResizeDescription?: boolean;
-
-      onOpenFullPage?: () => void;
     };
 
+// =========================
+// default values helper
+// =========================
+
+function getDefaultValues(props: Props): TaskFormValues {
+  // create mode
+  if (props.mode === "create") {
+    return {
+      title: "",
+
+      description: "",
+
+      status: "TODO",
+
+      due_date: "",
+    };
+  }
+
+  // edit mode
+  return {
+    title: props.task.title,
+
+    description: props.task.description ?? "",
+
+    status: props.task.status as TaskStatus,
+
+    due_date: props.task.dueDate ?? "",
+  };
+}
+
+// =========================
+// component
+// =========================
+
 export function TaskEditor(props: Props) {
+  const router = useRouter();
+
+  const searchParams = useSearchParams();
+
+  // mutations
+
   const createTask = useCreateTask();
 
   const updateTask = useUpdateTask();
 
   const deleteTask = useDeleteTask();
 
-  const router = useRouter();
+  // calendar popover state
+
+  const [open, setOpen] = useState(false);
+
+  // form default values
+
+  const defaultValues = getDefaultValues(props);
+
+  // react-hook-form
+
+  const form = useForm<TaskFormValues>({
+    resolver: zodResolver(taskFormSchema),
+
+    defaultValues,
+  });
+
+  // watched fields
+
+  const due_date = form.watch("due_date");
+
+  // =========================
+  // submit
+  // =========================
 
   async function handleSubmit(values: TaskFormValues) {
     const payload = {
-      ...values,
+      title: values.title,
+
+      description: values.description ?? "",
+
+      status: values.status,
 
       due_date:
         values.due_date && values.due_date !== ""
           ? new Date(values.due_date).toISOString()
           : null,
     };
+
+    // =========================
+    // create
+    // =========================
 
     if (props.mode === "create") {
       createTask.mutate(payload, {
@@ -87,9 +174,13 @@ export function TaskEditor(props: Props) {
       return;
     }
 
+    // =========================
+    // update
+    // =========================
+
     updateTask.mutate(
       {
-        id: props.task.id,
+        publicId: props.task.publicId,
 
         ...payload,
       },
@@ -101,161 +192,318 @@ export function TaskEditor(props: Props) {
     );
   }
 
-  function openFullPage() {
-    if (props.mode === "edit" && props.task?.id) {
-      const hashedId = encodeId(props.task.id);
+  return (
+    <form
+      onSubmit={form.handleSubmit(async (values) => {
+        // prevent double submit
 
-      router.push(`/tasks/${hashedId}`);
-    }
-  }
+        if (createTask.isPending || updateTask.isPending) {
+          return;
+        }
 
-  function FullButton({
-    href,
-    onClick,
-  }: {
-    href?: string;
+        await handleSubmit(values);
+      })}
+      className="
+        mt-4
+        w-full
+        min-w-0
+        space-y-6
+      "
+    >
+      {/* =========================
+          title
+      ========================= */}
 
-    onClick?: () => void;
-  }) {
-    const className = `
-      h-10
-      gap-1.5
-      rounded-xl
-      px-3
-      text-muted-foreground
-      hover:bg-muted
-      hover:text-foreground
-    `;
+      <div className="min-w-0 space-y-2">
+        <Label className="text-sm font-medium tracking-tight">Title</Label>
 
-    const content = (
-      <>
-        <Expand className="h-4 w-4 shrink-0" />
-
-        <span
+        <Input
           className="
-            text-[10px]
-            font-medium
-            tracking-[0.2em]
-            opacity-60
+            h-12
+            w-full
+            rounded-xl
+            px-4
+            text-base
+            md:text-lg
+          "
+          placeholder="Enter task title"
+          onKeyDown={(e) => {
+            // prevent accidental submit
+
+            if (e.key === "Enter") {
+              e.preventDefault();
+            }
+          }}
+          {...form.register("title")}
+        />
+
+        {/* validation error */}
+
+        {form.formState.errors.title && (
+          <p className="text-sm text-red-400">
+            {form.formState.errors.title.message}
+          </p>
+        )}
+      </div>
+
+      {/* =========================
+          status / due date
+      ========================= */}
+
+      <div
+        className="
+          grid
+          gap-4
+          md:grid-cols-2
+        "
+      >
+        {/* status */}
+
+        <div className="space-y-2">
+          <Label className="text-sm font-medium tracking-tight">Status</Label>
+
+          <TaskStatusSelect
+            value={form.watch("status")}
+            onChange={(value: TaskStatus) => {
+              form.setValue("status", value);
+            }}
+            className="
+              h-12!
+              rounded-xl
+              text-sm
+              md:text-base
+            "
+          />
+        </div>
+
+        {/* due date */}
+
+        <div className="space-y-2">
+          <Label className="text-sm font-medium tracking-tight">Due Date</Label>
+
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(
+                  `
+                    h-12
+                    w-full
+                    justify-start
+                    overflow-hidden
+                    rounded-xl
+                    px-4
+                    text-left
+                    text-sm
+                    font-normal
+                    md:text-base
+                  `,
+                  !due_date && "text-muted-foreground",
+                )}
+              >
+                <CalendarIcon
+                  className="
+                    mr-3
+                    h-4
+                    w-4
+                    shrink-0
+                  "
+                />
+
+                <span className="truncate">
+                  {due_date
+                    ? format(new Date(due_date), "yyyy/MM/dd")
+                    : "Select due date"}
+                </span>
+              </Button>
+            </PopoverTrigger>
+
+            <PopoverContent
+              className="
+                w-auto
+                rounded-xl
+                p-0
+              "
+              align="start"
+            >
+              <Calendar
+                mode="single"
+                selected={due_date ? new Date(due_date) : undefined}
+                onSelect={(date) => {
+                  if (!date) {
+                    return;
+                  }
+
+                  form.setValue("due_date", date.toISOString());
+
+                  setOpen(false);
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+
+      {/* =========================
+          description
+      ========================= */}
+
+      <TaskDescriptionField form={form} />
+
+      {/* =========================
+          footer
+      ========================= */}
+
+      <div
+        className="
+          flex
+          flex-col
+          gap-3
+          border-t
+          pt-5
+          sm:flex-row
+          sm:items-center
+          sm:justify-between
+        "
+      >
+        {/* left side */}
+
+        <div />
+
+        {/* right side */}
+
+        <div
+          className="
+            flex
+            flex-col
+            gap-3
+            sm:flex-row
+            sm:items-center
           "
         >
-          FULL
-        </span>
-      </>
-    );
+          {/* =========================
+              delete button
+          ========================= */}
 
-    if (href) {
-      return (
-        <Button asChild type="button" variant="ghost" className={className}>
-          <Link href={href}>{content}</Link>
-        </Button>
-      );
-    }
+          {props.mode === "edit" && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  className="
+                    h-12
+                    w-full
+                    rounded-xl
+                    px-6
+                    text-base
+                    font-medium
+                    sm:w-44
+                  "
+                >
+                  Delete Task
+                </Button>
+              </AlertDialogTrigger>
 
-    return (
-      <Button
-        type="button"
-        variant="ghost"
-        className={className}
-        onClick={onClick}
-      >
-        {content}
-      </Button>
-    );
-  }
+              <AlertDialogContent className="rounded-2xl">
+                <AlertDialogHeader className="space-y-3">
+                  <AlertDialogTitle className="text-xl">
+                    Delete this task?
+                  </AlertDialogTitle>
 
-  if (props.mode === "create") {
-    return (
-      <TaskForm
-        submitLabel="Create Task"
-        isPending={createTask.isPending}
-        defaultValues={{
-          title: "",
+                  <p
+                    className="
+                      text-sm
+                      leading-6
+                      text-muted-foreground
+                    "
+                  >
+                    This action cannot be undone.
+                  </p>
+                </AlertDialogHeader>
 
-          description: "",
+                <AlertDialogFooter
+                  className="
+                    flex-col-reverse
+                    gap-3
+                    sm:flex-row
+                    sm:justify-end
+                  "
+                >
+                  <AlertDialogCancel
+                    className="
+                      h-12
+                      rounded-xl
+                      px-6
+                      text-base
+                    "
+                  >
+                    Cancel
+                  </AlertDialogCancel>
 
-          status: "TODO",
-
-          due_date: "",
-        }}
-        onSubmit={handleSubmit}
-        autoResizeDescription={props.autoResizeDescription}
-        secondaryAction={
-          props.showOpenPageButton === false ? null : (
-            <FullButton href="/tasks/new" />
-          )
-        }
-      />
-    );
-  }
-
-  return (
-    <TaskForm
-      submitLabel="Save Changes"
-      isPending={updateTask.isPending}
-      autoResizeDescription={props.autoResizeDescription}
-      defaultValues={{
-        title: props.task.title,
-
-        description: props.task.description,
-
-        status: props.task.status as TaskStatus,
-
-        due_date: props.task.dueDate ? props.task.dueDate.slice(0, 16) : "",
-      }}
-      onSubmit={handleSubmit}
-      secondaryAction={
-        props.showOpenPageButton ? <FullButton onClick={openFullPage} /> : null
-      }
-      footer={
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="destructive"
-              className="
-                h-12
-                w-full
-                rounded-xl
-                px-6
-                sm:w-auto
-              "
-            >
-              Delete Task
-            </Button>
-          </AlertDialogTrigger>
-
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete task?</AlertDialogTitle>
-
-              <AlertDialogDescription>
-                This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-
-              <AlertDialogAction
-                disabled={deleteTask.isPending}
-                onClick={() => {
-                  deleteTask.mutate(props.task.id, {
-                    onSuccess: () => {
-                      props.onSuccess?.();
-
-                      if (!props.onSuccess) {
-                        router.push("/tasks");
+                  <AlertDialogAction
+                    disabled={deleteTask.isPending}
+                    className="
+                      h-12
+                      rounded-xl
+                      px-6
+                      text-base
+                      font-medium
+                    "
+                    onClick={() => {
+                      if (props.mode !== "edit") {
+                        return;
                       }
-                    },
-                  });
-                }}
-              >
-                {deleteTask.isPending ? "Deleting..." : "Delete"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      }
-    />
+
+                      deleteTask.mutate(props.task.publicId, {
+                        onSuccess: () => {
+                          // keep current filters/sort/pagination
+
+                          const params = new URLSearchParams(
+                            searchParams.toString(),
+                          );
+
+                          // close dialog
+
+                          params.delete("taskId");
+
+                          router.replace(
+                            params.toString()
+                              ? `/tasks?${params.toString()}`
+                              : "/tasks",
+                          );
+                        },
+                      });
+                    }}
+                  >
+                    Delete Task
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+
+          {/* =========================
+              save button
+          ========================= */}
+
+          <Button
+            type="submit"
+            disabled={createTask.isPending || updateTask.isPending}
+            className="
+              h-12
+              w-full
+              rounded-xl
+              px-8
+              text-base
+              font-medium
+              sm:w-42.5
+            "
+          >
+            SAVE
+          </Button>
+        </div>
+      </div>
+    </form>
   );
 }

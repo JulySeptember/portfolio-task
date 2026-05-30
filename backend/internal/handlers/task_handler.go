@@ -116,12 +116,17 @@ func (h *TaskHandler) Get(
 
 	r = r.WithContext(ctx)
 
-	id, ok := parseID(
-		w,
-		r,
-	)
+	publicID := r.PathValue("publicId")
 
-	if !ok {
+	if publicID == "" {
+
+		httpx.WriteError(
+			w,
+			http.StatusBadRequest,
+			"BAD_REQUEST",
+			"public id required",
+		)
+
 		return
 	}
 
@@ -135,9 +140,9 @@ func (h *TaskHandler) Get(
 		return
 	}
 
-	task, err := h.taskSvc.GetTask(
+	task, err := h.taskSvc.GetTaskByPublicID(
 		r.Context(),
-		id,
+		publicID,
 		userID,
 	)
 
@@ -300,12 +305,17 @@ func (h *TaskHandler) Update(
 
 	r = r.WithContext(ctx)
 
-	id, ok := parseID(
-		w,
-		r,
-	)
+	publicID := r.PathValue("publicId")
 
-	if !ok {
+	if publicID == "" {
+
+		httpx.WriteError(
+			w,
+			http.StatusBadRequest,
+			"BAD_REQUEST",
+			"public id required",
+		)
+
 		return
 	}
 
@@ -340,7 +350,7 @@ func (h *TaskHandler) Update(
 
 	task, err := h.taskSvc.UpdateTask(
 		r.Context(),
-		id,
+		publicID,
 		userID,
 		req.Title,
 		req.Description,
@@ -382,12 +392,17 @@ func (h *TaskHandler) UpdateStatus(
 
 	r = r.WithContext(ctx)
 
-	id, ok := parseID(
-		w,
-		r,
-	)
+	publicID := r.PathValue("publicId")
 
-	if !ok {
+	if publicID == "" {
+
+		httpx.WriteError(
+			w,
+			http.StatusBadRequest,
+			"BAD_REQUEST",
+			"public id required",
+		)
+
 		return
 	}
 
@@ -413,7 +428,7 @@ func (h *TaskHandler) UpdateStatus(
 
 	task, err := h.taskSvc.UpdateStatus(
 		r.Context(),
-		id,
+		publicID,
 		userID,
 		req.Status,
 	)
@@ -452,12 +467,17 @@ func (h *TaskHandler) Delete(
 
 	r = r.WithContext(ctx)
 
-	id, ok := parseID(
-		w,
-		r,
-	)
+	publicID := r.PathValue("publicId")
 
-	if !ok {
+	if publicID == "" {
+
+		httpx.WriteError(
+			w,
+			http.StatusBadRequest,
+			"BAD_REQUEST",
+			"public id required",
+		)
+
 		return
 	}
 
@@ -473,7 +493,7 @@ func (h *TaskHandler) Delete(
 
 	err := h.taskSvc.DeleteTask(
 		r.Context(),
-		id,
+		publicID,
 		userID,
 	)
 
@@ -487,11 +507,7 @@ func (h *TaskHandler) Delete(
 		return
 	}
 
-	httpx.WriteJSON(
-		w,
-		http.StatusOK,
-		map[string]string{
-			"message": "task deleted",
-		},
+	w.WriteHeader(
+		http.StatusNoContent,
 	)
 }

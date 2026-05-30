@@ -11,6 +11,8 @@ import (
 
 	"portfolio/backend/internal/apperr"
 	"portfolio/backend/internal/models"
+
+	"github.com/google/uuid"
 )
 
 type TaskRepository struct {
@@ -28,6 +30,7 @@ func NewTaskRepository(
 
 var taskColumns = strings.Join([]string{
 	"id",
+	"public_id",
 	"user_id",
 	"title",
 	"description",
@@ -41,16 +44,16 @@ var taskColumns = strings.Join([]string{
 // get helper
 // =========================
 
-func (r *TaskRepository) get(
+func (r *TaskRepository) getByPublicID(
 	ctx context.Context,
-	taskID int64,
+	publicID string,
 	userID int64,
 ) (*models.Task, error) {
 
 	query := fmt.Sprintf(`
 SELECT %s
 FROM tasks
-WHERE id = ?
+WHERE public_id = ?
 AND user_id = ?
 `,
 		taskColumns,
@@ -61,10 +64,11 @@ AND user_id = ?
 	err := r.db.QueryRowContext(
 		ctx,
 		query,
-		taskID,
+		publicID,
 		userID,
 	).Scan(
 		&task.ID,
+		&task.PublicID,
 		&task.UserID,
 		&task.Title,
 		&task.Description,
@@ -95,19 +99,23 @@ func (r *TaskRepository) Create(
 	task *models.Task,
 ) (*models.Task, error) {
 
+	publicID := uuid.New().String()
+
 	query := `
 INSERT INTO tasks (
+	public_id,
 	user_id,
 	title,
 	description,
 	status,
 	due_date
-) VALUES (?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?)
 `
 
-	res, err := r.db.ExecContext(
+	_, err := r.db.ExecContext(
 		ctx,
 		query,
+		publicID,
 		task.UserID,
 		task.Title,
 		task.Description,
@@ -119,18 +127,16 @@ INSERT INTO tasks (
 		return nil, parseMySQLError(err)
 	}
 
-	id, err := res.LastInsertId()
-
-	if err != nil {
-		return nil, parseMySQLError(err)
-	}
-
-	return r.get(
+	return r.GetByPublicID(
 		ctx,
-		id,
+		publicID,
 		task.UserID,
 	)
 }
+
+// =========================
+// List
+// =========================
 
 func (r *TaskRepository) ListByUserID(
 	ctx context.Context,
@@ -174,10 +180,6 @@ func (r *TaskRepository) ListByUserID(
 		" AND ",
 	)
 
-	// =========================
-	// total count
-	// =========================
-
 	countQuery := fmt.Sprintf(`
 SELECT COUNT(*)
 FROM tasks
@@ -197,16 +199,12 @@ WHERE %s
 		return nil, parseMySQLError(err)
 	}
 
-	// =========================
-	// order by
-	// =========================
-
 	var orderBy string
 
 	if q.Sort == models.TaskSortDueDate {
 
 		orderBy = fmt.Sprintf(
-			"due_date IS NULL ASC, due_date %s, id %s",
+			"due_date IS NULL ASC, due_date %s, public_id %s",
 			orderSQL,
 			orderSQL,
 		)
@@ -214,7 +212,7 @@ WHERE %s
 	} else {
 
 		orderBy = fmt.Sprintf(
-			"%s %s, id %s",
+			"%s %s, public_id %s",
 			sortColumn,
 			orderSQL,
 			orderSQL,
@@ -260,6 +258,7 @@ OFFSET ?
 
 		if err := rows.Scan(
 			&t.ID,
+			&t.PublicID,
 			&t.UserID,
 			&t.Title,
 			&t.Description,
@@ -292,15 +291,15 @@ OFFSET ?
 // Get
 // =========================
 
-func (r *TaskRepository) Get(
+func (r *TaskRepository) GetByPublicID(
 	ctx context.Context,
-	taskID int64,
+	publicID string,
 	userID int64,
 ) (*models.Task, error) {
 
-	return r.get(
+	return r.getByPublicID(
 		ctx,
-		taskID,
+		publicID,
 		userID,
 	)
 }
@@ -322,7 +321,7 @@ SET
 	status = ?,
 	due_date = ?,
 	updated_at = CURRENT_TIMESTAMP
-WHERE id = ?
+WHERE public_id = ?
 AND user_id = ?
 `
 
@@ -333,7 +332,7 @@ AND user_id = ?
 		task.Description,
 		task.Status,
 		task.DueDate,
-		task.ID,
+		task.PublicID,
 		task.UserID,
 	)
 
@@ -351,9 +350,9 @@ AND user_id = ?
 		return nil, apperr.ErrTaskNotFound
 	}
 
-	return r.get(
+	return r.GetByPublicID(
 		ctx,
-		task.ID,
+		task.PublicID,
 		task.UserID,
 	)
 }
@@ -364,7 +363,7 @@ AND user_id = ?
 
 func (r *TaskRepository) UpdateStatus(
 	ctx context.Context,
-	taskID int64,
+	publicID string,
 	userID int64,
 	status models.TaskStatus,
 ) (*models.Task, error) {
@@ -374,7 +373,7 @@ UPDATE tasks
 SET
 	status = ?,
 	updated_at = CURRENT_TIMESTAMP
-WHERE id = ?
+WHERE public_id = ?
 AND user_id = ?
 `
 
@@ -382,7 +381,7 @@ AND user_id = ?
 		ctx,
 		query,
 		status,
-		taskID,
+		publicID,
 		userID,
 	)
 
@@ -400,9 +399,9 @@ AND user_id = ?
 		return nil, apperr.ErrTaskNotFound
 	}
 
-	return r.get(
+	return r.GetByPublicID(
 		ctx,
-		taskID,
+		publicID,
 		userID,
 	)
 }
@@ -413,7 +412,7 @@ AND user_id = ?
 
 func (r *TaskRepository) Delete(
 	ctx context.Context,
-	taskID int64,
+	publicID string,
 	userID int64,
 ) error {
 
@@ -421,10 +420,10 @@ func (r *TaskRepository) Delete(
 		ctx,
 		`
 DELETE FROM tasks
-WHERE id = ?
+WHERE public_id = ?
 AND user_id = ?
 `,
-		taskID,
+		publicID,
 		userID,
 	)
 

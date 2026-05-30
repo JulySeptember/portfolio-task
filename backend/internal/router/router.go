@@ -35,6 +35,7 @@ func NewRouter(
 		"DELETE /api/v1/users/me",
 		userHandler.Delete,
 	)
+
 	// =========================
 	// tasks
 	// =========================
@@ -50,22 +51,22 @@ func NewRouter(
 	)
 
 	mux.HandleFunc(
-		"GET /api/v1/tasks/{id}",
+		"GET /api/v1/tasks/{publicId}",
 		taskHandler.Get,
 	)
 
 	mux.HandleFunc(
-		"PUT /api/v1/tasks/{id}",
+		"PUT /api/v1/tasks/{publicId}",
 		taskHandler.Update,
 	)
 
 	mux.HandleFunc(
-		"PATCH /api/v1/tasks/{id}/status",
+		"PATCH /api/v1/tasks/{publicId}/status",
 		taskHandler.UpdateStatus,
 	)
 
 	mux.HandleFunc(
-		"DELETE /api/v1/tasks/{id}",
+		"DELETE /api/v1/tasks/{publicId}",
 		taskHandler.Delete,
 	)
 

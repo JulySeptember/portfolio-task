@@ -33,21 +33,21 @@ db-wait:
 # =========================
 
 migrate-up-local: db-wait
-	@set -a && . ./.env.local && set +a && \
+	@set -a && . ./.env && set +a && \
 	migrate \
 		-path migrations \
 		-database "mysql://$$DB_USER:$$DB_PASSWORD@tcp($$DB_HOST:$$DB_PORT)/$$DB_NAME?parseTime=true&multiStatements=true" \
 		up
 
 migrate-down-local:
-	@set -a && . ./.env.local && set +a && \
+	@set -a && . ./.env && set +a && \
 	migrate \
 		-path migrations \
 		-database "mysql://$$DB_USER:$$DB_PASSWORD@tcp($$DB_HOST:$$DB_PORT)/$$DB_NAME?parseTime=true&multiStatements=true" \
 		down 1
 
 migrate-force-local:
-	@set -a && . ./.env.local && set +a && \
+	@set -a && . ./.env && set +a && \
 	migrate \
 		-path migrations \
 		-database "mysql://$$DB_USER:$$DB_PASSWORD@tcp($$DB_HOST:$$DB_PORT)/$$DB_NAME?parseTime=true&multiStatements=true" \

@@ -3,10 +3,10 @@
 // src/app/(protected)/layout.tsx
 
 import { useEffect, useState } from "react";
-
 import { useRouter } from "next/navigation";
 
 import { AppHeader } from "@/components/layout/app-header";
+import { apiClient } from "@/lib/api/client";
 
 export default function ProtectedLayout({
   children,
@@ -14,48 +14,41 @@ export default function ProtectedLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function verifyAuth() {
+    let cancelled = false;
+
+    const verifyAuth = async () => {
       const accessToken = localStorage.getItem("access_token");
 
       if (!accessToken) {
         router.replace("/");
-
         return;
       }
 
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/me`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          },
-        );
+        // apiClient で自動 Refresh 対応
+        await apiClient("/api/v1/users/me");
 
-        if (!response.ok) {
-          localStorage.removeItem("access_token");
-
-          localStorage.removeItem("id_token");
-
-          router.replace("/");
-
-          return;
-        }
-
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       } catch (error) {
-        console.error(error);
+        console.error("ProtectedLayout auth failed:", error);
 
-        router.replace("/");
+        // Token削除
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("id_token");
+        localStorage.removeItem("refresh_token");
+
+        if (!cancelled) router.replace("/");
       }
-    }
+    };
 
-    verifyAuth();
+    void verifyAuth();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   if (isLoading) {
@@ -69,7 +62,6 @@ export default function ProtectedLayout({
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-
       <main>{children}</main>
     </div>
   );
