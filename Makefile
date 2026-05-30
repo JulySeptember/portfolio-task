@@ -32,7 +32,7 @@ frontend-install:
 frontend-build:
 	cd $(FRONTEND_DIR) && npm run build
 
-frontend-deploy: frontend-build
+frontend-deploy: 
 	aws s3 sync $(FRONTEND_DIR)/out s3://$(FRONTEND_BUCKET) --delete
 	aws cloudfront create-invalidation \
 		--distribution-id $(CLOUDFRONT_ID) \
@@ -51,12 +51,12 @@ backend-build:
 	-o $(LAMBDA_BINARY) \
 	./cmd/api
 
-backend-package: backend-build
+backend-package: 
 	cd $(BACKEND_DIR) && \
 	rm -f $(LAMBDA_ZIP) && \
 	zip $(LAMBDA_ZIP) $(LAMBDA_BINARY)
 
-backend-upload: backend-package
+backend-upload:
 	aws s3 cp \
 		$(BACKEND_DIR)/$(LAMBDA_ZIP) \
 		s3://$(LAMBDA_ARTIFACT_BUCKET)/$(LAMBDA_ARTIFACT_KEY)
@@ -102,7 +102,7 @@ tf-plan:
 	cd $(INFRA_DIR) && terraform plan \
 		-var-file=$(TF_ENV_FILE)
 
-tf-apply: backend-deploy
+tf-apply: 
 	cd $(INFRA_DIR) && terraform apply \
 		-auto-approve \
 		-var-file=$(TF_ENV_FILE)
