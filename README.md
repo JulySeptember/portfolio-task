@@ -1,9 +1,9 @@
 # 📌 Serverless Task Management App
 
-Next.js × Go × AWS × Terraform × MySQL を用いた  
+Next.js × Go × AWS × Terraform × MySQL を用いた
 フルスタック Serverless Task Management App です。
 
-認証・API・Infrastructure を含めた  
+認証・API・Infrastructure を含めた
 実践的なモダン Web アプリ構成を採用しています。
 
 ---
@@ -16,19 +16,20 @@ Next.js × Go × AWS × Terraform × MySQL を用いた
 
 # ✨ Features
 
-```text
-- AWS Cognito Authentication
+- AWS Cognito Hosted UI Authentication (Authorization Code Flow + PKCE)
+- Refresh Token Authentication
 - API Gateway JWT Authorizer
 - Serverless Go API (AWS Lambda)
 - Task CRUD APIs
-- Owner-isolated authorization
+- User Bootstrap API
+- Owner-Isolated Authorization
+- Public ID Based Resource Access
 - Terraform Infrastructure as Code
 - Swagger / OpenAPI
 - Structured Logging
 - Layered Architecture
 - Private RDS MySQL
 - CloudFront + S3 Frontend Hosting
-```
 
 ---
 
@@ -46,6 +47,8 @@ Next.js × Go × AWS × Terraform × MySQL を用いた
 | Layer | Technology |
 | --- | --- |
 | Frontend | Next.js + TypeScript |
+| UI | Tailwind CSS + shadcn/ui |
+| State Management | React Query + Zustand |
 | Backend | Go |
 | Infrastructure | Terraform |
 | Authentication | AWS Cognito |
@@ -59,24 +62,38 @@ Next.js × Go × AWS × Terraform × MySQL を用いた
 # 🏗 System Architecture
 
 ```text
-Client
-  ↓
+Browser
+   │
+   ▼
 CloudFront
-  ↓
-S3 (Next.js Frontend)
+   │
+   ▼
+S3 (Frontend)
 
-Client
-  ↓
-API Gateway (JWT Authorizer)
-  ↓
+Browser
+   │
+   ▼
+Cognito Hosted UI
+   │
+   ▼
+Authorization Code + PKCE
+   │
+   ▼
+API Gateway JWT Authorizer
+   │
+   ▼
 Lambda (Go)
-  ↓
+   │
+   ▼
 Handler
-  ↓
+   │
+   ▼
 Service
-  ↓
+   │
+   ▼
 Repository
-  ↓
+   │
+   ▼
 RDS MySQL
 ```
 
@@ -84,44 +101,65 @@ RDS MySQL
 
 # 🔐 Authentication
 
-認証は AWS Cognito Hosted UI を利用。
-
-JWT 検証は API Gateway JWT Authorizer に委譲しています。
+AWS Cognito Hosted UI を利用した Authorization Code Flow + PKCE を採用しています。
 
 ```text
 Login
   ↓
-JWT 発行
+Hosted UI
+  ↓
+Authorization Code
+  ↓
+Token Exchange
+  ↓
+Access Token
+Refresh Token
+ID Token
+  ↓
+Frontend Storage
   ↓
 Authorization: Bearer <token>
   ↓
-API Gateway JWT validation
+API Gateway JWT Validation
   ↓
-validated claims → Lambda
+Lambda
 ```
 
-Lambda 側では検証済み claims のみを利用します。
+特徴:
+
+```text
+- Authorization Code Flow
+- PKCE (S256)
+- Refresh Token
+- Automatic Token Refresh
+- Cognito Hosted UI
+- JWT Validation at API Gateway
+```
 
 ---
 
 # 👤 User Bootstrap
 
-ログイン後に bootstrap API を呼び出し、  
-Cognito user と users table を同期します。
+ログイン後に bootstrap API を実行し、
+Cognito User と users テーブルを同期します。
+
+```text
+POST /api/v1/auth/bootstrap
+```
 
 仕様:
 
 ```text
-- 初回ログイン時 INSERT
-- 既存ユーザー UPDATE
-- Cognito sub を auth_user_id として利用
+- First Login → INSERT
+- Existing User → UPDATE
+- Cognito sub → auth_user_id
 ```
 
 ---
 
 # 🧱 Backend Design
 
-Backend は Layered Architecture を採用。
+Layered Architecture を採用しています。
 
 ```text
 Handler
@@ -134,49 +172,29 @@ Repository
 特徴:
 
 ```text
-- Handler / Service / Repository separation
-- Context timeout
-- Structured logging
-- Owner isolation
-- Strict JSON decode
-- API Gateway JWT delegation
-- Private RDS architecture
+- Handler / Service / Repository Separation
+- Context Timeout
+- Structured Logging
+- Strict JSON Decode
+- Owner Isolation
+- JWT Delegation to API Gateway
+- Private RDS Architecture
 ```
 
 ---
 
 # 🎨 Frontend Design
 
-Frontend は feature-based architecture を採用。
+Feature-Based Architecture を採用しています。
 
 ```text
-features/
-├── auth
-└── tasks
-```
-
-各 feature は:
-
-```text
-- api
-- hooks
-- components
-- schemas
-- queries
-- utils
-```
-
-を内部管理。
-
-特徴:
-
-```text
-- React Query cache management
-- optimistic update
-- Dialog / Full Page editor
-- Hashids URL obfuscation
+- React Query
+- Optimistic Update
+- Full Page Editor
 - Responsive UI
-- shadcn/ui + Radix UI
+- PKCE Authentication
+- Automatic Token Refresh
+- shadcn/ui
 ```
 
 ---
@@ -184,25 +202,27 @@ features/
 # 🔒 Security
 
 ```text
-- Cognito Authentication
+- Cognito Hosted UI
+- Authorization Code Flow + PKCE
+- Refresh Token
 - API Gateway JWT Authorizer
-- Request timeout
-- SQL timeout
-- Panic recovery
-- Strict JSON decode
-- Unknown field reject
-- Body size limit
-- Owner isolation
+- Owner Isolation
+- Request Timeout
+- SQL Timeout
+- Panic Recovery
+- Unknown Field Rejection
+- Strict JSON Decode
+- Body Size Limit
 - Private RDS
-- IMDSv2 required
 - Encrypted EBS
+- IMDSv2 Required
 ```
 
 ---
 
 # 📡 API
 
-## Public Endpoints
+## Public
 
 ```http
 GET /health
@@ -210,40 +230,21 @@ GET /api/docs
 GET /api/spec/swagger.yml
 ```
 
----
+## Protected
 
-## Protected Endpoints
-
-```text
-/api/v1/*
-```
-
-JWT authentication required.
-
----
-
-## Main APIs
-
-### User
-
-```text
+```http
 POST   /api/v1/auth/bootstrap
+
 GET    /api/v1/users/me
 DELETE /api/v1/users/me
-```
 
-### Tasks
-
-```text
 POST   /api/v1/tasks
 GET    /api/v1/tasks
-GET    /api/v1/tasks/{id}
-PUT    /api/v1/tasks/{id}
-PATCH  /api/v1/tasks/{id}/status
-DELETE /api/v1/tasks/{id}
+GET    /api/v1/tasks/{publicId}
+PUT    /api/v1/tasks/{publicId}
+PATCH  /api/v1/tasks/{publicId}/status
+DELETE /api/v1/tasks/{publicId}
 ```
-
-Detailed request/response schemas are available in Swagger/OpenAPI.
 
 ---
 
@@ -259,13 +260,12 @@ Detailed request/response schemas are available in Swagger/OpenAPI.
 | created_at | datetime |
 | updated_at | datetime |
 
----
-
 ## tasks
 
 | column | type |
 | --- | --- |
 | id | bigint |
+| public_id | varchar |
 | user_id | bigint |
 | title | varchar |
 | description | text |
@@ -278,13 +278,13 @@ Detailed request/response schemas are available in Swagger/OpenAPI.
 
 # 📄 Swagger / OpenAPI
 
-local:
+Local:
 
 ```text
 http://localhost:8080/api/docs
 ```
 
-OpenAPI spec:
+OpenAPI Spec:
 
 ```text
 http://localhost:8080/api/spec/swagger.yml
@@ -298,45 +298,33 @@ http://localhost:8080/api/spec/swagger.yml
 .
 ├── backend
 │   ├── cmd
-│   │   └── api
-│   │
 │   ├── internal
-│   │   ├── apperr
 │   │   ├── auth
-│   │   ├── config
-│   │   ├── container
-│   │   ├── dto
 │   │   ├── handlers
-│   │   ├── httpx
-│   │   ├── middleware
-│   │   ├── models
+│   │   ├── service
 │   │   ├── repository
-│   │   ├── router
-│   │   └── service
-│   │
+│   │   ├── middleware
+│   │   └── router
 │   ├── migrations
-│   ├── swagger
-│   │
-│   └── Makefile
+│   └── swagger
 │
 ├── frontend
 │   └── src
 │       ├── app
-│       │
 │       ├── components
 │       ├── features
+│       │   ├── auth
+│       │   └── tasks
 │       ├── lib
 │       └── providers
 │
 ├── infra
 │   ├── bootstrap
 │   └── main
-│       └── modules
 │
-├── scripts
-│
-└── .github/workflows
+└── .github
 ```
+
 ---
 
 # 🏗 Infrastructure
@@ -345,12 +333,14 @@ Terraform により以下を構築。
 
 ```text
 - VPC
-- Public / Private Subnets
+- Public Subnets
+- Private Subnets
 - Security Groups
 - RDS MySQL
 - Lambda
 - API Gateway HTTP API
 - Cognito User Pool
+- Cognito Hosted UI
 - S3
 - CloudFront
 - Bastion EC2
@@ -362,10 +352,12 @@ Terraform により以下を構築。
 
 ```text
 - GitHub Actions CI/CD
-- Automated Lambda migration
-- Bastion removal
+- Lambda Deployment Pipeline
+- Bastion Removal
 - Secrets Manager
 - SSM Parameter Store
-- Integration tests
-- Refresh token rotation
+- Integration Tests
+- Refresh Token Rotation
+- Rate Limiting
+- CloudWatch Dashboard
 ```
