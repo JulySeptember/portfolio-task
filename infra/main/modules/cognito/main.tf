@@ -60,12 +60,12 @@ resource "aws_cognito_user_pool_client" "this" {
 
   callback_urls = [
     "http://localhost:3000/auth/callback",
-    "https://d2ixcdmrt7p0nu.cloudfront.net/auth/callback"
+    "${var.frontend_url}/auth/callback"
   ]
 
   logout_urls = [
     "http://localhost:3000",
-    "https://d2ixcdmrt7p0nu.cloudfront.net"
+    var.frontend_url
   ]
 
   supported_identity_providers = [

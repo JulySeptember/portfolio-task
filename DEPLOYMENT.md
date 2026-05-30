@@ -178,6 +178,7 @@ terraform output
 
 Next.js frontend を build して
 S3 + CloudFront に deploy。
+ただし、local.envが存在している場合リネームするか削除してからbuild
 
 ```bash
 make frontend-build

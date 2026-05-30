@@ -2,7 +2,11 @@
 
 import { generatePKCE } from "./pkce";
 
-const COGNITO_DOMAIN = process.env.NEXT_PUBLIC_COGNITO_DOMAIN!;
+// trim any leading https:// from the env, code will add it
+const COGNITO_DOMAIN = process.env.NEXT_PUBLIC_COGNITO_DOMAIN!.replace(
+  /^https?:\/\//,
+  "",
+);
 const CLIENT_ID = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID!;
 const REDIRECT_URI = process.env.NEXT_PUBLIC_COGNITO_REDIRECT_URI!;
 const LOGOUT_REDIRECT_URI =
