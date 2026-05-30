@@ -4,6 +4,8 @@ import { z } from "zod";
 // constants
 // =========================
 
+export const TITLE_MAX_LENGTH = 255;
+
 export const DESCRIPTION_MAX_LENGTH = 5000;
 
 // =========================
@@ -72,15 +74,11 @@ export const taskFormSchema = z.object({
     .string()
     .trim()
     .min(1, "Title is required")
-    .max(255, "Title too long"),
-
+    .max(TITLE_MAX_LENGTH, `${TITLE_MAX_LENGTH} characters max`),
   description: z
     .string()
     .trim()
-    .max(
-      DESCRIPTION_MAX_LENGTH,
-      `Description must be ${DESCRIPTION_MAX_LENGTH} characters or less`,
-    )
+    .max(DESCRIPTION_MAX_LENGTH, `${DESCRIPTION_MAX_LENGTH} characters max`)
     .optional(),
 
   status: taskStatusSchema,
