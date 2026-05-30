@@ -1,111 +1,151 @@
 // src/features/tasks/hooks/use-update-task.ts
-
 "use client";
+import { toast } from "sonner";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { toast } from "sonner";
-
-import { updateTask } from "../api/update-task";
+import {
+  updateTask,
+  type UpdateTaskInput as ApiUpdateTaskInput,
+} from "../api/update-task";
 
 import { taskQueryKeys } from "../queries/task-query-keys";
 
 import type { Task, TaskListResponse } from "../schemas/task-schema";
 
-type UpdateTaskInput = {
-  id: number;
+export type UpdateTaskInput = {
+  publicId: string;
 
   title: string;
 
-  description: string;
+  description?: string;
 
   status: "TODO" | "DOING" | "DONE";
 
-  due_date: string | null;
+  due_date?: string | null;
 };
 
 type UpdateTaskContext = {
   previousLists: Array<[readonly unknown[], TaskListResponse | undefined]>;
+
+  previousDetail?: Task;
 };
 
 export function useUpdateTask() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (input: UpdateTaskInput) => {
-      const { id, ...body } = input;
+  return useMutation<Task, Error, UpdateTaskInput, UpdateTaskContext>({
+    mutationFn: async (input) => {
+      const body: ApiUpdateTaskInput = {
+        title: input.title,
 
-      return updateTask(id, body);
+        description: input.description ?? "",
+
+        status: input.status,
+
+        due_date: input.due_date ?? null,
+      };
+
+      return updateTask(input.publicId, body);
     },
 
-    onMutate: async (
-      updatedTask: UpdateTaskInput,
-    ): Promise<UpdateTaskContext> => {
+    onMutate: async (updatedTask) => {
       await queryClient.cancelQueries({
         queryKey: taskQueryKeys.lists(),
+      });
+
+      await queryClient.cancelQueries({
+        queryKey: taskQueryKeys.detail(updatedTask.publicId),
       });
 
       const previousLists = queryClient.getQueriesData<TaskListResponse>({
         queryKey: taskQueryKeys.lists(),
       });
 
+      const previousDetail = queryClient.getQueryData<Task>(
+        taskQueryKeys.detail(updatedTask.publicId),
+      );
+
+      // optimistic update (lists)
       previousLists.forEach(([queryKey, data]) => {
         if (!data) {
           return;
         }
 
-        const params = queryKey[2] as
-          | {
-              status?: "TODO" | "DOING" | "DONE";
-            }
-          | undefined;
-
-        let items = data.items.map((task) =>
-          task.id === updatedTask.id
+        const items = data.items.map((task) =>
+          task.publicId === updatedTask.publicId
             ? {
                 ...task,
-                ...updatedTask,
-                dueDate: updatedTask.due_date,
+
+                title: updatedTask.title,
+
+                description: updatedTask.description ?? "",
+
+                status: updatedTask.status,
+
+                dueDate: updatedTask.due_date ?? null,
               }
             : task,
         );
 
-        if (params?.status) {
-          items = items.filter((task) => task.status === params.status);
-        }
-
         queryClient.setQueryData<TaskListResponse>(queryKey, {
           ...data,
-
-          count: items.length,
 
           items,
         });
       });
 
+      // optimistic update (detail)
+      if (previousDetail) {
+        queryClient.setQueryData<Task>(
+          taskQueryKeys.detail(updatedTask.publicId),
+          {
+            ...previousDetail,
+
+            title: updatedTask.title,
+
+            description: updatedTask.description ?? "",
+
+            status: updatedTask.status,
+
+            dueDate: updatedTask.due_date ?? null,
+          },
+        );
+      }
+
       return {
         previousLists,
+
+        previousDetail,
       };
     },
 
-    onError: (_, __, context?: UpdateTaskContext) => {
+    onError: (_, variables, context) => {
+      // rollback lists
       context?.previousLists.forEach(([queryKey, data]) => {
         queryClient.setQueryData(queryKey, data);
       });
 
-      toast.error("Failed to update task");
+      // rollback detail
+      if (context?.previousDetail) {
+        queryClient.setQueryData(
+          taskQueryKeys.detail(variables.publicId),
+          context.previousDetail,
+        );
+      }
+      toast.error("Failed to Update task");
     },
 
-    onSuccess: (task: Task) => {
-      queryClient.setQueryData(taskQueryKeys.detail(task.id), task);
+    onSuccess: (task) => {
+      // detail cache
+      queryClient.setQueryData(taskQueryKeys.detail(task.publicId), task);
 
-      toast.success("Task updated");
-    },
-
-    onSettled: () => {
+      // refresh list
       queryClient.invalidateQueries({
         queryKey: taskQueryKeys.lists(),
       });
+
+      toast.success("Task updated");
     },
   });
 }

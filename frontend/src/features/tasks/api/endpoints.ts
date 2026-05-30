@@ -1,11 +1,13 @@
-// src/features/tasks/api/endpoints.ts
-
-const TASKS_API_BASE = "/api/v1/tasks";
-
 export const taskEndpoints = {
-  list: () => TASKS_API_BASE,
+  list: () => "/api/v1/tasks",
 
-  detail: (id: number) => `${TASKS_API_BASE}/${id}`,
+  detail: (publicId: string) => `/api/v1/tasks/${publicId}`,
 
-  status: (id: number) => `${TASKS_API_BASE}/${id}/status`,
+  status: (publicId: string) => `/api/v1/tasks/${publicId}/status`,
+
+  create: () => "/api/v1/tasks",
+
+  update: (publicId: string) => `/api/v1/tasks/${publicId}`,
+
+  delete: (publicId: string) => `/api/v1/tasks/${publicId}`,
 };

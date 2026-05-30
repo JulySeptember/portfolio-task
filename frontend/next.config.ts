@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
 
   devIndicators: false,
+
+  output: "export",
+  trailingSlash: true,
 };
 
 export default nextConfig;

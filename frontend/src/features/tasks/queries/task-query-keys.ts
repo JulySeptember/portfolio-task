@@ -1,3 +1,5 @@
+// src/features/tasks/queries/task-query-keys.ts
+
 import type { ListTasksParams } from "../api/list-tasks";
 
 export const taskQueryKeys = {
@@ -17,7 +19,6 @@ export const taskQueryKeys = {
       },
     ] as const,
 
-  details: () => [...taskQueryKeys.all, "detail"] as const,
-
-  detail: (id: number) => [...taskQueryKeys.details(), id] as const,
+  // publicId 用に統一
+  detail: (publicId: string) => ["tasks", publicId] as const,
 };

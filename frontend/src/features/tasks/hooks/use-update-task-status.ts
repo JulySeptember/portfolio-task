@@ -1,76 +1,66 @@
-"use client";
-
+// src/features/tasks/hooks/use-update-task-status.ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { toast } from "sonner";
 
-import { updateTaskStatus } from "../api/update-task-status";
+import {
+  updateTaskStatus,
+  type UpdateTaskStatusInput,
+} from "../api/update-task-status";
 
 import { taskQueryKeys } from "../queries/task-query-keys";
 
-import type { TaskListResponse } from "../schemas/task-schema";
+import type { Task } from "../schemas/task-schema";
 
-type UpdateTaskStatusInput = {
-  id: number;
-
-  status: "TODO" | "DOING" | "DONE";
+type MutationInput = {
+  publicId: string;
+  input: UpdateTaskStatusInput;
 };
 
 export function useUpdateTaskStatus() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ id, status }: UpdateTaskStatusInput) =>
-      updateTaskStatus(id, {
-        status,
-      }),
+  return useMutation<Task, Error, MutationInput, { previousTask?: Task }>({
+    mutationFn: ({ publicId, input }) => updateTaskStatus(publicId, input),
 
-    onMutate: async ({ id, status }) => {
+    onMutate: async ({ publicId, input }) => {
       await queryClient.cancelQueries({
-        queryKey: taskQueryKeys.lists(),
+        queryKey: taskQueryKeys.detail(publicId),
       });
 
-      const previousLists = queryClient.getQueriesData<TaskListResponse>({
-        queryKey: taskQueryKeys.lists(),
-      });
+      const previousTask = queryClient.getQueryData<Task>(
+        taskQueryKeys.detail(publicId),
+      );
 
-      previousLists.forEach(([queryKey, data]) => {
-        if (!data) {
-          return;
-        }
-
-        const items = data.items.map((task) =>
-          task.id === id
-            ? {
-                ...task,
-                status,
-              }
-            : task,
-        );
-
-        queryClient.setQueryData<TaskListResponse>(queryKey, {
-          ...data,
-          items,
+      if (previousTask) {
+        queryClient.setQueryData<Task>(taskQueryKeys.detail(publicId), {
+          ...previousTask,
+          status: input.status,
         });
-      });
+      }
 
-      return {
-        previousLists,
-      };
+      return { previousTask };
     },
 
-    onError: (_, __, context) => {
-      context?.previousLists.forEach(([queryKey, data]) => {
-        queryClient.setQueryData(queryKey, data);
-      });
+    onError: (_error, variables, context) => {
+      if (context?.previousTask) {
+        queryClient.setQueryData(
+          taskQueryKeys.detail(variables.publicId),
+          context.previousTask,
+        );
+      }
 
-      toast.error("Failed to update task status");
+      toast.error("Failed to update status");
     },
 
-    onSettled: () => {
+    onSuccess: (task) => {
+      queryClient.setQueryData(taskQueryKeys.detail(task.publicId), task);
+
       queryClient.invalidateQueries({
         queryKey: taskQueryKeys.lists(),
       });
+
+      toast.success("Task status updated");
     },
   });
 }
