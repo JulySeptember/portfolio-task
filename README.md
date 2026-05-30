@@ -36,8 +36,8 @@ Next.js × Go × AWS × Terraform × MySQL を用いた
 
 | Service | URL |
 | --- | --- |
-| Frontend | https://xxxxx.cloudfront.net |
-| Swagger UI | https://xxxxx.execute-api.ap-northeast-1.amazonaws.com/api/docs |
+| Frontend | https://dgw03czfpoc25.cloudfront.net |
+| Swagger UI | https://h5kvlgfwv1.execute-api.ap-northeast-1.amazonaws.com/api/docs |
 
 ---
 
