@@ -31,9 +31,9 @@ export async function apiClient<T>(
     ...init,
     headers: {
       "Content-Type": "application/json",
-      ...(tokens?.accessToken
+      ...(tokens?.idToken
         ? {
-            Authorization: `Bearer ${tokens.accessToken}`,
+            Authorization: `Bearer ${tokens.idToken}`,
           }
         : {}),
       ...headers,

@@ -204,18 +204,15 @@ func (h *UserHandler) Delete(
 
 	if err != nil {
 
-		httpx.WriteJSON(
+		httpx.WriteError(
 			w,
-			http.StatusOK,
-			map[string]string{
-				"message": "user deleted",
-			},
+			http.StatusInternalServerError,
+			httpx.CodeInternalServerError,
+			"failed to delete user",
 		)
 
 		return
 	}
 
-	w.WriteHeader(
-		http.StatusNoContent,
-	)
+	w.WriteHeader(http.StatusNoContent)
 }
