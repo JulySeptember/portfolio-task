@@ -157,6 +157,17 @@ POST /api/v1/auth/bootstrap
 - Cognito email → email
 ```
 
+# 🗑 User Deletion
+
+DELETE /api/v1/users/me
+
+仕様:
+
+- Delete user record from database
+- Delete owned tasks
+- Cognito account is NOT deleted
+- Signing in again recreates the application user through bootstrap
+
 ---
 
 # 🧱 Backend Design

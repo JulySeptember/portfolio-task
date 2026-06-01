@@ -3,7 +3,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-
 import { buildLoginURL } from "@/features/auth/lib/hosted-ui";
 
 export default function HomePage() {
@@ -11,16 +10,12 @@ export default function HomePage() {
 
   async function handleLogin() {
     try {
-      // Local development mock auth
       if (isMockAuth) {
         localStorage.setItem("access_token", "local-dev-token");
-
         window.location.href = "/tasks";
-
         return;
       }
 
-      // Cognito Hosted UI (Authorization Code + PKCE)
       const loginUrl = await buildLoginURL();
 
       window.location.href = loginUrl;
@@ -34,7 +29,7 @@ export default function HomePage() {
       {/* Header */}
 
       <header className="border-border/80 border-b backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+        <div className="mx-auto flex h-16 max-w-7xl items-center px-6">
           <div className="flex items-center gap-3">
             <div className="bg-primary h-8 w-8 rounded-lg" />
 
@@ -42,10 +37,6 @@ export default function HomePage() {
               Task App
             </span>
           </div>
-
-          <Button variant="ghost" className="rounded-lg" onClick={handleLogin}>
-            Sign In
-          </Button>
         </div>
       </header>
 
@@ -61,12 +52,16 @@ export default function HomePage() {
         </h1>
 
         <p className="text-muted-foreground mt-8 max-w-2xl text-lg leading-relaxed">
-          Built with Next.js, TypeScript, React Query, Tailwind CSS, AWS, and
-          modern serverless architecture.
+          Built with Next.js, TypeScript, React Query, Tailwind CSS, AWS, Go,
+          Terraform, and modern serverless architecture.
         </p>
 
-        <div className="mt-12 flex justify-center">
-          <Button size="lg" className="rounded-xl px-8" onClick={handleLogin}>
+        <div className="mt-14 flex justify-center">
+          <Button
+            size="lg"
+            className="h-16 rounded-2xl px-14 text-xl font-semibold shadow-md"
+            onClick={handleLogin}
+          >
             Get Started
           </Button>
         </div>
@@ -75,7 +70,7 @@ export default function HomePage() {
       {/* Features */}
 
       <section className="mx-auto grid max-w-7xl gap-6 px-6 pb-24 md:grid-cols-3">
-        <div className="bg-card border-border rounded-2xl border p-6 shadow-sm">
+        <div className="bg-card border-border rounded-2xl border p-6 shadow-sm transition-shadow hover:shadow-md">
           <div className="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl text-xl">
             ✓
           </div>
@@ -88,7 +83,7 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="bg-card border-border rounded-2xl border p-6 shadow-sm">
+        <div className="bg-card border-border rounded-2xl border p-6 shadow-sm transition-shadow hover:shadow-md">
           <div className="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl text-xl">
             ⚡
           </div>
@@ -96,11 +91,11 @@ export default function HomePage() {
           <h3 className="text-xl font-semibold">Serverless Backend</h3>
 
           <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-            Powered by AWS Lambda, API Gateway, Cognito, and Terraform.
+            Powered by AWS Lambda, API Gateway, Cognito, Terraform, and RDS.
           </p>
         </div>
 
-        <div className="bg-card border-border rounded-2xl border p-6 shadow-sm">
+        <div className="bg-card border-border rounded-2xl border p-6 shadow-sm transition-shadow hover:shadow-md">
           <div className="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl text-xl">
             🔒
           </div>

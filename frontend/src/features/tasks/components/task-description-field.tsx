@@ -53,14 +53,14 @@ export function TaskDescriptionField({ form }: Props) {
         }}
         className={cn(
           `
-            min-h-[55vh]
+            min-h-[40vh]
             w-full
             resize-none
             overflow-hidden
             rounded-2xl
             px-5
             py-4
-            text-sm
+            text-base
             leading-7
             md:text-base
           `,

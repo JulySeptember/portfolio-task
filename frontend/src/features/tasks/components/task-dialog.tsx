@@ -41,12 +41,17 @@ export function TaskDialog(props: Props) {
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         className="
-            w-[98vw]
-            max-w-6xl    
-            max-h-screen  
-            overflow-y-auto
-            rounded-2xl
-            p-8          
+          w-[98vw]
+          max-w-6xl
+
+          max-h-[80vh]
+          md:max-h-[90vh]
+
+          overflow-y-auto
+          rounded-2xl
+
+          p-4
+          md:p-8                   
           "
       >
         <DialogHeader className="sr-only">
