@@ -55,7 +55,11 @@ backend-vet:
 backend-ci:
 	cd $(BACKEND_DIR) && \
 	go test -cover ./internal/service/... && \
-	go vet ./... 
+	go vet ./... && \
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
+	go build \
+	-o $(LAMBDA_BINARY) \
+	./cmd/api
 
 backend-build:
 	cd $(BACKEND_DIR) && \
