@@ -54,7 +54,7 @@ backend-vet:
 
 backend-ci:
 	cd $(BACKEND_DIR) && \
-	go test -cover ./internal/service/...
+	go test -cover ./internal/service/... && \
 	go vet ./... && \
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
 	go build \
