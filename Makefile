@@ -1,7 +1,7 @@
 # ============================
 # Global variables
 # ============================
-include aws.env
+-include aws.env
 
 FRONTEND_DIR := frontend
 BACKEND_DIR := backend
@@ -44,6 +44,23 @@ frontend-deploy:
 # Backend (Go Lambda)
 # ============================
 
+backend-test:
+	cd $(BACKEND_DIR) && \
+	go test -cover ./internal/service/...
+	
+backend-vet:
+	cd $(BACKEND_DIR) && \
+	go vet ./...
+
+backend-ci:
+	cd $(BACKEND_DIR) && \
+	go test -cover ./... && \
+	go vet ./... && \
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
+	go build \
+	-o $(LAMBDA_BINARY) \
+	./cmd/api
+
 backend-build:
 	cd $(BACKEND_DIR) && \
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
@@ -51,7 +68,7 @@ backend-build:
 	-o $(LAMBDA_BINARY) \
 	./cmd/api
 
-backend-package: 
+backend-package:
 	cd $(BACKEND_DIR) && \
 	rm -f $(LAMBDA_ZIP) && \
 	zip $(LAMBDA_ZIP) $(LAMBDA_BINARY)
@@ -60,6 +77,11 @@ backend-upload:
 	aws s3 cp \
 		$(BACKEND_DIR)/$(LAMBDA_ZIP) \
 		s3://$(LAMBDA_ARTIFACT_BUCKET)/$(LAMBDA_ARTIFACT_KEY)
+
+backend-deploy:
+	$(MAKE) backend-build
+	$(MAKE) backend-package
+	$(MAKE) backend-upload
 
 backend-migrate-up:
 	@set -a && . ./backend/.env.production && set +a && \
