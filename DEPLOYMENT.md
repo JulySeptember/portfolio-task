@@ -39,7 +39,6 @@ http://localhost:3000
 ```bash
 cd backend
 
-make db-reset
 make run
 ```
 
