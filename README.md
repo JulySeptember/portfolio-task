@@ -3,9 +3,6 @@
 Next.js × Go × AWS × Terraform × MySQL を用いた
 フルスタック Serverless Task Management App です。
 
-認証・API・Infrastructure を含めた
-実践的なモダン Web アプリ構成を採用しています。
-
 ---
 
 <p align="center">
@@ -29,6 +26,7 @@ Next.js × Go × AWS × Terraform × MySQL を用いた
 - Layered Architecture
 - Private RDS MySQL
 - CloudFront + S3 Frontend Hosting
+- GitHub Actions CI/CD
 
 ---
 
@@ -339,6 +337,21 @@ http://localhost:8080/api/spec/swagger.yml
 
 ---
 
+
+# 🧪 Quality Assurance
+
+```text
+- GitHub Actions CI
+- Pull Request Validation
+- Automated Go Tests
+- Automated Go Vet
+- Automated Lambda Build
+- Automated Lambda Deployment
+- Service Layer Unit Tests
+- Test Coverage: 94%
+
+---
+
 # 🏗 Infrastructure
 
 Terraform により以下を構築。
@@ -365,8 +378,6 @@ Terraform により以下を構築。
 ```text
 - Migration to Authorization Code Flow + PKCE
 - Refresh Token Support
-- GitHub Actions CI/CD
-- Lambda Deployment Pipeline
 - Bastion Removal
 - Secrets Manager
 - SSM Parameter Store
