@@ -7,8 +7,8 @@ services:
     restart: always
 
     environment:
-      MYSQL_ROOT_PASSWORD: jj
-      MYSQL_DATABASE: taskdb
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
 
     ports:
       - "3307:3306"
