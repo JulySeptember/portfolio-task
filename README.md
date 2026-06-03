@@ -1,7 +1,6 @@
-# 📌 Go × AWS Serverless Task Management App
+# 📌 Serverless Task Management App
 
-Next.js × Go × AWS × Terraform × MySQL を用いた
-フルスタック Serverless Task Management App です。
+Go、Next.js、AWSを用いて設計・実装したサーバーレスなタスク管理アプリケーションです。認証・認可、Infrastructure as Code、CI/CDを含むモダンなクラウドアーキテクチャを採用し、実践的なWebサービス開発を意識して構築しました。
 
 ---
 
@@ -16,15 +15,12 @@ Next.js × Go × AWS × Terraform × MySQL を用いた
 
 # ✨ Features
 
-- Serverless Go API (AWS Lambda)
-- Task CRUD API
-- User Authentication (Cognito)
-- Owner-Isolated Authorization
-- Public ID Based Resource Access
-- Terraform Infrastructure as Code
-- API Gateway JWT Authorizer
-- CloudFront + S3 Frontend Hosting
-- Private RDS MySQL
+- Goによるレイヤードアーキテクチャ（Handler / Service / Repository）
+- Terraformによるインフラのコード化（IaC）
+- CloudFront + S3によるフロントエンドホスティング
+- JWT認証（AWS Cognito + API Gateway Authorizer）
+- Owner Isolationによるマルチユーザー対応
+- Task CRUD API（タスクの作成・更新・削除・取得）
 - CI/CD with GitHub Actions
 
 ---
@@ -94,18 +90,21 @@ Lambda
 # 🧱 Backend Architecture
 
 ```text
-Handler
-  ↓
-Service
-  ↓
-Repository
-  ↓
-RDS MySQL
+  API Gateway
+      ↓
+   Lambda
+      ↓
+   Handler
+      ↓
+   Service
+      ↓
+ Repository
+      ↓
+   RDS MySQL
 ```
 
 特徴:
 
-- レイヤードアーキテクチャ
 - Context Timeout
 - Structured Logging
 - Owner Isolation
@@ -174,13 +173,11 @@ Terraform により構築:
 
 # 🚧 Engineering Background
 
-本プロジェクトは、情報システム部門での実務経験を基盤に、
-レガシー環境からクラウドネイティブ開発への技術転換を目的として構築しています。
-
+情報システム部門での業務経験を基盤に、
+Go・AWS・Terraformを用いたクラウドネイティブなアプリケーション開発へ挑戦するために構築した個人開発プロジェクトです。
 - 情報システム部門での業務経験（約1.5年）
   - VBAによる業務改善ツール開発
   - AS400の運用・保守
 - 基本情報技術者 / 応用情報技術者 取得
-- レガシー環境（業務システム）からクラウド（AWS + Go）への移行経験を意識した学習・実装
 
 ---
