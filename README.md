@@ -1,36 +1,11 @@
-# 📌 Serverless Task Management App
+# 📌 Go × AWS Serverless Task Management App
 
 Next.js × Go × AWS × Terraform × MySQL を用いた
 フルスタック Serverless Task Management App です。
 
 ---
 
-<p align="center">
-  <img src="./docs/architecture_and_erd_v1.png" width="900">
-</p>
-
----
-
-# ✨ Features
-
-- AWS Cognito Hosted UI Authentication (Implicit Flow)
-- API Gateway JWT Authorizer
-- Serverless Go API (AWS Lambda)
-- Task CRUD APIs
-- User Bootstrap API
-- Owner-Isolated Authorization
-- Public ID Based Resource Access
-- Terraform Infrastructure as Code
-- Swagger / OpenAPI
-- Structured Logging
-- Layered Architecture
-- Private RDS MySQL
-- CloudFront + S3 Frontend Hosting
-- GitHub Actions CI/CD
-
----
-
-# 🌍 Live Demo
+## 🌍 Live Demo
 
 | Service | URL |
 | --- | --- |
@@ -39,13 +14,51 @@ Next.js × Go × AWS × Terraform × MySQL を用いた
 
 ---
 
+# ✨ Features
+
+- Serverless Go API (AWS Lambda)
+- Task CRUD API
+- User Authentication (Cognito)
+- Owner-Isolated Authorization
+- Public ID Based Resource Access
+- Terraform Infrastructure as Code
+- API Gateway JWT Authorizer
+- CloudFront + S3 Frontend Hosting
+- Private RDS MySQL
+- CI/CD with GitHub Actions
+
+---
+
+<p align="center">
+  <img src="./docs/architecture_and_erd_v1.png" width="900">
+</p>
+
+### Login (AWS Cognito Hosted UI)
+
+<p align="center">
+  <img src="./docs/rogin.jpg" width="90%" />
+</p>
+
+### Task Dialog
+
+<p align="center">
+  <img src="./docs/dialog.jpg" width="90%" />
+</p>
+
+### Task List
+
+<p align="center">
+  <img src="./docs/list.jpg" width="90%" />
+</p>
+
+---
+
+
 # 🧩 Tech Stack
 
 | Layer | Technology |
 | --- | --- |
 | Frontend | Next.js + TypeScript |
-| UI | Tailwind CSS + shadcn/ui |
-| State Management | React Query + Zustand |
 | Backend | Go |
 | Infrastructure | Terraform |
 | Authentication | AWS Cognito |
@@ -56,121 +69,29 @@ Next.js × Go × AWS × Terraform × MySQL を用いた
 
 ---
 
-# 🏗 System Architecture
-
-```text
-Browser
-   │
-   ▼
-CloudFront
-   │
-   ▼
-S3 (Frontend)
-
-Browser
-   │
-   ▼
-Cognito Hosted UI
-   │
-   ▼
-Implicit Flow
-   │
-   ▼
-ID Token / Access Token
-   │
-   ▼
-API Gateway JWT Authorizer
-   │
-   ▼
-Lambda (Go)
-   │
-   ▼
-Handler
-   │
-   ▼
-Service
-   │
-   ▼
-Repository
-   │
-   ▼
-RDS MySQL
-```
-
----
-
 # 🔐 Authentication
 
-AWS Cognito Hosted UI を利用した Implicit Flow を採用しています。
+AWS Cognito Hosted UI を利用した JWT 認証を採用しています。
 
 ```text
-Login
+Cognito Hosted UI
   ↓
-Hosted UI
+JWT Token
   ↓
-ID Token
-Access Token
-(URL Hash)
-  ↓
-Frontend Storage
-(localStorage)
-  ↓
-POST /api/v1/auth/bootstrap
-  ↓
-Authorization: Bearer <token>
-  ↓
-API Gateway JWT Validation
+API Gateway JWT Authorizer
   ↓
 Lambda
 ```
 
 特徴:
 
-```text
-- Cognito Hosted UI
-- Implicit Flow
-- JWT Authentication
-- URL Hash Token Retrieval
-- User Bootstrap Synchronization
-- API Gateway JWT Validation
-```
+- JWTベース認証
+- API Gatewayによる認証分離
+- Owner Isolation による認可制御
 
 ---
 
-# 👤 User Bootstrap
-
-ログイン後に bootstrap API を実行し、
-Cognito User と users テーブルを同期します。
-
-```text
-POST /api/v1/auth/bootstrap
-```
-
-仕様:
-
-```text
-- First Login → INSERT
-- Existing User → UPDATE
-- Cognito sub → auth_user_id
-- Cognito email → email
-```
-
-# 🗑 User Deletion
-
-DELETE /api/v1/users/me
-
-仕様:
-
-- Delete user record from database
-- Delete owned tasks
-- Cognito account is NOT deleted
-- Signing in again recreates the application user through bootstrap
-
----
-
-# 🧱 Backend Design
-
-Layered Architecture を採用しています。
+# 🧱 Backend Architecture
 
 ```text
 Handler
@@ -178,210 +99,88 @@ Handler
 Service
   ↓
 Repository
+  ↓
+RDS MySQL
 ```
 
 特徴:
 
-```text
-- Handler / Service / Repository Separation
+- レイヤードアーキテクチャ
 - Context Timeout
 - Structured Logging
-- Strict JSON Decode
 - Owner Isolation
-- JWT Delegation to API Gateway
-- Private RDS Architecture
-```
+- Strict JSON Validation
 
 ---
 
-# 🎨 Frontend Design
+# 🎨 Frontend
 
-Feature-Based Architecture を採用しています。
-
-```text
+- Next.js (App Router)
+- TypeScript
 - React Query
 - Zustand
-- Responsive UI
-- Cognito Hosted UI Authentication
-- Implicit Flow
-- User Bootstrap
 - shadcn/ui
-```
 
 ---
 
 # 🔒 Security
 
-```text
-- Cognito Hosted UI
-- Implicit Flow
+- Cognito Authentication
 - API Gateway JWT Authorizer
 - Owner Isolation
-- Request Timeout
+- Private RDS (No Public Access)
 - SQL Timeout
+- Request Timeout
 - Panic Recovery
-- Unknown Field Rejection
-- Strict JSON Decode
-- Body Size Limit
-- Private RDS
-- Encrypted EBS
 - IMDSv2 Required
-```
+- Body Size Limitation
 
 ---
 
-# 📡 API
+# ⚙ CI/CD
 
-## Public
-
-```http
-GET /health
-GET /api/docs
-GET /api/spec/swagger.yml
-```
-
-## Protected
-
-```http
-POST   /api/v1/auth/bootstrap
-
-GET    /api/v1/users/me
-DELETE /api/v1/users/me
-
-POST   /api/v1/tasks
-GET    /api/v1/tasks
-GET    /api/v1/tasks/{publicId}
-PUT    /api/v1/tasks/{publicId}
-PATCH  /api/v1/tasks/{publicId}/status
-DELETE /api/v1/tasks/{publicId}
-```
-
----
-
-# 🗄 Database
-
-## users
-
-| column | type |
-| --- | --- |
-| id | bigint |
-| auth_user_id | varchar |
-| email | varchar |
-| created_at | datetime |
-| updated_at | datetime |
-
-## tasks
-
-| column | type |
-| --- | --- |
-| id | bigint |
-| public_id | varchar |
-| user_id | bigint |
-| title | varchar |
-| description | text |
-| status | varchar |
-| due_date | datetime |
-| created_at | datetime |
-| updated_at | datetime |
-
----
-
-# 📄 Swagger / OpenAPI
-
-Local:
-
-```text
-http://localhost:8080/api/docs
-```
-
-OpenAPI Spec:
-
-```text
-http://localhost:8080/api/spec/swagger.yml
-```
-
----
-
-# 📁 Directory Structure
-
-```text
-.
-├── backend
-│   ├── cmd
-│   ├── internal
-│   │   ├── auth
-│   │   ├── handlers
-│   │   ├── service
-│   │   ├── repository
-│   │   ├── middleware
-│   │   └── router
-│   ├── migrations
-│   └── swagger
-│
-├── frontend
-│   └── src
-│       ├── app
-│       ├── components
-│       ├── features
-│       │   ├── auth
-│       │   └── tasks
-│       ├── lib
-│       └── providers
-│
-├── infra
-│   ├── bootstrap
-│   └── main
-│
-└── .github
-```
-
----
-
-
-# 🧪 Quality Assurance
-
-```text
 - GitHub Actions CI
+- Go Test / Go Vet
+- Lambda Build & Deploy
 - Pull Request Validation
-- Automated Go Tests
-- Automated Go Vet
-- Automated Lambda Build
-- Automated Lambda Deployment
-- Service Layer Unit Tests
-- Test Coverage: 94%
 
 ---
 
 # 🏗 Infrastructure
 
-Terraform により以下を構築。
+Terraform により構築:
 
-```text
 - VPC
-- Public Subnets
-- Private Subnets
+- Public / Private Subnets
 - Security Groups
 - RDS MySQL
 - Lambda
 - API Gateway HTTP API
 - Cognito User Pool
-- Cognito Hosted UI
-- S3
-- CloudFront
+- S3 + CloudFront
 - Bastion EC2
-```
 
 ---
 
-# 🚀 Future Improvements
+# 💡 Design Highlights
 
-```text
-- Migration to Authorization Code Flow + PKCE
-- Refresh Token Support
-- Bastion Removal
-- Secrets Manager
-- SSM Parameter Store
-- Integration Tests
-- Rate Limiting
-- CloudWatch Dashboard
-```
+- AWSフルマネージド構成によるサーバーレス設計
+- 認証と認可の分離（Cognito + API Gateway）
+- Public ID によるセキュリティ強化
+- Lambda + RDS のシンプルな構成設計
+- Terraform による完全な IaC 管理
+
+---
+
+# 🚧 Engineering Background
+
+本プロジェクトは、情報システム部門での実務経験を基盤に、
+レガシー環境からクラウドネイティブ開発への技術転換を目的として構築しています。
+
+- 情報システム部門での業務経験（約1.5年）
+  - VBAによる業務改善ツール開発
+  - AS400の運用・保守
+- 基本情報技術者 / 応用情報技術者 取得
+- レガシー環境（業務システム）からクラウド（AWS + Go）への移行経験を意識した学習・実装
+
+---
