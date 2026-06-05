@@ -1,6 +1,6 @@
-# 📌 Serverless Task Management App
+# 📌 Cloud-Native Task Management App
 
-Go、Next.js、AWSを用いて設計・実装したサーバーレスなタスク管理アプリケーションです。認証・認可、Infrastructure as Code、CI/CDを含むモダンなクラウドアーキテクチャを採用し、実践的なWebサービス開発を意識して構築しました。
+Go、Next.js、AWSを用いて設計・実装したクラウドネイティブなタスク管理アプリケーションです。認証・認可、Infrastructure as Code、CI/CDを含むモダンなクラウドアーキテクチャを採用し、実践的なWebサービス開発を意識して構築しました。
 
 ---
 
@@ -140,6 +140,7 @@ Lambda
 
 - GitHub Actions CI
 - Go Test / Go Vet
+- Service Layer Unit Test Coverage: 98%
 - Lambda Build & Deploy
 - Pull Request Validation
 
@@ -163,7 +164,6 @@ Terraform により構築:
 
 # 💡 Design Highlights
 
-- AWSフルマネージド構成によるサーバーレス設計
 - 認証と認可の分離（Cognito + API Gateway）
 - Public ID によるセキュリティ強化
 - Lambda + RDS のシンプルな構成設計
@@ -175,9 +175,9 @@ Terraform により構築:
 
 情報システム部門での業務経験を基盤に、
 Go・AWS・Terraformを用いたクラウドネイティブなアプリケーション開発へ挑戦するために構築した個人開発プロジェクトです。
+- 基本情報技術者 / 応用情報技術者 取得
 - 情報システム部門での業務経験（約1.5年）
   - VBAによる業務改善ツール開発
   - AS400の運用・保守
-- 基本情報技術者 / 応用情報技術者 取得
 
 ---
