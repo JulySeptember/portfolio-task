@@ -127,13 +127,13 @@ Lambda
 ---
 
 # 🎨 Frontend
-
 - Next.js (App Router)
 - TypeScript
-- React Query
-- Zustand
+- TanStack Query
+- React Hook Form
+- Zod
 - shadcn/ui
-
+- Tailwind CSS
 ---
 
 # 🔒 Security
@@ -159,6 +159,9 @@ Lambda
 
 Testing:
 - Service Layer Unit Test Coverage: 98%
+
+Pull Request作成時にGo Test / Go Vetを実行し、
+mainブランチへのマージ時にLambdaのビルド・デプロイを自動実行
 
 ---
 
@@ -203,9 +206,11 @@ Security GroupによってLambdaおよびBastion Hostからのみアクセスを
 
 # 🚧 Engineering Background
 
-情報システム部門での業務経験を基盤に、
-認証・認可、Infrastructure as Code、CI/CDを含む
-実践的なクラウドネイティブアーキテクチャの設計・実装経験を得ることを目的として構築した個人開発プロジェクトです。
+情報システム部門での業務経験を通じて、
+より本格的なWebアプリケーション開発およびクラウドインフラ設計を学ぶことを目的に構築しました。
+認証・認可、Infrastructure as Code、CI/CD、テストを含め、
+保守性・運用性を意識したクラウドネイティブアーキテクチャの設計・実装に取り組んでいます。
+
 - 基本情報技術者 / 応用情報技術者 取得
 - 情報システム部門での業務経験（約1.5年）
   - VBAによる業務改善ツール開発
