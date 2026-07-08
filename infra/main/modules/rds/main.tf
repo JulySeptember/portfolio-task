@@ -14,7 +14,7 @@ resource "aws_db_instance" "this" {
   identifier = "${var.project_name}-${var.env}-db"
 
   engine         = "mysql"
-  engine_version = "8.0"
+  engine_version = "8.4"
 
   # free tier
   instance_class = var.db_instance_class

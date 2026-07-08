@@ -284,7 +284,8 @@ DB_PASSWORD=xxxxxxxx
 # 13. Migration 実行
 
 ```bash
-backend-migrate-up
+cd backend
+make migrate-up-prod
 ```
 
 成功例:
