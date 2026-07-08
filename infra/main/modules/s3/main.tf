@@ -1,6 +1,8 @@
 resource "aws_s3_bucket" "this" {
   bucket = var.frontend_bucket_name != "" ? var.frontend_bucket_name : "${var.project_name}-${var.env}-frontend-assets"
 
+  force_destroy = true
+
   tags = merge(var.tags, {
     Name = "${var.project_name}-${var.env}-frontend-assets"
   })

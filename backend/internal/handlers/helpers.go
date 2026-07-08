@@ -12,32 +12,6 @@ import (
 )
 
 // =========================
-// parseID
-// =========================
-
-func parseID(
-	w http.ResponseWriter,
-	r *http.Request,
-) (int64, bool) {
-
-	id, err := httpx.PathID(r)
-
-	if err != nil {
-
-		httpx.WriteError(
-			w,
-			http.StatusBadRequest,
-			httpx.CodeInvalidID,
-			"invalid id",
-		)
-
-		return 0, false
-	}
-
-	return id, true
-}
-
-// =========================
 // decodeAndValidate
 // =========================
 

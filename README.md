@@ -8,8 +8,8 @@ Go、Next.js、AWSを用いて設計・実装したクラウドネイティブ�
 
 | Service | URL |
 | --- | --- |
-| Frontend | https://dgw03czfpoc25.cloudfront.net |
-| Swagger UI | https://h5kvlgfwv1.execute-api.ap-northeast-1.amazonaws.com/api/docs |
+| Frontend | https://d28yxftmfkwdy9.cloudfront.net |
+| Swagger UI | https://j8c18sszx5.execute-api.ap-northeast-1.amazonaws.com/api/docs |
 
 > ※ サインアップ時、確認メールが届かない場合は、迷惑メールフォルダもご確認ください。
 
