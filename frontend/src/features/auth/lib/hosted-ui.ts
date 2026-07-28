@@ -1,6 +1,6 @@
 // src/features/auth/lib/hosted-ui.ts
 
-export async function buildLoginURL(): Promise<string> {
+export function buildLoginURL(): string {
   const domain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
   const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
   const redirectUri = process.env.NEXT_PUBLIC_COGNITO_REDIRECT_URI;
