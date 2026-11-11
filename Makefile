@@ -109,8 +109,11 @@ tf-bootstrap-plan:
 tf-bootstrap-apply:
 	cd $(BOOTSTRAP_DIR) && terraform apply -auto-approve
 
+#MAIN　DESTROY後に行う
+
 tf-bootstrap-destroy:
 	cd $(BOOTSTRAP_DIR) && terraform destroy -auto-approve
+
 
 
 # ============================
@@ -118,7 +121,7 @@ tf-bootstrap-destroy:
 # ============================
 
 tf-init:
-	cd $(INFRA_DIR) && terraform init
+	cd $(INFRA_DIR) && terraform init -reconfigure
 
 tf-fmt:
 	cd $(INFRA_DIR) && terraform fmt -recursive
@@ -130,12 +133,13 @@ tf-plan:
 	cd $(INFRA_DIR) && terraform plan \
 		-var-file=$(TF_ENV_FILE)
 
-tf-apply: 
+tf-apply:
 	cd $(INFRA_DIR) && terraform apply \
 		-auto-approve \
 		-var-file=$(TF_ENV_FILE)
 
 tf-destroy:
+	cd $(INFRA_DIR) && terraform init -reconfigure
 	cd $(INFRA_DIR) && terraform destroy \
 		-auto-approve \
 		-var-file=$(TF_ENV_FILE)
